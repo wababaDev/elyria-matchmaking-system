@@ -1,0 +1,109 @@
+/*!
+ * Font Awesome Free 6.5.2 - local subset for brand icons used in hero actions
+ * License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+ */
+:root {
+    --fa-font-brands: normal 400 1em/1 "Font Awesome 6 Brands";
+    --fa-font-solid: normal 900 1em/1 "Font Awesome 6 Free";
+}
+
+@font-face {
+    font-family: "Font Awesome 6 Brands";
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url("../webfonts/fa-brands-400.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Font Awesome 6 Free";
+    font-style: normal;
+    font-weight: 900;
+    font-display: block;
+    src: url("../webfonts/fa-solid-900.woff2") format("woff2");
+}
+
+.fa-brands,
+.fab,
+.fa-solid,
+.fas {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    display: inline-block;
+    font-style: normal;
+    font-variant: normal;
+    line-height: 1;
+    text-rendering: auto;
+}
+
+.fa-brands,
+.fab {
+    font-family: "Font Awesome 6 Brands";
+    font-weight: 400;
+}
+
+.fa-solid,
+.fas {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+}
+
+.fa-whatsapp::before {
+    content: "\f232";
+}
+
+.fa-waze::before {
+    content: "\f83f";
+}
+
+.fa-instagram::before {
+    content: "\f16d";
+}
+
+.fa-facebook-f::before {
+    content: "\f39e";
+}
+
+.fa-chevron-up::before {
+    content: "\f077";
+}
+
+.fa-chevron-right::before {
+    content: "\f054";
+}
+
+.fa-building::before {
+    content: "\f1ad";
+}
+
+.fa-umbrella-beach::before {
+    content: "\f5ca";
+}
+
+.fa-water::before {
+    content: "\f773";
+}
+
+.fa-spa::before {
+    content: "\f5bb";
+}
+
+.fa-vector-square::before {
+    content: "\f5cb";
+}
+
+.fa-store::before {
+    content: "\f54e";
+}
+
+.fa-couch::before {
+    content: "\f4b8";
+}
+
+.fa-key::before {
+    content: "\f084";
+}
+
+.fa-leaf::before {
+    content: "\f06c";
+}

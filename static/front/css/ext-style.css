@@ -1,0 +1,22 @@
+html, body {
+    max-width: 100%;
+}
+
+@supports (overflow-x: clip) {
+    html, body {
+        overflow-x: clip;
+    }
+}
+
+.bg-sand { background-color: #f9f8f6; }
+.text-gold { color: #cda434; }
+.itinerary-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+.itinerary-card:hover { transform: translateY(-10px); box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important; }
+
+/* Mobile Hero Concept 2 */
+@media (max-width: 991px) {
+    .hero-wrapper { height: auto !important; min-height: 100vh; display: flex; flex-direction: column; }
+    .hero-wrapper .row { flex-direction: column; margin: 0; width: 100%; }
+    .hero-wrapper .col-lg-5 { padding: 120px 20px 50px !important; min-height: 50vh; width: 100%; }
+    .hero-wrapper .col-lg-7 { height: 50vh !important; min-height: 50vh; width: 100%; padding: 0; }
+}

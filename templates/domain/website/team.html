@@ -1,0 +1,106 @@
+{% extends "layouts/public.html" %}
+{% load static%}
+
+{% block title %}Elyria Matchmaking — Date with Intention{% endblock %}
+{% block style %}
+{% endblock %}
+{% block body_class %}always-show-header page-static{% endblock %} 
+
+{% block content %}
+     <!-- Page header -->
+<section class="page-hero">
+    <div class="page-hero-media">
+        <img src="{% static 'front/assets/image(14).jpg' %}" alt="">
+    </div>
+    <div class="page-hero-overlay"></div>
+    <div class="container">
+        <div class="page-hero-content">
+            <ol class="page-breadcrumb" aria-label="Breadcrumb">
+                <li><a href="index.html">Home</a></li>
+                <li><span class="is-current">Our Team</span></li>
+            </ol>
+            <h1 class="page-hero-title">Our Team</h1>
+        </div>
+    </div>
+</section>
+
+<!-- Team profiles (template: Rooms showcase row) -->
+<section class="section-padding">
+    <div class="container">
+
+        <!-- Anisha Namutowe -->
+        <div class="team-profile row g-4 g-lg-5 align-items-center reveal" data-reveal="fade-up">
+            <div class="col-lg-5">
+                <img src="{% static 'front/assets/team/anisha.png' %}" class="team-photo" alt="">
+            </div>
+            <div class="col-lg-7">
+                <div class="reservation-panel">
+                    <h2 class="section-title mb-2">Anisha Namutowe</h2>
+                    <span class="team-role">Founder &amp; CEO</span>
+                    <p>Anisha Namutowe has been matchmaking people long before she understood the tangled webs that drew them together, or pulled them apart. It was only when she recognised this as a genuine skill — a real discernment for how two people fit — that she began approaching it strategically. Elyria Matchmaking followed.</p>
+                    <p>She brings to every match a keen sense of observation, real tenacity, and more than a decade of experience in corporate strategy. She now applies the same rigour she once applied to boardroom decisions to matters of the heart.</p>
+                    <p>Anisha believes genuine love doesn't look the same for everyone, and that people who share real values deserve the chance to find each other, whatever stands in their way. She built Elyria to remove those obstacles and serve as a bridge toward lasting connections.</p>
+                    <p>The corporate clients she has guided, the friends she has introduced, and even a sibling she has connected to their soulmate, have all trusted her judgement, and can attest to her willingness to go where others hesitate to look.</p>
+                    <p class="mb-0">Pursuing the right connection, and sustaining it once found, is a life-altering pursuit that cannot be left to chance. It takes courage, trust, and strategy, and Anisha has all three in spades.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tonde Lungu -->
+        <div class="team-profile row g-4 g-lg-5 align-items-center reveal" data-reveal="fade-up">
+            <div class="col-lg-5">
+                <img src="{% static 'front/assets/image(10).png' %}" class="team-photo" alt="">
+            </div>
+            <div class="col-lg-7">
+                <div class="reservation-panel">
+                    <h2 class="section-title mb-2">Tonde Lungu</h2>
+                    <span class="team-role">Corporate Matchmaker</span>
+                    <p>Professionals and executives navigating demanding, high-visibility careers.</p>
+                    <p class="mb-0 text-muted fst-italic">[Full bio to be supplied]</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thandie Dunlop -->
+        <div class="team-profile row g-4 g-lg-5 align-items-center reveal" data-reveal="fade-up">
+            <div class="col-lg-5">
+                <img src="{% static 'front/assets/team/thandie.jpeg' %}" class="team-photo" alt="Thandie Dunlop">
+            </div>
+            <div class="col-lg-7">
+                <div class="reservation-panel">
+                    <h2 class="section-title mb-2">Thandie Dunlop</h2>
+                    <span class="team-role">International Matchmaker</span>
+                    <p class="mb-0">Thandie Dunlop is a global matchmaker and communications expert who brings a steady, intuitive listening style to every conversation. She has a way of truly understanding people — not just what they say, but what they mean — and she uses that insight to help them find connections that feel natural, aligned, and built to last. Her work focuses on creating thoughtful, cross-cultural matches rooted in shared values, compatible lifestyles, and genuine long-term relationships.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Annastasia Munyati -->
+        <div class="team-profile row g-4 g-lg-5 align-items-center reveal" data-reveal="fade-up">
+            <div class="col-lg-5">
+                <img src="{% static 'front/assets/team/annastasia.jpg' %}" class="team-photo" alt="Annastasia Munyati">
+            </div>
+            <div class="col-lg-7">
+                <div class="reservation-panel">
+                    <h2 class="section-title mb-2">Annastasia Munyati</h2>
+                    <span class="team-role">Faith-Based Matchmaker</span>
+                    <p class="mb-0">Annastasia Munyati is a Faith-Based Matchmaker who brings a thoughtful, intuitive approach to helping people find meaningful connections. She understands that lasting relationships are built on more than attraction — they grow from shared values, faith, compatible lifestyles, and genuine intention. Her work supports faith-oriented individuals across religious traditions who are seeking purposeful, meaningful, and long-term relationships.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="section-padding pt-0 text-center">
+    <div class="container reveal" data-reveal="fade-up">
+        <button class="register-submit-btn" type="button" data-bs-toggle="modal" data-bs-target="#consultationModal">
+            Request a Private Consultation
+        </button>
+    </div>
+</section>
+
+{% endblock %}
+{% block script %}
+{% endblock %}

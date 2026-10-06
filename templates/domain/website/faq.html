@@ -1,0 +1,138 @@
+{% extends "layouts/public.html" %}
+{% load static%}
+
+{% block title %}Elyria Matchmaking — Date with Intention{% endblock %}
+{% block style %}
+{% endblock %}
+{% block body_class %}always-show-header page-static{% endblock %} 
+
+{% block content %}
+     <!-- Page header -->
+<section class="page-hero">
+    <div class="page-hero-media">
+        <img src="{% static 'front/assets/image(2).jpg' %}" alt="">
+    </div>
+    <div class="page-hero-overlay"></div>
+    <div class="container">
+        <div class="page-hero-content">
+            <ol class="page-breadcrumb" aria-label="Breadcrumb">
+                <li><a href="index.html">Home</a></li>
+                <li><span class="is-current">FAQ</span></li>
+            </ol>
+            <h1 class="page-hero-title">Frequently Asked Questions</h1>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ accordion -->
+<section class="section-padding">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-9">
+                <div class="accordion faq-accordion" id="faqAccordion">
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq1" aria-expanded="false" aria-controls="faq1">Is Elyria Matchmaking a dating site or app?</button>
+                        </h2>
+                        <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">No. Elyria Matchmaking is a private, human-led matchmaking service. We do not offer public profiles, swiping, or self-directed browsing.</div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2" aria-expanded="false" aria-controls="faq2">Who is this service designed for?</button>
+                        </h2>
+                        <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">Individuals who are emotionally ready for a committed relationship, value discretion and intentionality, and prefer a guided, professional approach to dating.</div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3" aria-expanded="false" aria-controls="faq3">Is everyone who applies accepted?</button>
+                        </h2>
+                        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">No. We are a selective service and accept a limited number of clients at any time, based on intent, readiness, and alignment with our values.</div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4" aria-expanded="false" aria-controls="faq4">Why is there a consultation fee?</button>
+                        </h2>
+                        <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">The consultation is a professional assessment, not a sales call. The fee reflects time with an experienced matchmaker and an honest evaluation of fit.</div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5" aria-expanded="false" aria-controls="faq5">Can I choose who I am matched with?</button>
+                        </h2>
+                        <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">You will never be matched without your consent. Our process is guided, presenting thoughtfully curated introductions rather than unlimited choice.</div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq6" aria-expanded="false" aria-controls="faq6">Is confidentiality guaranteed?</button>
+                        </h2>
+                        <div id="faq6" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">Yes. Client information is handled with strict confidentiality and never publicly displayed or shared outside the matchmaking process.</div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq7" aria-expanded="false" aria-controls="faq7">Do you conduct background checks or health screenings?</button>
+                        </h2>
+                        <div id="faq7" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">No. Matters relating to criminal history or medical and health status fall outside the scope of our services.</div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq8" aria-expanded="false" aria-controls="faq8">Are refunds available if I change my mind?</button>
+                        </h2>
+                        <div id="faq8" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">Consultation and membership registration fees are non-refundable.</div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq9" aria-expanded="false" aria-controls="faq9">Who is Elyria Matchmaking not designed for?</button>
+                        </h2>
+                        <div id="faq9" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">Those seeking casual dating or short-term encounters, unwilling to participate in verification, or seeking to bypass consent and boundaries.</div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq10" aria-expanded="false" aria-controls="faq10">How do I begin?</button>
+                        </h2>
+                        <div id="faq10" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">Begin by requesting a private consultation. Enquiries are reviewed on a rolling basis, and spaces are limited.</div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="text-center mt-5">
+                    <button class="register-submit-btn" type="button" data-bs-toggle="modal" data-bs-target="#consultationModal">
+                        Request a Private Consultation
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
+{% block script %}
+{% endblock %}

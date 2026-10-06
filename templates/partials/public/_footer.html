@@ -1,0 +1,28 @@
+{% load static %}
+<!-- ===== FOOTER (same on every page) ===== -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-shell">
+                <div class="footer-brand">
+                    <h2 class="footer-title"><img src="{% static 'front/assets/logo-white.png' %}" alt="Elyria Matchmaking" class="footer-logo"></h2>
+                </div>
+                <div class="footer-links-wrap">
+                    <div class="footer-links-group">
+                        <span class="footer-label">Contact</span>
+                        <span class="footer-meta"> Business address — Lusaka Zambia</span>
+                        <span class="footer-meta">Cell - <a href="tel:+260573439103" style="color: #fff;">+26 0573439103</a></span>
+                        <span class="footer-meta">Email - <a href="mailto:info@elyriamatchmaking.com" style="color: #fff;">info@elyriamatchmaking.com</a> </span>
+                    </div>
+                    <div class="footer-links-group">
+                        <span class="footer-label">More</span>
+                        <a href="{% url 'website:events' %}" class="footer-link">Events</a>
+                        <a href="{% url 'website:faq' %}" class="footer-link">FAQ</a>
+                        <a href="{% url 'website:privacy' %}" class="footer-link">Privacy Policy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <span class="footer-meta">&copy; 2026 Elyria Matchmaking Limited. All rights reserved.</span>
+            </div>
+        </div>
+    </footer>

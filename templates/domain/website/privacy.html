@@ -1,0 +1,64 @@
+{% extends "layouts/public.html" %}
+{% load static%}
+
+{% block title %}Elyria Matchmaking — Date with Intention{% endblock %}
+{% block style %}
+{% endblock %}
+{% block body_class %}always-show-header page-static{% endblock %} 
+
+
+{% block content %}
+
+    <!-- Page header -->
+    <section class="page-hero">
+        <div class="page-hero-media">
+            <img src="{% static 'front/assets/image(5).jpg' %}" alt="">
+        </div>
+        <div class="page-hero-overlay"></div>
+        <div class="container">
+            <div class="page-hero-content">
+                <ol class="page-breadcrumb" aria-label="Breadcrumb">
+                    <li><a href="index.html">Home</a></li>
+                    <li><span class="is-current">Privacy Policy</span></li>
+                </ol>
+                <h1 class="page-hero-title">Privacy Policy</h1>
+            </div>
+        </div>
+    </section>
+
+    <!-- Policy text -->
+       <!-- Policy text -->
+    <section class="section-padding">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <p class="lead">
+                        Your privacy matters to us. This policy explains what personal information Elyria Matchmaking
+                        collects, why we collect it, how we keep it safe and the choices you have.
+                    </p>
+
+                    <!-- Privacy Policy download -->
+                    <div class="policy-download">
+                        <div class="policy-download-icon"><i class="fa-regular fa-file-pdf"></i></div>
+                        <div class="policy-download-text">
+                            <h2 class="h5 mb-1">Keep a copy</h2>
+                            <p class="mb-0">Download the full Privacy Policy as a PDF to read offline or keep for your records.</p>
+                            <small>PDF · Last updated [date — to be supplied]</small>
+                        </div>
+                        <a href="assets/docs/elyria-privacy-policy.pdf" class="register-submit-btn" download>
+                            <i class="fa-solid fa-download me-2"></i>Download PDF
+                        </a>
+                    </div>
+
+                    <p class="text-muted mt-4 mb-0">
+                        Questions about this policy or your personal information? Contact us at
+                        info@elyriamatchmaking.com.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+{% endblock %}
+{% block script %}
+{% endblock %}

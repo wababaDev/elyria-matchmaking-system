@@ -1,0 +1,99 @@
+{% extends "layouts/public.html" %}
+{% load static%}
+
+{% block title %}Elyria Matchmaking — Date with Intention{% endblock %}
+{% block style %}
+{% endblock %}
+
+{% block body_class %}always-show-header page-static{% endblock %} 
+
+{% block content %}
+
+<!-- Page header -->
+<section class="page-hero">
+    <div class="page-hero-media">
+        <img src="{% static 'front/assets/image(5).jpg' %}" alt="">
+    </div>
+    <div class="page-hero-overlay"></div>
+    <div class="container">
+        <div class="page-hero-content">
+            <ol class="page-breadcrumb" aria-label="Breadcrumb">
+                <li><a href="index.html">Home</a></li>
+                <li><span class="is-current">About Us</span></li>
+            </ol>
+            <h1 class="page-hero-title">About Us</h1>
+        </div>
+    </div>
+</section>
+
+<!-- Who We Are (the section you saved from Home) -->
+<section id="who-we-are" class="p-0">
+    <div class="container-fluid p-0 overflow-hidden">
+        <div class="row g-0 align-items-stretch">
+            <div class="col-lg-6 reveal" data-reveal="fade-right">
+                <img src="{% static 'front/assets/version-2/image(15).png' %}" class="w-100 h-100 img-min-vh-50" alt="">
+            </div>
+            <div class="col-lg-6 d-flex align-items-center bg-sand reveal" data-reveal="fade-left">
+                <div class="p-5 p-lg-5 m-lg-4 w-100">
+                    <span class="accent-text">Who We Are</span>
+                    <h2 class="section-title mb-4">Serious People Deserve Serious Processes</h2>
+                    <p class="mb-5 text-muted lead">Compatibility should be assessed, not guessed.</p>
+
+                    <div class="d-flex mb-4">
+                        <i class="fa-solid fa-check text-gold mt-1 me-4 fs-5" aria-hidden="true"></i>
+                        <p class="mb-0 fs-5">Human-led, not algorithm-driven</p>
+                    </div>
+                    <div class="d-flex mb-4">
+                        <i class="fa-solid fa-check text-gold mt-1 me-4 fs-5" aria-hidden="true"></i>
+                        <p class="mb-0 fs-5">Guided, not transactional</p>
+                    </div>
+                    <div class="d-flex mb-4">
+                        <i class="fa-solid fa-check text-gold mt-1 me-4 fs-5" aria-hidden="true"></i>
+                        <p class="mb-0 fs-5">Selective, not mass-market</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Our Values -->
+<section id="values" class="section-padding text-center">
+    <div class="container">
+        <div class="mb-5 reveal" data-reveal="fade-up">
+            <span class="accent-text">Our Values</span>
+            <h2 class="section-title">What We Stand By</h2>
+        </div>
+        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-5 g-4 justify-content-center reveal" data-reveal="fade-up">
+            <div class="col">
+                <span class="icon-circle"><i class="fa-solid fa-user-shield" aria-hidden="true"></i></span>
+                <h3 class="h5 font-heading">Discretion</h3>
+                <p class="text-muted small">We protect privacy fiercely</p>
+            </div>
+            <div class="col">
+                <span class="icon-circle"><i class="fa-solid fa-handshake" aria-hidden="true"></i></span>
+                <h3 class="h5 font-heading">Consent</h3>
+                <p class="text-muted small">No introduction without mutual willingness</p>
+            </div>
+            <div class="col">
+                <span class="icon-circle"><i class="fa-solid fa-compass" aria-hidden="true"></i></span>
+                <h3 class="h5 font-heading">Intentionality</h3>
+                <p class="text-muted small">Clarity and readiness to engage</p>
+            </div>
+            <div class="col">
+                <span class="icon-circle"><i class="fa-solid fa-scale-balanced" aria-hidden="true"></i></span>
+                <h3 class="h5 font-heading">Integrity</h3>
+                <p class="text-muted small">Honesty, expected of everyone</p>
+            </div>
+            <div class="col">
+                <span class="icon-circle"><i class="fa-solid fa-feather" aria-hidden="true"></i></span>
+                <h3 class="h5 font-heading">Dignity</h3>
+                <p class="text-muted small">Never rushed, never unsafe</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
+{% block script %}
+{% endblock %}

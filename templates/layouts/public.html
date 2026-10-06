@@ -1,0 +1,154 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+      <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{% block title %}Elyria Matchmaking — Date with Intention{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{% static 'front/assets/logo-head.png' %}">
+    <link rel="stylesheet" href="{% static 'front/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'front/css/swiper-bundle.min.css' %}">
+    <link rel="stylesheet" href="{% static 'front/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'front/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'front/css/ext-style.css' %}">
+    <link rel="stylesheet" href="{% static 'front/css/elyria.css' %}">
+    {% block style %}
+    {% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+
+    {% include "partials/public/_header.html" %}
+    {% block content %}
+    
+    {% endblock %}
+
+    {% include "partials/public/_footer.html" %}
+ 
+    <!-- ===== MODALS (same on every page) ===== -->
+    <div class="modal fade elyria-modal" id="consultationModal" tabindex="-1" aria-labelledby="consultationModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title" id="consultationModalTitle">Request a Private Consultation</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="modal-intro">Leave your details below and we'll be in touch about your private consultation.</p>
+                    <form class="register-form" data-demo="true"
+                          data-success="Thank you. Check your email for next steps to secure your consultation.">
+                        <div class="row g-3">
+                            <div class="col-md-6 form-group">
+                                <label for="c-full-name">Full name</label>
+                                <input type="text" id="c-full-name" name="full_name" required>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label for="c-preferred-name">Preferred name</label>
+                                <input type="text" id="c-preferred-name" name="preferred_name" required>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label for="c-gender">Gender</label>
+                                <div class="select-wrap">
+                                    <select id="c-gender" name="gender" required>
+                                        <option value="" selected disabled>Select</option>
+                                        <option>Female</option>
+                                        <option>Male</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label for="c-location">Location (country / city)</label>
+                                <input type="text" id="c-location" name="location" required>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label for="c-nationality">Nationality</label>
+                                <input type="text" id="c-nationality" name="nationality" required>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label for="c-occupation">Occupation / profession</label>
+                                <input type="text" id="c-occupation" name="occupation" required>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label for="c-email">Email address</label>
+                                <input type="email" id="c-email" name="email" required>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label for="c-phone">Phone number</label>
+                                <input type="tel" id="c-phone" name="phone" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="register-submit-btn">Send request</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+ 
+    <div class="modal fade elyria-modal" id="learnMoreModal" tabindex="-1" aria-labelledby="learnMoreModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title" id="learnMoreModalTitle">Learn more</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="modal-intro">Have a question about <span data-tier-name>this</span> Membership? Let us know what you'd like to find out, and leave your details — we'll follow up.</p>
+                    <form class="register-form" data-demo="true"
+                          data-success="Thank you — we'll be in touch shortly to answer your question about [Tier] Membership.">
+                        <input type="hidden" name="tier" value="">
+                        <div class="form-group">
+                            <label for="l-question">Your question</label>
+                            <textarea id="l-question" name="question" rows="4" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="l-first-name">First name</label>
+                            <input type="text" id="l-first-name" name="first_name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="l-contact">Phone number or email</label>
+                            <input type="text" id="l-contact" name="contact" required>
+                        </div>
+                        <button type="submit" class="register-submit-btn">Send question</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="to-top" id="toTopBtn" type="button" aria-label="Back to top">
+        <span class="to-top-label" aria-hidden="true">
+            <i class="fa-solid fa-chevron-up"></i>
+        </span>
+        <span class="to-top-line">
+            <span class="to-top-line-progress" id="toTopProgress"></span>
+        </span>
+    </button>
+
+    <!-- Scripts -->
+    <!-- jQuery -->
+     <script src="{% static 'front/js/jquery-3.7.1.min.js' %}"></script>
+    <script src="{% static 'front/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'front/js/lenis.min.js' %}"></script>
+    <script src="{% static 'front/js/swiper-bundle.min.js' %}"></script>
+    <script src="{% static 'front/js/main.js' %}"></script>
+    <script>
+    // Learn More modal: fill the tier from the button that opened it
+    document.addEventListener('DOMContentLoaded', function () {
+        var modal = document.getElementById('learnMoreModal');
+        if (!modal) return;
+        modal.addEventListener('show.bs.modal', function (event) {
+            var tier = (event.relatedTarget && event.relatedTarget.getAttribute('data-tier')) || '';
+            var form = modal.querySelector('form');
+            modal.querySelector('input[name="tier"]').value = tier;
+            modal.querySelectorAll('[data-tier-name]').forEach(function (el) { el.textContent = tier; });
+            form.dataset.successResolved = form.dataset.success.replace('[Tier]', tier);
+            modal.querySelector('.modal-title').textContent = tier + ' Membership';
+        });
+    });
+    </script>
+
+    {% block script %}
+
+    {% endblock %}
+</body>
+</html>

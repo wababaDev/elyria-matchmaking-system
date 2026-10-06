@@ -1,0 +1,36 @@
+  {% load static %}
+  <!-- Header / Navbar -->
+       <header class="header">
+        <nav class="navbar navbar-expand-lg header-nav" aria-label="Main">
+            <div class="container-fluid header-shell">
+                <a class="navbar-brand header-logo" href="{% url 'website:home' %}">
+                    <img src="{% static 'front/assets/logo-hz.png' %}" alt="Elyria Matchmaking" height="60" class="logo-dark">
+                    <img src="{% static 'front/assets/logo-white.png' %}" alt="Elyria Matchmaking" height="60" class="logo-light">
+                </a>
+                <button class="navbar-toggler header-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse header-collapse" id="mainNav">
+                    <ul class="navbar-nav header-menu">
+                        <li class="nav-item"><a class="nav-link header-link active" href="{% url 'website:home' %}">Home</a></li>
+                        <li class="nav-item"><a class="nav-link header-link" href="{% url 'website:about' %}">About Us</a></li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link header-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false">Our Services</a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'website:services' %}">Our Services</a></li>
+                                <li><a class="dropdown-item" href="{% url 'website:who-we-serve' %}">Who We Serve</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item"><a class="nav-link header-link" href="{% url 'website:membership' %}">Membership</a></li>
+                        <li class="nav-item"><a class="nav-link header-link" href="{% url 'website:team' %}">Our Team</a></li>
+                    </ul>
+                    <div class="header-actions">
+                        <a class="header-signin-btn" href="#">Member Sign In</a>
+                        <!-- <button class="header-register-btn" type="button" data-bs-toggle="modal" data-bs-target="#consultationModal">
+                            Request a Private Consultation
+                        </button> -->
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>

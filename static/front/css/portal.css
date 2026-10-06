@@ -1,0 +1,344 @@
+/* ==================================================
+   ELYRIA MEMBER PORTAL — load after elyria.css
+   ================================================== */
+
+.portal-body { background: var(--elyria-offwhite); }
+
+/* ---------- Slim portal header ---------- */
+.portal-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: #fff;
+    border-bottom: 1px solid rgba(110, 20, 35, 0.1);
+}
+.portal-header .inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 0;
+}
+.portal-header img { height: 44px; width: auto; }
+.portal-nav { display: flex; gap: 1.75rem; align-items: center; }
+.portal-nav a {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.95rem;
+    padding: 0.25rem 0;
+    border-bottom: 2px solid transparent;
+}
+.portal-nav a.active, .portal-nav a:hover { border-bottom-color: var(--elyria-gold); }
+.portal-nav .signout { color: var(--elyria-maroon); opacity: 0.75; }
+@media (max-width: 767px) {
+    .portal-nav { gap: 1rem; font-size: 0.85rem; }
+    .portal-nav .hide-sm { display: none; }
+}
+
+/* ---------- Welcome ---------- */
+.portal-welcome {
+    background: var(--elyria-maroon);
+    color: #fff;
+    padding: 3rem 0 2.5rem;
+}
+.portal-welcome h1 { color: #fff; font-size: clamp(1.8rem, 4vw, 2.6rem); margin-bottom: 0.75rem; }
+.portal-welcome p { color: rgba(255, 255, 255, 0.8); max-width: 640px; margin: 0; }
+.portal-progress {
+    margin-top: 1.5rem;
+    max-width: 420px;
+}
+.portal-progress .bar {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.portal-progress .fill { height: 100%; background: var(--elyria-gold); width: 0; transition: width 0.4s ease; }
+.portal-progress small { display: block; margin-top: 0.4rem; color: rgba(255, 255, 255, 0.75); }
+
+/* ---------- Layout: section nav + form ---------- */
+.portal-layout { padding: 2.5rem 0 7rem; }
+.section-nav {
+    position: sticky;
+    top: 90px;
+    background: #fff;
+    border: 1px solid rgba(110, 20, 35, 0.08);
+    padding: 1.25rem;
+}
+.section-nav .group-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--elyria-gold);
+    margin: 1rem 0 0.4rem;
+}
+.section-nav .group-label:first-child { margin-top: 0; }
+.section-nav a {
+    display: block;
+    padding: 0.3rem 0;
+    color: var(--color-primary);
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+.section-nav a:hover { color: var(--elyria-maroon); }
+
+/* ---------- The two banners (deliberately different) ---------- */
+.profile-banner {
+    margin: 2.5rem 0 1.5rem;
+    padding: 1.25rem 1.5rem;
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+}
+.profile-banner small {
+    display: block;
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    letter-spacing: 0;
+    text-transform: none;
+    font-weight: 400;
+    margin-top: 0.35rem;
+}
+.banner-you     { background: var(--elyria-maroon); color: #fff; }
+.banner-you small { color: rgba(255, 255, 255, 0.8); }
+.banner-partner { background: #f3e7c4; color: var(--elyria-maroon); border-left: 6px solid var(--elyria-gold); }
+
+/* Sections under each banner get a matching left rule */
+.zone-you .form-section     { border-left: 3px solid var(--elyria-maroon); }
+.zone-partner .form-section { border-left: 3px solid var(--elyria-gold); }
+
+/* ---------- Form sections ---------- */
+.form-section {
+    background: #fff;
+    padding: 1.75rem;
+    margin-bottom: 1.25rem;
+    scroll-margin-top: 100px;
+}
+.form-section h2 {
+    font-size: 1.35rem;
+    margin-bottom: 0.25rem;
+}
+.form-section .hint { color: var(--elyria-muted, #857a72); font-size: 0.875rem; margin-bottom: 1.25rem; }
+
+.portal-form label, .portal-form .field-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    margin-bottom: 0.4rem;
+}
+.portal-form input[type="text"],
+.portal-form input[type="email"],
+.portal-form input[type="tel"],
+.portal-form input[type="number"],
+.portal-form input[type="password"],
+.portal-form select,
+.portal-form textarea {
+    width: 100%;
+    padding: 0.7rem 0.9rem;
+    background: rgba(0, 0, 0, 0.035);
+    border: 1px solid transparent;
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: var(--color-primary);
+}
+.portal-form input:focus, .portal-form select:focus, .portal-form textarea:focus {
+    outline: none;
+    border-color: rgba(110, 20, 35, 0.35);
+    background: #fff;
+}
+.portal-form .optional { font-weight: 400; color: #857a72; font-size: 0.8rem; }
+
+/* Pre-filled confirm block */
+.prefilled {
+    background: rgba(201, 162, 39, 0.08);
+    border: 1px dashed rgba(201, 162, 39, 0.6);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.875rem;
+}
+
+/* ---------- Choice chips (radio / checkbox) ---------- */
+.chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.chip input { position: absolute; opacity: 0; pointer-events: none; }
+.chip span {
+    display: inline-block;
+    padding: 0.45rem 0.95rem;
+    border: 1px solid rgba(110, 20, 35, 0.25);
+    border-radius: 999px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+.chip input:checked + span { background: var(--elyria-maroon); border-color: var(--elyria-maroon); color: #fff; }
+.chip input:focus-visible + span { outline: 2px solid var(--elyria-gold); outline-offset: 2px; }
+
+/* ---------- Personality sliders ---------- */
+.slider-row { margin-bottom: 1.25rem; }
+.slider-row .ends {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+.slider-row input[type="range"] { width: 100%; accent-color: var(--elyria-maroon); }
+.zone-partner .slider-row input[type="range"] { accent-color: var(--elyria-gold); }
+
+/* ---------- 1–5 importance scale ---------- */
+.scale { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.scale .chip span { min-width: 2.6rem; text-align: center; border-radius: 3px; }
+.scale-labels { display: flex; justify-content: space-between; font-size: 0.75rem; color: #857a72; max-width: 15rem; margin-top: 0.3rem; }
+
+/* ---------- Photo upload ---------- */
+.photo-grid { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.photo-tile {
+    width: 120px;
+    height: 150px;
+    border: 2px dashed rgba(110, 20, 35, 0.25);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    color: #857a72;
+    cursor: pointer;
+    text-align: center;
+    padding: 0.5rem;
+    background-size: cover;
+    background-position: center;
+}
+.photo-tile i { font-size: 1.4rem; margin-bottom: 0.35rem; color: var(--elyria-maroon); }
+.photo-tile.filled { border-style: solid; border-color: var(--elyria-gold); color: transparent; }
+.photo-tile.filled i { display: none; }
+
+/* ---------- Non-negotiables with visible cap ---------- */
+.nn-head { display: flex; justify-content: space-between; align-items: baseline; }
+.nn-counter {
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.2rem 0.6rem;
+    background: rgba(110, 20, 35, 0.08);
+    color: var(--elyria-maroon);
+}
+.nn-counter.full { background: var(--elyria-gold); color: var(--elyria-maroon); }
+.nn-item { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
+.nn-item button {
+    border: 0;
+    background: transparent;
+    color: #857a72;
+    padding: 0 0.6rem;
+    cursor: pointer;
+}
+.link-btn {
+    background: transparent;
+    border: 0;
+    color: var(--elyria-maroon);
+    font-weight: 600;
+    padding: 0;
+    cursor: pointer;
+}
+.link-btn:disabled { color: #b9aea5; cursor: not-allowed; }
+
+/* ---------- Sticky save bar ---------- */
+.save-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    background: #fff;
+    border-top: 1px solid rgba(110, 20, 35, 0.12);
+    box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.05);
+    padding: 0.8rem 0;
+}
+.save-bar .inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.save-status { font-size: 0.85rem; color: #857a72; }
+.btn-outline-elyria {
+    background: transparent;
+    border: 1px solid var(--elyria-maroon);
+    color: var(--elyria-maroon);
+    padding: 0.7rem 1.4rem;
+    border-radius: 2px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* ---------- Page heading inside the portal ---------- */
+.portal-page-head { padding: 2.5rem 0 1rem; }
+.portal-page-head h1 { font-size: clamp(1.8rem, 4vw, 2.4rem); margin-bottom: 0.4rem; }
+.portal-page-head p { color: #857a72; margin: 0; max-width: 640px; }
+
+/* ---------- My Matches ---------- */
+.match-card {
+    background: #fff;
+    border-top: 3px solid var(--elyria-gold);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+.match-photo {
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    background: rgba(110, 20, 35, 0.08);
+}
+/* PREVIEW ONLY: the real face-blurred image is generated on the server. */
+.match-photo img { width: 100%; height: 100%; object-fit: cover; filter: blur(14px); transform: scale(1.15); }
+.match-body { padding: 1.5rem; display: flex; flex-direction: column; flex: 1; }
+.match-name { font-size: 1.6rem; margin-bottom: 0.25rem; }
+.match-facts { list-style: none; padding: 0; margin: 0 0 1rem; color: #857a72; font-size: 0.9rem; }
+.match-facts li { margin-bottom: 0.2rem; }
+.match-facts i { width: 1.2rem; color: var(--elyria-gold); }
+.match-blurb {
+    font-family: var(--font-heading);
+    font-style: italic;
+    font-size: 1.1rem;
+    line-height: 1.5;
+    color: var(--color-primary);
+    border-left: 2px solid var(--elyria-gold);
+    padding-left: 0.9rem;
+    margin-bottom: 1.25rem;
+}
+.match-blurb small {
+    display: block;
+    font-family: var(--font-body);
+    font-style: normal;
+    font-size: 0.75rem;
+    color: #857a72;
+    margin-top: 0.4rem;
+}
+.match-actions { margin-top: auto; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.match-actions .register-submit-btn { margin-top: 0; }
+.match-status {
+    margin-top: auto;
+    padding: 0.75rem 1rem;
+    background: rgba(201, 162, 39, 0.12);
+    font-size: 0.9rem;
+}
+.portal-empty {
+    background: #fff;
+    padding: 3rem 2rem;
+    text-align: center;
+    color: #857a72;
+}
+.portal-empty i { font-size: 2rem; color: var(--elyria-gold); margin-bottom: 1rem; }
+
+/* ---------- Account ---------- */
+.info-list { list-style: none; padding: 0; margin: 0; }
+.info-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid rgba(110, 20, 35, 0.08);
+}
+.info-list li:last-child { border-bottom: 0; }
+.info-list span:first-child { color: #857a72; }
+.info-list span:last-child { font-weight: 600; text-align: right; }
+.form-note { font-size: 0.85rem; margin-top: 0.75rem; }

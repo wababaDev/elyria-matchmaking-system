@@ -1,0 +1,82 @@
+{% extends "layouts/public.html" %}
+{% load static%}
+
+{% block title %}Elyria Matchmaking — Date with Intention{% endblock %}
+{% block style %}
+{% endblock %}
+{% block body_class %}always-show-header page-static{% endblock %} 
+
+
+{% block content %}
+     <!-- Page header -->
+<section class="page-hero">
+    <div class="page-hero-media">
+        <img src="{% static 'front/assets/image(8).jpg' %}" alt="">
+    </div>
+    <div class="page-hero-overlay"></div>
+    <div class="container">
+        <div class="page-hero-content">
+            <ol class="page-breadcrumb" aria-label="Breadcrumb">
+                <li><a href="index.html">Home</a></li>
+                <li><span class="is-current">Events</span></li>
+            </ol>
+            <h1 class="page-hero-title">Events</h1>
+        </div>
+    </div>
+</section>
+
+<!-- Public events (template: Journal cards) -->
+<section class="journal-section section-padding">
+    <div class="container">
+        <div class="page-intro reveal" data-reveal="fade-up">
+            <span class="accent-text">Open to the Public</span>
+            <h2 class="section-title">Elyria Social Events</h2>
+            <p class="section-subtitle">A relaxed way to experience the Elyria community before you apply.</p>
+        </div>
+        <div class="journal-grid">
+            <div class="journal-card reveal" data-reveal="fade-up">
+                <div class="journal-card-media">
+                    <img src="{% static 'front/assets/version-2/image(7).jpg' %}" alt="">
+                </div>
+                <div class="journal-card-body">
+                    <span class="journal-card-meta">[Date TBC]</span>
+                    <h3 class="journal-card-title">Elyria Social Mixer</h3>
+                    <p class="journal-card-text">[Event description to be supplied]</p>
+                    <a class="journal-card-link" href="#">RSVP <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                </div>
+            </div>
+            <div class="journal-card reveal delay-1" data-reveal="fade-up">
+                <div class="journal-card-media">
+                    <img src="{% static 'front/assets/version-2/image(9).jpg' %}" alt="">
+                </div>
+                <div class="journal-card-body">
+                    <span class="journal-card-meta">[Date TBC]</span>
+                    <h3 class="journal-card-title">Public Relationship Seminar</h3>
+                    <p class="journal-card-text">[Event description to be supplied]</p>
+                    <a class="journal-card-link" href="#">RSVP <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Member events (template: Offer "custom offer" card) -->
+<section class="section-padding pt-0">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 reveal" data-reveal="fade-up">
+                <div class="contact-detail-card text-center">
+                    <span class="accent-text">For Members</span>
+                    <h3>Exclusive Gatherings</h3>
+                    <p class="mb-4">Members enjoy exclusive gatherings, including seminars, private salons, and social events — full calendar shared upon membership.</p>
+                    <button class="register-submit-btn" type="button" data-bs-toggle="modal" data-bs-target="#consultationModal">
+                        Request a Private Consultation
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+{% block script %}
+{% endblock %}

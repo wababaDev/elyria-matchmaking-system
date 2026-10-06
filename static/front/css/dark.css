@@ -1,0 +1,115 @@
+/* =========================================
+   DARK MODE
+   ========================================= */
+body[data-bs-theme="dark"] {
+    --color-primary: #e6dfd7;
+    --color-light: #121921;
+    --color-dark: #e6dfd7;
+    background-color: var(--color-light);
+    color: var(--color-primary);
+}
+
+/* Header */
+body[data-bs-theme="dark"] .header.scrolled .header-nav {
+    background: rgba(18, 25, 33, 0.95);
+    border-color: rgba(255, 255, 255, 0.05);
+}
+body[data-bs-theme="dark"] .header.scrolled .navbar-brand img {
+    content: url('../assets/logo-white.png');
+}
+body[data-bs-theme="dark"] .header.scrolled .header-link {
+    color: var(--color-primary) !important;
+}
+body[data-bs-theme="dark"] .navbar-toggler-icon {
+    --bs-navbar-toggler-icon-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%280, 0, 0, 0.55%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+body[data-bs-theme="dark"] .header.scrolled .navbar-toggler-icon {
+    --bs-navbar-toggler-icon-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.55%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+/* Typography */
+body[data-bs-theme="dark"] .section-title,
+body[data-bs-theme="dark"] .section-subtitle,
+body[data-bs-theme="dark"] h1,
+body[data-bs-theme="dark"] h2,
+body[data-bs-theme="dark"] h3,
+body[data-bs-theme="dark"] h4,
+body[data-bs-theme="dark"] p {
+    color: var(--color-primary);
+}
+body[data-bs-theme="dark"] .text-muted {
+    color: rgba(251, 251, 248, 0.7) !important;
+}
+
+/* Hero */
+body[data-bs-theme="dark"] .hero-wrapper,
+body[data-bs-theme="dark"] .hero {
+    background-color: var(--color-light);
+}
+
+/* Cards / panels */
+body[data-bs-theme="dark"] .usp-highlights,
+body[data-bs-theme="dark"] .usp-highlights-item,
+body[data-bs-theme="dark"] .room-card,
+body[data-bs-theme="dark"] .facilities-content-pane,
+body[data-bs-theme="dark"] .gallery-scroll-card,
+body[data-bs-theme="dark"] .feature-gallery-scroll__card,
+body[data-bs-theme="dark"] .room-showcase-panel,
+body[data-bs-theme="dark"] .fac-tab-pane {
+    background-color: #1a222c !important;
+    color: var(--color-primary);
+}
+body[data-bs-theme="dark"] .usp-highlights-item {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Section backgrounds */
+body[data-bs-theme="dark"] .room-showcase-section,
+body[data-bs-theme="dark"] .register-section,
+body[data-bs-theme="dark"] .facilities {
+    background-color: var(--color-light) !important;
+}
+
+/* Footer / preloader */
+body[data-bs-theme="dark"] .footer,
+body[data-bs-theme="dark"] .preloader {
+    background: var(--color-light) !important;
+    background-color: var(--color-light) !important;
+}
+body[data-bs-theme="dark"] .footer-shell,
+body[data-bs-theme="dark"] .footer-bottom {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Feature gallery */
+body[data-bs-theme="dark"] .feature-gallery-scroll__meta p,
+body[data-bs-theme="dark"] .feature-gallery-scroll__skip {
+    color: var(--color-primary);
+}
+
+/* Register form */
+body[data-bs-theme="dark"] .register-form input,
+body[data-bs-theme="dark"] .register-form select {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--color-primary);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+body[data-bs-theme="dark"] .register-form input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+body[data-bs-theme="dark"] .custom-checkbox a {
+    color: var(--color-primary);
+}
+
+/* Room showcase misc */
+body[data-bs-theme="dark"] .room-info {
+    background: linear-gradient(to top, rgba(18, 25, 33, 0.95), transparent);
+}
+body[data-bs-theme="dark"] .room-showcase-spec {
+    color: var(--color-primary);
+}
+
+/* Back to top */
+body[data-bs-theme="dark"] .to-top {
+    color: rgba(255, 255, 255, 0.84);
+}

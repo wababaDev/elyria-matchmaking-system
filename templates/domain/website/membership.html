@@ -1,0 +1,110 @@
+{% extends "layouts/public.html" %}
+{% load static%}
+
+{% block title %}Elyria Matchmaking — Date with Intention{% endblock %}
+{% block style %}
+{% endblock %} 
+{% block body_class %}always-show-header page-static{% endblock %} 
+
+
+{% block content %}
+<!-- Page header -->
+<section class="page-hero">
+    <div class="page-hero-media">
+        <img src="{% static 'front/assets/image(5).jpg' %}" alt="">
+    </div>
+    <div class="page-hero-overlay"></div>
+    <div class="container">
+        <div class="page-hero-content">
+            <ol class="page-breadcrumb" aria-label="Breadcrumb">
+                <li><a href="index.html">Home</a></li>
+                <li><span class="is-current">Membership</span></li>
+            </ol>
+            <h1 class="page-hero-title">Membership</h1>
+        </div>
+    </div>
+</section>
+
+<!-- Tier cards (template: Offer cards) -->
+<section class="page-overview section-padding">
+    <div class="container">
+        <div class="page-intro reveal" data-reveal="fade-up">
+            <span class="accent-text">Four Levels of Service</span>
+            <h2 class="section-title">Choose Your Membership</h2>
+            <p class="section-subtitle">Every membership tier includes personalised matchmaking, professional vetting, and dedicated support — tailored to the level of service you need.</p>
+        </div>
+
+        <div class="row g-4">
+            <!-- Bronze -->
+            <div class="col-lg-3 col-md-6 reveal" data-reveal="fade-up">
+                <div class="offer-card tier-card">
+                    <div class="tier-card-header"><h3>Bronze</h3></div>
+                    <div class="tier-card-body">
+                        <p>For clients confident in their readiness who prefer a streamlined approach.</p>
+                        <ul class="offer-feature-list mb-4">
+                            <li>Personalised matchmaking</li>
+                            <li>Verification</li>
+                            <li>Event access</li>
+                        </ul>
+                        <button class="register-submit-btn" type="button" data-bs-toggle="modal" data-bs-target="#learnMoreModal" data-tier="Bronze">Learn More</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Silver -->
+            <div class="col-lg-3 col-md-6 reveal delay-1" data-reveal="fade-up">
+                <div class="offer-card tier-card">
+                    <div class="tier-card-header"><h3>Silver</h3></div>
+                    <div class="tier-card-body">
+                        <p>For clients who desire guided matchmaking with professional insight.</p>
+                        <ul class="offer-feature-list mb-4">
+                            <li>Dedicated interview</li>
+                            <li>Relationship advisory</li>
+                        </ul>
+                        <button class="register-submit-btn" type="button" data-bs-toggle="modal" data-bs-target="#learnMoreModal" data-tier="Silver">Learn More</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gold -->
+            <div class="col-lg-3 col-md-6 reveal delay-2" data-reveal="fade-up">
+                <div class="offer-card tier-card">
+                    <div class="tier-card-header"><h3>Gold</h3></div>
+                    <div class="tier-card-body">
+                        <p>For a highly tailored, concierge-level experience.</p>
+                        <ul class="offer-feature-list mb-4">
+                            <li>Extensive verification</li>
+                            <li>A dedicated matchmaker</li>
+                            <li>Ongoing coaching</li>
+                        </ul>
+                        <button class="register-submit-btn" type="button" data-bs-toggle="modal" data-bs-target="#learnMoreModal" data-tier="Gold">Learn More</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Elite Grade -->
+            <div class="col-lg-3 col-md-6 reveal delay-3" data-reveal="fade-up">
+                <div class="offer-card tier-card is-elite">
+                    <div class="tier-card-header">
+                        <h3>Elite Grade</h3>
+                        <span class="tier-tag">Most Exclusive</span>
+                    </div>
+                    <div class="tier-card-body">
+                        <p>For when you have a specific person in mind.</p>
+                        <ul class="offer-feature-list mb-4">
+                            <li>A discreet, consent-led introduction</li>
+                            <li>Heightened review standards</li>
+                        </ul>
+                        <button class="register-submit-btn" type="button" data-bs-toggle="modal" data-bs-target="#learnMoreModal" data-tier="Elite Grade">Learn More</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p class="fee-note reveal" data-reveal="fade-up">A K1,000 private consultation fee applies before membership begins.</p>
+    </div>
+</section>
+
+{% endblock %}
+{% block script %}
+{% endblock %}

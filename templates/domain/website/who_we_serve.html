@@ -1,0 +1,85 @@
+{% extends "layouts/public.html" %}
+{% load static%}
+
+{% block title %}Elyria Matchmaking — Date with Intention{% endblock %}
+{% block style %}
+{% endblock %}
+
+{% block body_class %}always-show-header page-static{% endblock %} 
+
+{% block content %}
+ <!-- Page header -->
+    <section class="page-hero">
+        <div class="page-hero-media">
+            <img src="{% static 'front/assets/image(12).jpg' %}" alt="">
+        </div>
+        <div class="page-hero-overlay"></div>
+        <div class="container">
+            <div class="page-hero-content">
+                <ol class="page-breadcrumb" aria-label="Breadcrumb">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="services.html">Our Services</a></li>
+                    <li><span class="is-current">Who We Serve</span></li>
+                </ol>
+                <h1 class="page-hero-title">Who We Serve</h1>
+            </div>
+        </div>
+    </section>
+
+    <!-- Segments grid (same layout as Our Services) -->
+    <section class="page-overview section-padding">
+        <div class="container">
+            <div class="page-intro reveal" data-reveal="fade-up">
+                <span class="accent-text">Our Clients</span>
+                <h2 class="section-title">Each Served by a Dedicated Matchmaker</h2>
+            </div>
+
+            <div class="page-info-grid grid-2">
+                <div class="page-info-card reveal" data-reveal="fade-up">
+                    <span class="icon-circle"><i class="fa-solid fa-gem" aria-hidden="true"></i></span>
+                    <h3>High-Net-Worth</h3>
+                    <p>Elevated discretion and protection for reputationally sensitive clients.</p>
+                    <a class="page-primary-link" href="team.html">Anisha Namutowe <i class="fa-solid fa-arrow-right"
+                            aria-hidden="true"></i></a>
+                </div>
+                <div class="page-info-card reveal delay-1" data-reveal="fade-up">
+                    <span class="icon-circle"><i class="fa-solid fa-briefcase" aria-hidden="true"></i></span>
+                    <h3>Professionals &amp; Executives</h3>
+                    <p>Efficiency and discretion for demanding careers.</p>
+                    <a class="page-primary-link" href="team.html">Tonde Lungu <i class="fa-solid fa-arrow-right"
+                            aria-hidden="true"></i></a>
+                </div>
+                <div class="page-info-card reveal delay-2" data-reveal="fade-up">
+                    <span class="icon-circle"><i class="fa-solid fa-hands-praying" aria-hidden="true"></i></span>
+                    <h3>Faith-Oriented Singles</h3>
+                    <p>Matched on shared values, across faith traditions.</p>
+                    <a class="page-primary-link" href="team.html">Annastasia Munyati <i class="fa-solid fa-arrow-right"
+                            aria-hidden="true"></i></a>
+                </div>
+                <div class="page-info-card reveal delay-3" data-reveal="fade-up">
+                    <span class="icon-circle"><i class="fa-solid fa-earth-africa" aria-hidden="true"></i></span>
+                    <h3>Expatriates &amp; Diaspora</h3>
+                    <p>Bridging global lives with local values.</p>
+                    <a class="page-primary-link" href="team.html">Thandie Dunlop <i class="fa-solid fa-arrow-right"
+                            aria-hidden="true"></i></a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Additional groups + CTA -->
+    <section class="section-padding pt-0 text-center">
+        <div class="container reveal" data-reveal="fade-up">
+            <p class="lead text-muted mx-auto max-w-800 mb-5">
+                We also welcome entrepreneurs and founders, late bloomers, recently relocated individuals, and others
+                seeking intentional partnership.
+            </p>
+            <button class="register-submit-btn" type="button" data-bs-toggle="modal"
+                data-bs-target="#consultationModal">
+                Request a Private Consultation
+            </button>
+        </div>
+    </section>
+{% endblock %}
+{% block script %}
+{% endblock %}

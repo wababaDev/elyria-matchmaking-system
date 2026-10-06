@@ -1,0 +1,65 @@
+/* ==================================================
+   ELYRIA STAFF DASHBOARD — brand overrides for Sash
+   Load LAST in <head>, after styles.min.css and icons.css.
+   Only variables and a few targeted rules: styles.min.css stays untouched.
+   ================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&display=swap");
+
+:root {
+    /* Brand colours (Sash builds buttons, links, active menu items, badges from these) */
+    --primary-rgb:      110, 20, 35;     /* Elyria maroon #6E1423 */
+    --secondary-rgb:    201, 162, 39;    /* Elyria gold   #C9A227 (replaces Sash cyan) */
+
+    /* Warm neutrals instead of Sash's cool blue-greys */
+    --body-bg-rgb:      247, 245, 241;   /* page background, warm off-white */
+    --light-rgb:        244, 240, 235;
+    --default-text-color: #2b2326;
+    --text-muted:       #857a72;
+    --default-border:   #ece6df;
+    --bootstrap-card-border: #ece6df;
+    --input-border:     #e4ddd5;
+    --menu-border-color: #ece6df;
+    --header-border-color: #ece6df;
+    --list-hover-focus-bg: #f6f2ed;
+    --shadow-color:     rgba(110, 20, 35, 0.06);
+
+    /* Typography: keep IBM Plex Sans for readable data; serif only for titles */
+    --elyria-serif: "Cormorant Garamond", Georgia, serif;
+}
+
+/* Page titles and card titles in the brand serif */
+.page-title,
+.card.custom-card .card-header .card-title {
+    font-family: var(--elyria-serif);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+.page-title { font-size: 1.75rem; }
+.card.custom-card .card-header .card-title {
+    font-size: 1.15rem;
+    text-transform: none;
+}
+
+/* Sidebar category labels: spaced caps, like the public site's labels */
+.app-sidebar .slide__category {
+    letter-spacing: 0.18em;
+    opacity: 0.75;
+}
+
+/* Calmer corners than Sash's default 7px pills */
+.card, .card.custom-card, .btn, .form-control, .form-select, .dropdown-menu, .modal-content {
+    border-radius: 4px;
+}
+
+/* Gold accent helpers for small highlights (e.g. Elite Grade, priority) */
+.text-elyria-gold { color: #C9A227 !important; }
+.bg-elyria-gold   { background-color: #C9A227 !important; color: #6E1423 !important; }
+
+/* Status badges used across the pipeline screens */
+.badge.status-new       { background: rgba(var(--info-rgb), 0.12);    color: rgb(var(--info-rgb)); }
+.badge.status-awaiting  { background: rgba(var(--warning-rgb), 0.15); color: #9a6b00; }
+.badge.status-paid      { background: rgba(var(--success-rgb), 0.12); color: rgb(var(--success-rgb)); }
+.badge.status-form-sent { background: rgba(var(--secondary-rgb), 0.15); color: #7a5f10; }
+.badge.status-complete  { background: rgba(var(--primary-rgb), 0.1); color: rgb(var(--primary-rgb)); }
+.badge.status-declined  { background: rgba(var(--dark-rgb), 0.08);    color: var(--text-muted); }

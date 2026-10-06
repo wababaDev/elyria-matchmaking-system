@@ -1,0 +1,82 @@
+{% extends "layouts/public.html" %}
+{% load static%}
+
+{% block title %}Elyria Matchmaking — Date with Intention{% endblock %}
+{% block style %}
+{% endblock %}
+
+{% block body_class %}always-show-header page-static{% endblock %} 
+
+{% block content %}
+
+<!-- Page header -->
+<section class="page-hero">
+    <div class="page-hero-media">
+        <img src="{% static 'front/assets/image(2).jpg' %}" alt="">
+    </div>
+    <div class="page-hero-overlay"></div>
+    <div class="container">
+        <div class="page-hero-content">
+            <ol class="page-breadcrumb" aria-label="Breadcrumb">
+                <li><a href="index.html">Home</a></li>
+                <li><span class="is-current">Our Services</span></li>
+            </ol>
+            <h1 class="page-hero-title">Our Services</h1>
+        </div>
+    </div>
+</section>
+
+<!-- Services grid (template: Facilities info cards) -->
+<section class="page-overview section-padding">
+    <div class="container">
+        <div class="page-intro reveal" data-reveal="fade-up">
+            <span class="accent-text">What We Offer</span>
+            <h2 class="section-title">Guided at Every Step</h2>
+        </div>
+
+        <div class="page-info-grid grid-2">
+            <div class="page-info-card reveal" data-reveal="fade-up">
+                <span class="icon-circle"><i class="fa-solid fa-heart" aria-hidden="true"></i></span>
+                <h3>Bespoke Matchmaking</h3>
+                <p>A meticulous, human-led process considering values, lifestyle, character, and life vision.</p>
+            </div>
+            <div class="page-info-card reveal delay-1" data-reveal="fade-up">
+                <span class="icon-circle"><i class="fa-solid fa-user-check" aria-hidden="true"></i></span>
+                <h3>Verification &amp; Vetting</h3>
+                <p>The highest standards of authenticity and safety, for every client.</p>
+            </div>
+            <div class="page-info-card reveal delay-2" data-reveal="fade-up">
+                <span class="icon-circle"><i class="fa-solid fa-champagne-glasses" aria-hidden="true"></i></span>
+                <h3>Curated Date Experiences</h3>
+                <p>Discreet coordination, neutral secure venues, and seamless scheduling.</p>
+            </div>
+            <div class="page-info-card reveal delay-3" data-reveal="fade-up">
+                <span class="icon-circle"><i class="fa-solid fa-comments" aria-hidden="true"></i></span>
+                <h3>Relationship &amp; Dating Advisory</h3>
+                <p>Private coaching on intentional dating, communication, and presentation.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Confidential Introduction callout (template: Offer "Need A Custom Offer?" card) -->
+<section class="section-padding pt-0">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 reveal" data-reveal="fade-up">
+                <div class="contact-detail-card text-center">
+                    <span class="accent-text">Elite Grade Only</span>
+                    <h3>Confidential Introduction Request</h3>
+                    <p class="mb-4">A discreet, consent-led introduction to a specific individual. Details shared during your private consultation.</p>
+                    <button class="register-submit-btn" type="button" data-bs-toggle="modal" data-bs-target="#consultationModal">
+                        Request a Private Consultation
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
+{% block script %}
+{% endblock %}

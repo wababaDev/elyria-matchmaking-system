@@ -1,0 +1,281 @@
+{% extends "layouts/public.html" %}
+{% load static%}
+
+{% block title %}Elyria Matchmaking — Date with Intention{% endblock %}
+{% block style %}
+{% endblock %}
+{% block body_class %}is-loading{% endblock %}
+
+{% block content %}
+   <!-- Hero Section - Split Screen -->
+<section id="home" class="p-0 position-relative">
+    <div class="hero-wrapper-v2">
+        <div class="row g-0 h-100">
+            <!-- Left Content Side -->
+            <div class="col-lg-5 d-flex align-items-center justify-content-center position-relative z-1 bg-navy">
+                <div class="text-center w-100 hero-text-container">
+                    <div class="mb-5">
+                        <img src="{% static 'front/assets/logo.png' %}" alt="Elyria Matchmaking" class="mb-4 hero-logo-large">
+                    </div>
+                    <div class="reveal is-visible delay-1" data-reveal="fade-up">
+                         <span class="accent-text">A Private Matchmaking Concierge</span>
+                        <h1 class="display-4 fw-light mb-4 text-white font-heading">Date with Intention. Build Lasting Connections.</h1>
+                    </div>
+                    <p class="text-white-50 mb-5 reveal is-visible delay-2" data-reveal="fade-up">
+                        A bespoke, invitation-led matchmaking concierge for individuals who value depth, discretion, and long-term partnership.
+                    </p>
+                    <div class="reveal is-visible delay-3" data-reveal="fade-up">
+                        <button class="register-submit-btn" type="button" data-bs-toggle="modal" data-bs-target="#consultationModal">
+                            Request a Private Consultation
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Slider Side -->
+            <div class="col-lg-7 position-relative h-100">
+                <div class="hero-slider swiper h-100">
+                    <div class="swiper-wrapper h-100">
+                        <div class="swiper-slide h-100">
+                            <img src="{% static 'front/assets/version-2/hero-1.jpg' %}" alt="" class="w-100 h-100 object-fit-cover">
+                        </div>
+                        <div class="swiper-slide h-100">
+                            <img src="{% static 'front/assets/version-2/image(2).jpg' %}" alt="" class="w-100 h-100 object-fit-cover">
+                        </div>
+                        <div class="swiper-slide h-100">
+                            <img src="{% static 'front/assets/version-2/image(3).jpg' %}" alt="" class="w-100 h-100 object-fit-cover">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation overlay -->
+                <div class="position-absolute bottom-0 start-0 w-100 p-4 z-1 d-flex justify-content-between align-items-center text-white bg-gradient-dark-bottom">
+                    <div id="hero-slide-title" class="hero-slide-title is-visible font-heading fst-italic text-shadow">
+                        
+                    </div>
+                    <div class="d-flex align-items-center gap-4">
+                        <div class="hero-nav-controls">
+                            <div class="hero-nav-btn swiper-prev">PREV</div>
+                            <div class="hero-nav-indicator">
+                                <span class="current">01</span> / <span class="total">03</span>
+                                <div class="hero-nav-line">
+                                    <div class="hero-nav-progress"></div>
+                                </div>
+                            </div>
+                            <div class="hero-nav-btn swiper-next">NEXT</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Philosophy -->
+<section id="philosophy" class="section-padding bg-light text-center">
+    <div class="container text-center reveal" data-reveal="fade-up">
+        <span class="accent-text">Our Philosophy</span>
+        <h2 class="display-4 mb-4 font-heading fw-light">We Are Not a Dating Platform.</h2>
+        <p class="lead mx-auto text-muted-dark max-w-800">
+            Every introduction is thoughtfully curated and guided by experienced professionals.
+            No public profiles. No algorithms. Just a confidential, human-led process.
+        </p>
+           <p class="mt-4 font-heading fst-italic fs-4 text-theme-primary">
+           Meaningful relationships are not found by chance, but by intention.
+     </p>
+    </div>
+</section>
+
+<!-- Membership (template: Masterplan) -->
+<section id="membership-teaser" class="p-0 bg-sand">
+    <div class="container-fluid p-0 overflow-hidden">
+        <div class="row g-0 align-items-stretch flex-column-reverse flex-lg-row">
+            <!-- Content Side -->
+            <div class="col-lg-5 d-flex align-items-center reveal" data-reveal="fade-right">
+                <div class="p-5 p-xl-5 w-100">
+                    <span class="accent-text text-start">Membership</span>
+                    <h2 class="display-5 mb-4 font-heading fw-light">Four Levels of Service</h2>
+                    <p class="mb-5 text-muted">Every membership tier includes personalised matchmaking, professional vetting, and dedicated support — tailored to the level of service you need.</p>
+
+                    <ul class="list-unstyled">
+                        <li class="mb-4 border-bottom pb-4">
+                            <h3 class="mb-0 font-heading fs-4"><span class="text-gold me-3">01</span><a href="membership.html" class="text-reset text-decoration-none">Bronze</a></h3>
+                        </li>
+                        <li class="mb-4 border-bottom pb-4">
+                            <h3 class="mb-0 font-heading fs-4"><span class="text-gold me-3">02</span><a href="membership.html" class="text-reset text-decoration-none">Silver</a></h3>
+                        </li>
+                        <li class="mb-4 border-bottom pb-4">
+                            <h3 class="mb-0 font-heading fs-4"><span class="text-gold me-3">03</span><a href="membership.html" class="text-reset text-decoration-none">Gold</a></h3>
+                        </li>
+                        <li class="mb-5 pb-4">
+                            <h3 class="mb-0 font-heading fs-4"><span class="text-gold me-3">04</span><a href="membership.html" class="text-reset text-decoration-none">Elite Grade</a></h3>
+                        </li>
+                    </ul>
+
+                    <button class="register-submit-btn" type="button" data-bs-toggle="modal" data-bs-target="#consultationModal">
+                        Request a Private Consultation
+                    </button>
+                </div>
+            </div>
+
+            <!-- Image Side -->
+            <div class="col-lg-7 reveal" data-reveal="fade-left">
+                <div class="position-relative h-100 w-100 min-vh-50">
+                    <img src="{% static 'front/assets/version-2/image(11).jpg' %}" class="position-absolute top-0 start-0 w-100 h-100 object-fit-cover" alt="">
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+   
+
+
+    <!-- NEW SECTION 3: Itinerary / A Day in Paradise -->
+<!-- Who We Serve (template: Itinerary cards) -->
+<section id="who-we-serve-teaser" class="section-padding">
+    <div class="container">
+        <div class="text-center mb-5 reveal" data-reveal="fade-up">
+            <span class="accent-text">Who We Serve</span>
+            <h2 class="section-title">Four Client Segments, Each with a Dedicated Matchmaker</h2>
+        </div>
+
+        <div class="row g-4 mb-5">
+            <div class="col-lg-3 col-md-6 reveal" data-reveal="fade-up">
+                <a href="who-we-serve.html" class="card border-0 h-100 shadow-sm overflow-hidden itinerary-card rounded-0 text-decoration-none">
+                    <img src="{% static 'front/assets/version-2/image(7).jpg' %}" class="card-img-top rounded-0 img-medium" alt="">
+                    <div class="card-body p-4">
+                        <h3 class="card-title font-heading fs-4 mb-0">High-Net-Worth</h3>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-lg-3 col-md-6 reveal delay-1" data-reveal="fade-up">
+                <a href="who-we-serve.html" class="card border-0 h-100 shadow-sm overflow-hidden itinerary-card rounded-0 text-decoration-none">
+                    <img src="{% static 'front/assets/version-2/image(8).jpg' %}" class="card-img-top rounded-0 img-medium" alt="">
+                    <div class="card-body p-4">
+                        <h3 class="card-title font-heading fs-4 mb-0">Professionals &amp; Executives</h3>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-lg-3 col-md-6 reveal delay-2" data-reveal="fade-up">
+                <a href="who-we-serve.html" class="card border-0 h-100 shadow-sm overflow-hidden itinerary-card rounded-0 text-decoration-none">
+                    <img src="{% static 'front/assets/version-2/image(9).jpg' %}" class="card-img-top rounded-0 img-medium" alt="">
+                    <div class="card-body p-4">
+                        <h3 class="card-title font-heading fs-4 mb-0">Faith-Oriented Singles</h3>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-lg-3 col-md-6 reveal delay-3" data-reveal="fade-up">
+                <a href="who-we-serve.html" class="card border-0 h-100 shadow-sm overflow-hidden itinerary-card rounded-0 text-decoration-none">
+                    <img src="{% static 'front/assets/version-2/image(10).jpg' %}" class="card-img-top rounded-0 img-medium" alt="">
+                    <div class="card-body p-4">
+                        <h3 class="card-title font-heading fs-4 mb-0">Expatriates &amp; Diaspora</h3>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <div class="text-center">
+    <button class="register-submit-btn" type="button" data-bs-toggle="modal" data-bs-target="#consultationModal">
+                Request a Private Consultation
+            </button>
+        </div>
+    </div>
+    </section>
+<!-- Why Elyria (template: Eco-Luxury band) -->
+<section id="why-elyria" class="section-padding bg-dark text-white text-center bg-parallax-sustainability">
+    <div class="container reveal" data-reveal="fade-up">
+        <span class="accent-text text-gold">Why Elyria</span>
+        <h2 class="section-title text-white mb-5">Intention Over Chance</h2>
+
+        <div class="row g-4 justify-content-center mb-5">
+            <div class="col-md-3 col-6">
+                <i class="fa-solid fa-handshake fs-1 mb-3 text-gold" aria-hidden="true"></i>
+                <h3 class="text-white h5">Human-Led</h3>
+                <p class="text-white-50">Guided by people, not algorithms</p>
+            </div>
+            <div class="col-md-3 col-6">
+                <i class="fa-solid fa-user-shield fs-1 mb-3 text-gold" aria-hidden="true"></i>
+                <h3 class="text-white h5">Discreet</h3>
+                <p class="text-white-50">No public profiles, no browsing</p>
+            </div>
+            <div class="col-md-3 col-6">
+                <i class="fa-solid fa-gem fs-1 mb-3 text-gold" aria-hidden="true"></i>
+                <h3 class="text-white h5">Selective</h3>
+                <p class="text-white-50">Quality over volume</p>
+            </div>
+            <div class="col-md-3 col-6">
+                <i class="fa-solid fa-compass fs-1 mb-3 text-gold" aria-hidden="true"></i>
+                <h3 class="text-white h5">Intentional</h3>
+                <p class="text-white-50">Matched on values and life vision</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+
+<!-- ===== CLOSING (template: Registration / CTA section) ===== -->
+    <section id="register" class="section-padding bg-sand">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-5 mb-5 mb-lg-0 reveal" data-reveal="fade-right">
+                    <span class="accent-text text-start">Begin</span>
+                    <h2 class="display-6 mb-4 font-heading text-theme-primary">We don't promise outcomes. We promise a deliberate, professional process.</h2>
+                    <p class="text-muted">Begin by requesting a private consultation. Enquiries are reviewed on a rolling basis, and spaces are limited.</p>
+                </div>
+                <div class="col-lg-6 offset-lg-1 reveal delay-2" data-reveal="fade-left">
+                    <form class="register-form" data-demo="true"
+                          data-success="Thank you. Check your email for next steps to secure your consultation.">
+                        <div class="row g-3">
+                            <div class="col-md-6 form-group">
+                                <label for="h-full-name">Full name</label>
+                                <input type="text" id="h-full-name" name="full_name" required>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label for="h-preferred-name">Preferred name</label>
+                                <input type="text" id="h-preferred-name" name="preferred_name" required>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label for="h-gender">Gender</label>
+                                <div class="select-wrap">
+                                    <select id="h-gender" name="gender" required>
+                                        <option value="" selected disabled>Select</option>
+                                        <option>Female</option>
+                                        <option>Male</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label for="h-location">Location (country / city)</label>
+                                <input type="text" id="h-location" name="location" required>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label for="h-nationality">Nationality</label>
+                                <input type="text" id="h-nationality" name="nationality" required>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label for="h-occupation">Occupation / profession</label>
+                                <input type="text" id="h-occupation" name="occupation" required>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label for="h-email">Email address</label>
+                                <input type="email" id="h-email" name="email" required>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label for="h-phone">Phone number</label>
+                                <input type="tel" id="h-phone" name="phone" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="register-submit-btn">Request a Private Consultation</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+{% endblock %}
+{% block script %}
+{% endblock %}

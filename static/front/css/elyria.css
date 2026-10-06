@@ -1,0 +1,439 @@
+/* ==================================================
+   ELYRIA ADDITIONS — load LAST, after style.css and ext-style.css
+   ================================================== */
+
+:root {
+    --elyria-maroon: #6E1423;
+    --elyria-maroon-dark: #4A0D18;
+    --elyria-gold: #C9A227;
+    --elyria-offwhite: #FBFAF7;
+}
+
+/* ext-style.css colours the sed pass didn't touch */
+.bg-sand { background-color: var(--elyria-offwhite); }
+.text-gold { color: var(--elyria-gold); }
+
+/* Brief: spaced all-caps serif labels instead of the Allura script font */
+.accent-text {
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--elyria-gold);
+    margin-bottom: 0.75rem;
+}
+
+/* ---------- Header ---------- */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+}
+
+.header-register-btn,
+.register-submit-btn {
+    border-radius: 2px;
+    background: var(--elyria-gold);
+    color: var(--elyria-maroon) !important;
+}
+
+.header-register-btn { margin-left: 0; }
+
+.header-signin-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.55rem 1.2rem;
+    border: 1px solid var(--elyria-gold);
+    border-radius: 2px;
+    color: var(--elyria-gold);
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.25s ease, color 0.25s ease;
+}
+
+.header-signin-btn:hover {
+    background: var(--elyria-gold);
+    color: var(--elyria-maroon);
+}
+
+.header-link.active { color: var(--elyria-gold) !important; }
+
+@media (max-width: 991px) {
+    .header-actions {
+        flex-direction: column;
+        width: 100%;
+        margin: 0;
+    }
+}
+
+.footer-logo { width: min(400px, 70vw); height: auto; }
+
+/* ---------- Inner page header band: solid maroon, visible title ---------- */
+.page-hero {
+    min-height: 40vh;
+    background: var(--elyria-maroon);
+    text-align: center;
+    justify-content: center;
+}
+
+.page-hero-title {
+    font-size: clamp(2.2rem, 5vw, 3.6rem);
+    letter-spacing: 0.04em;
+}
+
+/* ---------- Icon motif: gold line icon in a maroon circle ---------- */
+.icon-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--elyria-maroon);
+    color: var(--elyria-gold);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    margin-bottom: 1.25rem;
+}
+
+/* Teaser rows (Home segments / tiers, About values) */
+.icon-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2.5rem 3rem;
+    text-align: center;
+}
+
+.icon-row-item {
+    width: 150px;
+    text-decoration: none;
+    color: var(--color-primary);
+}
+
+.icon-row-item h3 { font-size: 1.15rem; margin: 0; }
+
+/* ---------- 2 x 2 card grid (Services, Who We Serve) ---------- */
+.page-info-grid.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+@media (max-width: 767px) {
+    .page-info-grid.grid-2 { grid-template-columns: 1fr; }
+}
+
+/* ---------- Membership tier cards ---------- */
+.tier-card {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(110, 20, 35, 0.12);
+}
+
+.tier-card::before { display: none; }
+
+.tier-card-header {
+    background: var(--elyria-maroon);
+    padding: 1.4rem 1.5rem;
+    text-align: center;
+    position: relative;
+}
+
+.tier-card-header h3 {
+    color: #fff;
+    margin: 0;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-size: 1.3rem;
+}
+
+.tier-card-body {
+    padding: 1.75rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.tier-card-body .register-submit-btn { margin-top: auto; align-self: center; }
+
+.tier-card.is-elite { border: 2px solid var(--elyria-gold); }
+
+.tier-tag {
+    display: inline-block;
+    margin-top: 0.5rem;
+    padding: 0.2rem 0.7rem;
+    background: var(--elyria-gold);
+    color: var(--elyria-maroon);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.fee-note {
+    margin-top: 2.5rem;
+    text-align: center;
+    color: var(--color-primary);
+}
+
+/* ---------- Team profiles: stacked, uniform ---------- */
+.team-profile + .team-profile { margin-top: 5rem; }
+
+.team-photo {
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    background: rgba(110, 20, 35, 0.08);
+}
+
+.team-role {
+    display: block;
+    color: var(--elyria-gold);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    margin-bottom: 1.25rem;
+}
+
+/* ---------- FAQ accordion (Bootstrap) ---------- */
+.faq-accordion .accordion-item { border: 0; border-bottom: 1px solid rgba(110, 20, 35, 0.12); background: transparent; }
+.faq-accordion .accordion-button {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    color: var(--color-primary);
+    background: transparent;
+    box-shadow: none;
+    padding: 1.25rem 0;
+}
+.faq-accordion .accordion-button:not(.collapsed) { color: var(--elyria-maroon); }
+.faq-accordion .accordion-body { padding: 0 0 1.5rem; }
+
+/* ---------- Modals ---------- */
+.elyria-modal .modal-content { border: 0; border-radius: 2px; }
+.elyria-modal .modal-header { background: var(--elyria-maroon); border: 0; padding: 1.25rem 1.75rem; }
+.elyria-modal .modal-title { color: #fff; font-size: 1.5rem; }
+.elyria-modal .btn-close { filter: invert(1); }
+.elyria-modal .modal-body { padding: 1.75rem; background: var(--elyria-offwhite); }
+.elyria-modal .modal-intro { margin-bottom: 1.5rem; }
+.elyria-modal textarea {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    background-color: rgba(0, 0, 0, 0.04);
+    border: 1px solid transparent;
+    border-radius: 4px;
+    font-family: inherit;
+}
+
+/* Visible keyboard focus on all interactive elements */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid var(--elyria-gold);
+    outline-offset: 2px;
+}
+
+
+.hero-logo-large {
+    display: block;
+    height: clamp(140px, 22vh, 240px);
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+    margin-inline: auto;
+}
+
+.hero-wrapper-v2 {
+    min-height: 620px;
+    height: 100vh;
+    height: 100svh;
+}
+
+#home .hero-text-container {
+    max-width: 560px;
+    padding-inline: clamp(1.25rem, 3vw, 3rem);
+}
+
+#home h1 {
+    font-size: clamp(2rem, 4vw, 3.5rem);
+    line-height: 1.1;
+}
+
+.register-submit-btn {
+    max-width: 100%;
+    white-space: normal;
+    line-height: 1.35;
+    text-align: center;
+}
+
+@media (max-width: 991.98px) {
+    .header-nav,
+    .header.scrolled .header-nav { padding: 0.5rem 1rem; }
+    .header-logo img { height: 40px; width: auto; }
+    .header-collapse {
+        left: 1rem;
+        width: calc(100% - 2rem);
+        max-height: calc(100vh - 84px);
+        padding: 1rem;
+        overflow-y: auto;
+    }
+
+    .hero-wrapper-v2 { height: auto; }
+    .hero-wrapper-v2 > .row { height: auto !important; }
+    .hero-wrapper-v2 .row > .col-lg-5 { padding: 6rem 1rem 2rem; }
+    .hero-wrapper-v2 .row > .col-lg-7 {
+        height: clamp(280px, 52vh, 420px) !important;
+    }
+    .hero-logo-large { height: clamp(140px, 32vw, 220px); }
+
+    .bg-parallax-sustainability { background-attachment: scroll; }
+}
+
+@media (min-width: 992px) and (max-width: 1199.98px) {
+    .header-link {
+        margin-inline: 0.4rem;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 767px) {
+    .section-padding {
+        padding-top: clamp(3.5rem, 9vw, 5rem);
+        padding-bottom: clamp(3.5rem, 9vw, 5rem);
+    }
+
+    #who-we-serve-teaser .row > div { width: 50%; }
+    #who-we-serve-teaser .itinerary-card .img-medium {
+        height: clamp(120px, 38vw, 180px);
+    }
+}
+
+@media (max-width: 575px) {
+    .hero-wrapper-v2 .bg-gradient-dark-bottom {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        padding: 1rem !important;
+    }
+
+    .hero-wrapper-v2 .hero-nav-controls { gap: 8px; }
+    .hero-wrapper-v2 .hero-nav-line { width: 36px; }
+    .register-submit-btn { width: 100%; }
+}
+
+@media (max-width: 374.98px) {
+    .hero-wrapper-v2 .row > .col-lg-5 { padding-inline: 0.75rem; }
+    #home .hero-text-container { padding-inline: 0.75rem; }
+    .header-collapse { padding: 0.75rem; }
+}
+
+
+
+/* ---------- Member Sign In (standalone, minimal) ---------- */
+.signin-page {
+    min-height: 100vh;
+    background: var(--elyria-maroon);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+ 
+.signin-wrap {
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+}
+ 
+.signin-logo img {
+    height: 90px;
+    width: auto;
+    max-width: 100%;
+    margin-bottom: 2rem;
+}
+ 
+.signin-card {
+    background: var(--elyria-offwhite);
+    padding: 2.5rem 2rem;
+    text-align: left;
+    border-radius: 2px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+ 
+.signin-title {
+    font-size: 2rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+ 
+.signin-forgot {
+    display: inline-block;
+    font-size: 0.85rem;
+    color: var(--elyria-maroon);
+}
+ 
+.signin-status {
+    margin: 1rem 0 0;
+    font-size: 0.9rem;
+    text-align: center;
+    color: var(--elyria-maroon);
+}
+ 
+.signin-back {
+    display: inline-block;
+    margin-top: 1.5rem;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.85rem;
+    text-decoration: none;
+}
+ 
+.signin-back:hover { color: var(--elyria-gold); }
+
+/* Password fields: the template only styled text/email/tel inputs */
+.register-form input[type="password"] {
+    width: 100%;
+    padding: .85rem 1rem;
+    background-color: rgba(0, 0, 0, 0.04);
+    border: 1px solid transparent;
+    border-radius: 4px;
+    font-family: inherit;
+    color: #2c3a2f;
+    transition: all 0.3s ease;
+}
+
+.register-form input[type="password"]:focus {
+    outline: none;
+    border-color: rgba(44, 58, 47, 0.3);
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* ---------- Privacy Policy download card ---------- */
+.policy-download {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    margin: 2.5rem 0;
+    padding: 1.5rem 1.75rem;
+    background: var(--elyria-offwhite);
+    border: 1px solid rgba(201, 162, 39, 0.35);
+    border-left: 4px solid var(--elyria-gold);
+    border-radius: 8px;
+}
+.policy-download-icon {
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--elyria-maroon);
+    color: var(--elyria-gold);
+    font-size: 1.4rem;
+}
+.policy-download-text { flex: 1; }
+.policy-download-text h2 { color: var(--elyria-maroon); }
+.policy-download-text small { display: block; margin-top: 0.35rem; color: #8a8a8a; }
+.policy-download .register-submit-btn { margin-top: 0; white-space: nowrap; }
+
+@media (max-width: 575.98px) {
+    .policy-download { flex-direction: column; align-items: flex-start; text-align: left; }
+    .policy-download .register-submit-btn { width: 100%; text-align: center; }
+}
