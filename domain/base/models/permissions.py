@@ -1,0 +1,45 @@
+from django.db import models
+
+
+class Groups:
+    MEMBER = "Member"
+    MATCHMAKER = "Matchmaker"
+    ADMIN = "Admin"
+
+
+STAFF_GROUPS = [Groups.MATCHMAKER, Groups.ADMIN]
+
+PERMISSIONS = [
+    ("access_member_portal", "Can use the member portal"),
+    ("view_consultation_request", "Can view consultation requests"),
+    ("manage_consultation_request", "Can mark fees paid, record consultations and confirm membership"),
+    ("handle_enquiry", "Can handle general enquiries"),
+    ("manage_client", "Can view and update client profiles and cross-checks"),
+    ("manage_matching", "Can shortlist matches and record feedback and observations"),
+    ("manage_event", "Can manage events"),
+    ("manage_staff", "Can manage staff accounts and settings"),
+]
+
+_STAFF_PERMISSIONS = [
+    "view_consultation_request",
+    "manage_consultation_request",
+    "handle_enquiry",
+    "manage_client",
+    "manage_matching",
+    "manage_event",
+]
+
+GROUP_PERMISSIONS = {
+    Groups.MEMBER: ["access_member_portal"],
+    Groups.MATCHMAKER: _STAFF_PERMISSIONS,
+    Groups.ADMIN: _STAFF_PERMISSIONS + ["manage_staff"],
+}
+
+
+class ElyriaPermissions(models.Model):
+    """Holds custom permissions only. No table."""
+
+    class Meta:
+        managed = False
+        default_permissions = ()
+        permissions = PERMISSIONS

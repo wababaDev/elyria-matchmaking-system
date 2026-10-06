@@ -1,0 +1,68 @@
+# ===== PYTHON =====
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.pyc
+*.egg-info/
+dist/
+
+# ===== DJANGO =====
+*.log
+local_settings.py
+db.sqlite3
+logs/
+!/logs/
+!/logs/.gitkeep
+
+
+
+# ===== STATIC & MEDIA =====
+staticfiles/
+
+# Ignore media files but keep folder structure
+media/**
+!media/
+!media/**/
+!media/**/.gitkeep
+
+
+# ===== POETRY =====
+# Keep poetry.lock committed — important for consistent installs
+# DO NOT add poetry.lock here
+
+# ===== IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+```
+
+
+# ===== VIRTUAL ENV =====
+venv/
+.venv/
+env/
+
+# ===== ENVIRONMENT =====
+.env
+.env.*
+!.env.example
+
+# Environment files — never commit these
+.env
+.env.local
+.env.production
+
+# Keep the examples for reference
+!.env.local.example
+!.env.production.example
+
+
+TODO.md
+docker/nginx-gs-welfare.conf
