@@ -6,9 +6,8 @@ from domain.base.services.groups import home_url_for
 
 class SignInView(LoginView):
     """Member sign-in (public, linked from the site)."""
-    template_name = "base/sign_in.html"
+    template_name = "domain/portal/auth/sign_in.html"
     redirect_authenticated_user = True
-    extra_context = {"staff": False}
 
     def get_default_redirect_url(self):
         # Used when there's no safe ?next= in the URL
@@ -17,7 +16,7 @@ class SignInView(LoginView):
 
 class StaffSignInView(SignInView):
     """Staff sign-in (separate, not linked from the public site)."""
-    extra_context = {"staff": True}
+    template_name = "domain/management/auth/sign_in.html"
 
 
 class SignOutView(LogoutView):

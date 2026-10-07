@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "domain.base",
     "domain.website",
     "domain.matchmaking",
+    "domain.portal",
     "notification",
 ]
 AUTH_USER_MODEL = "base.User"
@@ -129,3 +130,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+
+# --- Sign-in / redirects ---
+LOGIN_URL = "base:sign-in"
+STAFF_LOGIN_URL = "base:staff-sign-in"
+MEMBER_HOME_URL = "/portal/"
+STAFF_HOME_URL = "matchmaking:dashboard"

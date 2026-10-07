@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>Overview — Elyria Staff</title>
+     <title>{% block title %}Overview{% endblock %} — Elyria Staff</title>
 
     <link rel="icon" href="{% static 'back/assets/images/brand-logos/favicon.ico' %}" type="image/x-icon">
 
@@ -19,408 +19,35 @@
     <link href="{% static 'back/assets/libs/node-waves/waves.min.css' %}" rel="stylesheet">
     <link href="{% static 'back/assets/libs/simplebar/simplebar.min.css' %}" rel="stylesheet">
     <link href="{% static 'back/assets/css/elyria-admin.css' %}" rel="stylesheet">
+
+    {% block style %}
+    {% endblock %}
 </head>
 
 <body>
 
     <div class="page">
-
-        <!-- ===== HEADER (same on every staff page) ===== -->
-        <header class="app-header">
-            <div class="main-header-container container-fluid">
-
-                <div class="header-content-left">
-                    <div class="header-element">
-                        <div class="horizontal-logo">
-                            <a href="dashboard.html" class="header-logo">
-                                <img src="../assets/logo-white.png" alt="Elyria" class="desktop-logo">
-                                <img src="assets/images/brand-logos/toggle-logo.png" alt="Elyria" class="toggle-logo">
-                            </a>
-                        </div>
-                    </div>
-                    <div class="header-element">
-                        <a aria-label="Toggle sidebar"
-                            class="sidemenu-toggle header-link animated-arrow hor-toggle horizontal-navtoggle"
-                            data-bs-toggle="sidebar" href="javascript:void(0);"><span></span></a>
-                    </div>
-                </div>
-
-                <div class="header-content-right">
-                    <!-- Notifications: new requests, completed forms -->
-                    <div class="header-element notifications-dropdown">
-                        <a aria-label="Notifications" href="javascript:void(0);" class="header-link dropdown-toggle"
-                            data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                            <i class="fe fe-bell header-link-icon"></i>
-                            <span
-                                class="w-9 h-9 p-0 bg-success rounded-pill header-icon-badge pulse pulse-success"></span>
-                        </a>
-                        <div class="main-header-dropdown dropdown-menu dropdown-menu-end">
-                            <div class="p-3">
-                                <p class="mb-0 fs-17 fw-semibold">Notifications</p>
-                            </div>
-                            <div class="dropdown-divider"></div>
-                            <ul class="list-unstyled mb-0">
-                                <li class="dropdown-item">
-                                    <div class="d-flex align-items-start">
-                                        <div class="pe-2">
-                                            <span class="avatar avatar-md bg-primary avatar-rounded"><i
-                                                    class="fe fe-user-plus fs-18"></i></span>
-                                        </div>
-                                        <div>
-                                            <p class="mb-0 fw-semibold"><a href="requests.html">New consultation
-                                                    request</a></p>
-                                            <span class="text-muted fs-12">[sample] 10 min ago</span>
-                                        </div>
-                                    </div>
-                                </li>
-                                <li class="dropdown-item">
-                                    <div class="d-flex align-items-start">
-                                        <div class="pe-2">
-                                            <span class="avatar avatar-md bg-success avatar-rounded"><i
-                                                    class="fe fe-file-text fs-18"></i></span>
-                                        </div>
-                                        <div>
-                                            <p class="mb-0 fw-semibold"><a href="clients.html">Pre-Consultation Form
-                                                    completed</a></p>
-                                            <span class="text-muted fs-12">[sample] 2 hours ago</span>
-                                        </div>
-                                    </div>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <!-- Signed-in staff member -->
-                    <div class="header-element main-profile-user">
-                        <a href="#" class="header-link dropdown-toggle" id="mainHeaderProfile" data-bs-toggle="dropdown"
-                            data-bs-auto-close="outside" aria-expanded="false">
-                            <div class="d-flex align-items-center">
-                                <span class="avatar avatar-sm avatar-rounded bg-primary me-xxl-2 me-0">ST</span>
-                                <div class="d-xxl-block d-none my-auto">
-                                    <h6 class="fw-semibold mb-0 lh-1 fs-14">Anisha Namutowe</h6>
-                                    <span class="op-7 fw-normal d-block fs-11 text-muted">Matchmaker</span>
-                                </div>
-                            </div>
-                        </a>
-                        <ul class="main-header-dropdown dropdown-menu pt-0 header-profile-dropdown dropdown-menu-end"
-                            aria-labelledby="mainHeaderProfile">
-                            <li class="dropdown-item"><a class="d-flex w-100" href="#"><i
-                                        class="fe fe-lock fs-18 me-2 text-primary"></i>Change password</a></li>
-                            <li class="dropdown-item"><a class="d-flex w-100" href="sign-in.html"><i
-                                        class="fe fe-log-out fs-18 me-2 text-primary"></i>Log out</a></li>
-                        </ul>
-                    </div>
-                </div>
-
-            </div>
-        </header>
-
-        <!-- ===== SIDEBAR (same on every staff page) ===== -->
-        <aside class="app-sidebar sticky" id="sidebar">
-            <div class="main-sidebar-header">
-                <a href="dashboard.html" class="header-logo">
-                    <img src="../assets/logo-white.png" alt="Elyria" class="desktop-logo"
-                        style="width: 40px; height: auto;">
-                    <img src="../assets/logo-words-gold.png" alt="Elyria" class="toggle-logo">
-
-                    <img src="../assets/logo-words-gold.png" alt="Elyria" class="desktop-white"
-                        style="width: 145px; height: auto;">
-                    <img src="../assets/logo-head.png" alt="Elyria" class="toggle-white"  style="width: 24px; height: auto;">
-                </a>
-            </div>
-
-            <div class="main-sidebar" id="sidebar-scroll">
-                <nav class="main-menu-container nav nav-pills flex-column sub-open">
-                    <ul class="main-menu">
-                        <li class="slide__category"><span class="category-name">Main</span></li>
-                        <li class="slide">
-                            <a href="dashboard.html" class="side-menu__item active">
-                                <i class="fe fe-home side-menu__icon"></i>
-                                <span class="side-menu__label">Overview</span>
-                            </a>
-                        </li>
-                        <li class="slide">
-                            <a href="queue.html" class="side-menu__item">
-                                <i class="fe fe-check-square side-menu__icon"></i>
-                                <span class="side-menu__label">My Queue</span>
-                                <span class="badge bg-elyria-gold ms-auto">3</span>
-                            </a>
-                        </li>
-
-                        <li class="slide__category"><span class="category-name">Pipeline</span></li>
-                        <li class="slide">
-                            <a href="requests.html" class="side-menu__item">
-                                <i class="fe fe-inbox side-menu__icon"></i>
-                                <span class="side-menu__label">Consultation Requests</span>
-                            </a>
-                        </li>
-                        <li class="slide">
-                            <a href="enquiries.html" class="side-menu__item">
-                                <i class="fe fe-help-circle side-menu__icon"></i>
-                                <span class="side-menu__label">Enquiries</span>
-                            </a>
-                        </li>
-                        <li class="slide">
-                            <a href="clients.html" class="side-menu__item">
-                                <i class="fe fe-users side-menu__icon"></i>
-                                <span class="side-menu__label">Clients</span>
-                            </a>
-                        </li>
-
-                        <li class="slide__category"><span class="category-name">Website</span></li>
-                        <li class="slide">
-                            <a href="events.html" class="side-menu__item">
-                                <i class="fe fe-calendar side-menu__icon"></i>
-                                <span class="side-menu__label">Events</span>
-                            </a>
-                        </li>
-
-                        <li class="slide__category"><span class="category-name">Admin</span></li>
-                        <li class="slide">
-                            <a href="settings.html" class="side-menu__item">
-                                <i class="fe fe-settings side-menu__icon"></i>
-                                <span class="side-menu__label">Settings</span>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
-            </div>
-        </aside>
-
+        {% include "partials/management/_header.html" %}
+       
+        
+        {% include "partials/management/_sidebar.html" %}
         <!-- ===== PAGE CONTENT (changes per page) ===== -->
     <div class="main-content app-content">
             <div class="container-fluid">
  
                 <div class="page-header">
-                    <h1 class="page-title my-auto">Overview</h1>
-                    <span class="text-muted fs-13">Sample data — preview only</span>
+                      <h1 class="page-title my-auto">{% block page_title %}{% endblock %}</h1>
++                    {% block page_actions %}{% endblock %}
                 </div>
- 
-                <!-- Row 1: stat cards -->
-                <div class="row">
-                    <div class="col-xxl col-lg-4 col-md-6">
-                        <div class="card custom-card">
-                            <div class="card-body d-flex align-items-center gap-3">
-                                <span class="avatar avatar-lg bg-primary-transparent avatar-rounded"><i class="fe fe-inbox fs-20"></i></span>
-                                <div>
-                                    <p class="text-muted mb-1 fs-13">New requests (this month)</p>
-                                    <h3 class="mb-0 fw-semibold">14</h3>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xxl col-lg-4 col-md-6">
-                        <div class="card custom-card">
-                            <div class="card-body d-flex align-items-center gap-3">
-                                <span class="avatar avatar-lg bg-warning-transparent avatar-rounded"><i class="fe fe-clock fs-20"></i></span>
-                                <div>
-                                    <p class="text-muted mb-1 fs-13">Awaiting fee payment</p>
-                                    <h3 class="mb-0 fw-semibold">6</h3>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xxl col-lg-4 col-md-6">
-                        <div class="card custom-card">
-                            <div class="card-body d-flex align-items-center gap-3">
-                                <span class="avatar avatar-lg bg-info-transparent avatar-rounded"><i class="fe fe-calendar fs-20"></i></span>
-                                <div>
-                                    <p class="text-muted mb-1 fs-13">Consultations this week</p>
-                                    <h3 class="mb-0 fw-semibold">4</h3>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xxl col-lg-6 col-md-6">
-                        <div class="card custom-card">
-                            <div class="card-body d-flex align-items-center gap-3">
-                                <span class="avatar avatar-lg bg-success-transparent avatar-rounded"><i class="fe fe-award fs-20"></i></span>
-                                <div>
-                                    <p class="text-muted mb-1 fs-13">Active members</p>
-                                    <h3 class="mb-0 fw-semibold">38</h3>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xxl col-lg-6 col-md-12">
-                        <div class="card custom-card">
-                            <div class="card-body d-flex align-items-center gap-3">
-                                <span class="avatar avatar-lg bg-secondary-transparent avatar-rounded"><i class="fe fe-alert-circle fs-20"></i></span>
-                                <div>
-                                    <p class="text-muted mb-1 fs-13">Open cross-check items</p>
-                                    <h3 class="mb-0 fw-semibold">5</h3>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
- 
-                <!-- Row 2: trend + funnel -->
-                <div class="row">
-                    <div class="col-xl-8">
-                        <div class="card custom-card">
-                            <div class="card-header">
-                                <div class="card-title">Requests and New Members — Last 6 Months</div>
-                            </div>
-                            <div class="card-body">
-                                <div id="chartTrend"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xl-4">
-                        <div class="card custom-card">
-                            <div class="card-header">
-                                <div class="card-title">Pipeline This Quarter</div>
-                            </div>
-                            <div class="card-body">
-                                <div id="chartFunnel"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
- 
-                <!-- Row 3: tiers + enquiries + upcoming -->
-                <div class="row">
-                    <div class="col-xl-4 col-md-6">
-                        <div class="card custom-card">
-                            <div class="card-header">
-                                <div class="card-title">Members by Tier</div>
-                            </div>
-                            <div class="card-body">
-                                <div id="chartTiers"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xl-4 col-md-6">
-                        <div class="card custom-card">
-                            <div class="card-header">
-                                <div class="card-title">Learn More Enquiries by Tier</div>
-                            </div>
-                            <div class="card-body">
-                                <div id="chartEnquiries"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xl-4">
-                        <div class="card custom-card">
-                            <div class="card-header">
-                                <div class="card-title">Upcoming Consultations</div>
-                            </div>
-                            <div class="card-body p-0">
-                                <ul class="list-group list-group-flush">
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <p class="mb-0 fw-semibold">[Sample] T. Banda</p>
-                                            <span class="text-muted fs-12">With Anisha Namutowe</span>
-                                        </div>
-                                        <span class="fs-13">Mon 6 Oct, 10:00</span>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <p class="mb-0 fw-semibold">[Sample] M. Phiri</p>
-                                            <span class="text-muted fs-12">With Thandie Dunlop</span>
-                                        </div>
-                                        <span class="fs-13">Tue 7 Oct, 14:30</span>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <p class="mb-0 fw-semibold">[Sample] C. Mwale</p>
-                                            <span class="text-muted fs-12">With Annastasia Munyati</span>
-                                        </div>
-                                        <span class="fs-13">Thu 9 Oct, 09:00</span>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <p class="mb-0 fw-semibold">[Sample] J. Zulu</p>
-                                            <span class="text-muted fs-12">With Tonde Lungu</span>
-                                        </div>
-                                        <span class="fs-13">Fri 10 Oct, 11:00</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
- 
-                <!-- Row 4: recent requests -->
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card custom-card">
-                            <div class="card-header justify-content-between">
-                                <div class="card-title">Recent Consultation Requests</div>
-                                <a href="requests.html" class="btn btn-sm btn-primary-light">View all</a>
-                            </div>
-                            <div class="card-body p-0">
-                                <div class="table-responsive">
-                                    <table class="table table-hover mb-0">
-                                        <thead>
-                                            <tr>
-                                                <th>Name</th>
-                                                <th>Age</th>
-                                                <th>Location</th>
-                                                <th>Submitted</th>
-                                                <th>Status</th>
-                                                <th></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td class="fw-semibold">[Sample] Natasha K.</td>
-                                                <td>34</td>
-                                                <td>Lusaka, Zambia</td>
-                                                <td>3 Oct 2026</td>
-                                                <td><span class="badge status-new">New</span></td>
-                                                <td class="text-end"><a href="#" class="btn btn-sm btn-light">Open</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="fw-semibold">[Sample] David M.</td>
-                                                <td>41</td>
-                                                <td>London, UK</td>
-                                                <td>2 Oct 2026</td>
-                                                <td><span class="badge status-awaiting">Awaiting payment</span></td>
-                                                <td class="text-end"><a href="#" class="btn btn-sm btn-light">Open</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="fw-semibold">[Sample] Grace L.</td>
-                                                <td>29</td>
-                                                <td>Ndola, Zambia</td>
-                                                <td>30 Sep 2026</td>
-                                                <td><span class="badge status-paid">Fee paid</span></td>
-                                                <td class="text-end"><a href="#" class="btn btn-sm btn-light">Open</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="fw-semibold">[Sample] Peter S.</td>
-                                                <td>52</td>
-                                                <td>Johannesburg, SA</td>
-                                                <td>28 Sep 2026</td>
-                                                <td><span class="badge status-complete">Consulted</span></td>
-                                                <td class="text-end"><a href="#" class="btn btn-sm btn-light">Open</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="fw-semibold">[Sample] Ruth N.</td>
-                                                <td>37</td>
-                                                <td>Lusaka, Zambia</td>
-                                                <td>25 Sep 2026</td>
-                                                <td><span class="badge status-declined">Declined</span></td>
-                                                <td class="text-end"><a href="#" class="btn btn-sm btn-light">Open</a></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+
+                {% block content %}
+                {% endblock %}
  
             </div>
         </div>
 
-        <!-- ===== FOOTER (same on every staff page) ===== -->
-        <footer class="footer mt-auto py-3 text-center">
-            <div class="container">
-                <span>&copy; 2026 Elyria Matchmaking Limited. Staff use only.</span>
-            </div>
-        </footer>
+        {% include "partials/management/_footer.html" %}
+       
 
     </div>
 
@@ -441,65 +68,10 @@
     <!-- ApexCharts (ships with Sash). If this path doesn't exist, use:
          https://cdn.jsdelivr.net/npm/apexcharts -->
     <script src="{% static 'back/assets/libs/apexcharts/apexcharts.min.js' %}"></script>
- 
-    <script>
-    // ----- Sample data for the preview. In Django, these arrays come from the view. -----
-    (function () {
-        var maroon = '#6E1423', gold = '#C9A227', muted = '#857a72';
-        var font = '"IBM Plex Sans", sans-serif';
-        var base = { chart: { fontFamily: font, toolbar: { show: false } } };
- 
-        // Requests vs new members, last 6 months
-        new ApexCharts(document.querySelector('#chartTrend'), Object.assign({}, base, {
-            chart: Object.assign({}, base.chart, { type: 'area', height: 300 }),
-            series: [
-                { name: 'Consultation requests', data: [9, 12, 10, 15, 13, 14] },
-                { name: 'New members',           data: [2, 4, 3, 5, 4, 6] }
-            ],
-            xaxis: { categories: ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'] },
-            colors: [maroon, gold],
-            stroke: { curve: 'smooth', width: 2 },
-            fill: { type: 'gradient', gradient: { opacityFrom: 0.25, opacityTo: 0.02 } },
-            dataLabels: { enabled: false },
-            legend: { position: 'top', horizontalAlign: 'left' },
-            grid: { borderColor: '#ece6df' }
-        })).render();
- 
-        // Pipeline funnel: how many made it to each stage this quarter
-        new ApexCharts(document.querySelector('#chartFunnel'), Object.assign({}, base, {
-            chart: Object.assign({}, base.chart, { type: 'bar', height: 300 }),
-            series: [{ name: 'Clients', data: [42, 31, 26, 15, 12] }],
-            xaxis: { categories: ['Requested', 'Fee paid', 'Consulted', 'Members', 'Profile done'] },
-            plotOptions: { bar: { horizontal: true, borderRadius: 2, barHeight: '60%', distributed: true } },
-            colors: [maroon, '#8a2b3b', '#a34a58', gold, '#d8b64a'],
-            legend: { show: false },
-            dataLabels: { enabled: true, style: { colors: ['#fff'] } },
-            grid: { borderColor: '#ece6df' }
-        })).render();
- 
-        // Members by tier
-        new ApexCharts(document.querySelector('#chartTiers'), Object.assign({}, base, {
-            chart: Object.assign({}, base.chart, { type: 'donut', height: 280 }),
-            series: [14, 12, 9, 3],
-            labels: ['Bronze', 'Silver', 'Gold', 'Elite Grade'],
-            colors: ['#a0785a', '#9aa0a6', gold, maroon],
-            legend: { position: 'bottom' },
-            dataLabels: { enabled: false },
-            plotOptions: { pie: { donut: { size: '68%', labels: { show: true, total: { show: true, label: 'Members', color: muted } } } } }
-        })).render();
- 
-        // Learn More enquiries by tier
-        new ApexCharts(document.querySelector('#chartEnquiries'), Object.assign({}, base, {
-            chart: Object.assign({}, base.chart, { type: 'bar', height: 280 }),
-            series: [{ name: 'Enquiries', data: [6, 9, 11, 4] }],
-            xaxis: { categories: ['Bronze', 'Silver', 'Gold', 'Elite'] },
-            plotOptions: { bar: { borderRadius: 2, columnWidth: '45%' } },
-            colors: [maroon],
-            dataLabels: { enabled: false },
-            grid: { borderColor: '#ece6df' }
-        })).render();
-    })();
-    </script>
+
+    {% block scripts  %}
+    {% endblock %}
+   
  
 
 </body>

@@ -1,0 +1,51 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Member Sign In — Elyria Matchmaking</title>
+    <link rel="icon" type="image/png" href="{% static 'front/assets/ico.png' %}">
+    <link rel="stylesheet" href="{% static 'front/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'front/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'front/css/ext-style.css' %}">
+    <link rel="stylesheet" href="{% static 'front/css/elyria.css' %}">
+</head>
+<body class="signin-page">
+
+    <main class="signin-wrap">
+        <a href="{% url 'website:home' %}" class="signin-logo">
+            <img src="{% static 'front/assets/logo.png' %}" alt="Elyria Matchmaking">
+        </a>
+
+        <div class="signin-card">
+            <h1 class="signin-title">Member Sign In</h1>
+
+            <form class="register-form" method="post" novalidate>
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ next }}">
+
+                {% if form.non_field_errors %}
+                    <p class="signin-status text-danger">Incorrect email or password. Please try again.</p>
+                {% endif %}
+
+                <div class="form-group">
+                    <label for="s-email">Email address</label>
+                    <input type="email" id="s-email" name="username" value="{{ form.username.value|default:'' }}"
+                           autocomplete="email" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label for="s-password">Password</label>
+                    <input type="password" id="s-password" name="password" autocomplete="current-password" required>
+                </div>
+                <a href="#" class="signin-forgot">Forgot password?</a>
+                <button type="submit" class="register-submit-btn w-100">Sign In</button>
+            </form>
+        </div>
+
+        <a href="{% url 'website:home' %}" class="signin-back">&larr; Back to site</a>
+    </main>
+
+</body>
+</html>
