@@ -43,3 +43,22 @@ def notify_new_consultation_request(consultation):
             send(consultation)
         except Exception:
             logger.exception("%s failed for consultation request %s", send.__name__, consultation.pk)
+
+def notify_consultation_booked(consultation, *, rebooked=False):
+    applicant = consultation.request
+    try:
+        body = render_to_string(
+            "notification/email/consultation_booked.txt",
+            {"consultation": consultation, "applicant": applicant, "rebooked": rebooked},
+        )
+        subject = (
+            "Your consultation has been rescheduled" if rebooked else "Your private consultation is booked"
+        )
+        send_mail(
+            subject=f"{subject} | Elyria Matchmaking",
+            message=body,
+            from_email=None,
+            recipient_list=[applicant.email],
+        )
+    except Exception:
+        logger.exception("Booking email failed for consultation %s", consultation.pk)

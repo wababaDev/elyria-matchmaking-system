@@ -26,6 +26,7 @@ def make_request(**overrides):
     data.update(overrides)
     return ConsultationRequest.objects.create(**data)
 
+PAYMENT = {"amount": "500.00", "currency": "ZMW", "method": "mobile_money", "reference": "MM123"}
 
 class StaffConsultationRequestTests(TestCase):
     @classmethod
@@ -71,7 +72,7 @@ class StaffConsultationRequestTests(TestCase):
 
     def test_mark_fee_paid(self):
         c = make_request()
-        self.client.post(reverse("matchmaking:consultation-request-mark-paid", args=[c.pk]))
+        self.client.post(reverse("matchmaking:consultation-request-mark-paid", args=[c.pk]), PAYMENT)
         c.refresh_from_db()
         self.assertEqual(c.status, ConsultationRequest.Status.FEE_PAID)
         self.assertEqual(c.fee_marked_paid_by, self.matchmaker)
@@ -79,7 +80,7 @@ class StaffConsultationRequestTests(TestCase):
 
     def test_mark_fee_paid_twice_shows_error(self):
         c = make_request(status=ConsultationRequest.Status.FEE_PAID)
-        response = self.client.post(reverse("matchmaking:consultation-request-mark-paid", args=[c.pk]), follow=True)
+        response = self.client.post(reverse("matchmaking:consultation-request-mark-paid", args=[c.pk]), PAYMENT, follow=True)
         self.assertContains(response, "Only requests awaiting payment")
 
     def test_mark_fee_paid_is_post_only(self):

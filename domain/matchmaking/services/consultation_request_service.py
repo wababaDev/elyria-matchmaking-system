@@ -88,7 +88,7 @@ CLOSED_STATUSES = [
 ]
 
 
-def filter_consultation_requests(status: str = "open", query: str = ""):
+def filter_consultation_requests(status: str = "open", query: str = "", assigned: str = ""):
     qs = ConsultationRequest.objects.select_related("assigned_to")
     if status == "open":
         qs = qs.open()
@@ -96,6 +96,11 @@ def filter_consultation_requests(status: str = "open", query: str = ""):
         qs = qs.filter(status__in=CLOSED_STATUSES)
     elif status in ConsultationRequest.Status.values:
         qs = qs.filter(status=status)
+
+    if assigned == "none":
+        qs = qs.filter(assigned_to__isnull=True)
+    elif assigned.isdigit():
+        qs = qs.filter(assigned_to_id=int(assigned))
 
     query = query.strip()
     if query:
@@ -113,14 +118,21 @@ def _lock(consultation):
 
 
 @transaction.atomic
-def mark_fee_paid(consultation, *, by):
+def mark_fee_paid(consultation, *, by, amount, currency, method, reference=""):
     consultation = _lock(consultation)
     if consultation.status != ConsultationRequest.Status.AWAITING_PAYMENT:
         raise InvalidTransitionError("Only requests awaiting payment can be marked as paid.")
     consultation.status = ConsultationRequest.Status.FEE_PAID
     consultation.fee_paid_at = timezone.now()
     consultation.fee_marked_paid_by = by
-    consultation.save(update_fields=["status", "fee_paid_at", "fee_marked_paid_by", "updated_at"])
+    consultation.fee_amount = amount
+    consultation.fee_currency = currency
+    consultation.fee_payment_method = method
+    consultation.fee_reference = reference
+    consultation.save(update_fields=[
+        "status", "fee_paid_at", "fee_marked_paid_by", "fee_amount",
+        "fee_currency", "fee_payment_method", "fee_reference", "updated_at",
+    ])
     return consultation
 
 

@@ -25,10 +25,10 @@
                             </a>
                         </li>
                         <li class="slide">
-                            <a href="queue.html" class="side-menu__item">
+                            <a href="{% url 'matchmaking:my-queue' %}" class="side-menu__item {% if request.resolver_match.url_name == 'my-queue' %}active{% endif %}">
                                 <i class="fe fe-check-square side-menu__icon"></i>
                                 <span class="side-menu__label">My Queue</span>
-                                <span class="badge bg-elyria-gold ms-auto">3</span>
+                                 {% if staff_queue_count %}<span class="badge bg-elyria-gold ms-auto">{{ staff_queue_count }}</span>{% endif %}
                             </a>
                         </li>
 

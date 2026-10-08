@@ -1,261 +1,343 @@
 {% extends 'layouts/management.html' %}
-{% load static%}
+{% load static %}
 {% load matchmaking_tags %}
 {% block title %}Dashboard{% endblock %}
 
 {% block page_title %}Overview{% endblock %}
 {% block page_actions %}<span class="text-muted fs-13">Sample data — preview only</span>{% endblock %}
-{% block style %}
-{% endblock %}
+{% block style %}{% endblock %}
 {% block content %}
-  
-                <!-- Row 1: stat cards -->
-     <div class="row">
-                    <div class="col-xxl col-lg-4 col-md-6">
-                        <div class="card custom-card">
-                            <div class="card-body d-flex align-items-center gap-3">
-                                <span class="avatar avatar-lg bg-primary-transparent avatar-rounded"><i class="fe fe-inbox fs-20"></i></span>
-                                <div>
-                                    <p class="text-muted mb-1 fs-13">New requests (this month)</p>
-                                     <h3 class="mb-0 fw-semibold">{{ requests_this_month }}</h3>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xxl col-lg-4 col-md-6">
-                        <div class="card custom-card">
-                            <div class="card-body d-flex align-items-center gap-3">
-                                <span class="avatar avatar-lg bg-warning-transparent avatar-rounded"><i class="fe fe-clock fs-20"></i></span>
-                                <div>
-                                    <p class="text-muted mb-1 fs-13">Awaiting fee payment</p>
-                                     <h3 class="mb-0 fw-semibold">{{ awaiting_payment_count }}</h3>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xxl col-lg-4 col-md-6">
-                        <div class="card custom-card">
-                            <div class="card-body d-flex align-items-center gap-3">
-                                <span class="avatar avatar-lg bg-info-transparent avatar-rounded"><i class="fe fe-calendar fs-20"></i></span>
-                                <div>
-                                    <p class="text-muted mb-1 fs-13">Consultations this week</p>
-                                    <h3 class="mb-0 fw-semibold">4</h3>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xxl col-lg-6 col-md-6">
-                        <div class="card custom-card">
-                            <div class="card-body d-flex align-items-center gap-3">
-                                <span class="avatar avatar-lg bg-success-transparent avatar-rounded"><i class="fe fe-award fs-20"></i></span>
-                                <div>
-                                    <p class="text-muted mb-1 fs-13">Active members</p>
-                                    <h3 class="mb-0 fw-semibold">38</h3>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xxl col-lg-6 col-md-12">
-                        <div class="card custom-card">
-                            <div class="card-body d-flex align-items-center gap-3">
-                                <span class="avatar avatar-lg bg-secondary-transparent avatar-rounded"><i class="fe fe-alert-circle fs-20"></i></span>
-                                <div>
-                                    <p class="text-muted mb-1 fs-13">Open cross-check items</p>
-                                    <h3 class="mb-0 fw-semibold">5</h3>
-                                </div>
-                            </div>
-                        </div>
+
+    <!-- Row 1: stat cards -->
+    <div class="row">
+        <div class="col-xxl col-lg-4 col-md-6">
+            <div class="card custom-card">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <span class="avatar avatar-lg bg-primary-transparent avatar-rounded"><i class="fe fe-inbox fs-20"></i></span>
+                    <div>
+                        <p class="text-muted mb-1 fs-13">New requests (this month)</p>
+                        <h3 class="mb-0 fw-semibold">{{ requests_this_month }}</h3>
                     </div>
                 </div>
- 
-                <!-- Row 2: trend + funnel -->
-                <div class="row">
-                    <div class="col-xl-8">
-                        <div class="card custom-card">
-                            <div class="card-header">
-                                <div class="card-title">Requests and New Members — Last 6 Months</div>
-                            </div>
-                            <div class="card-body">
-                                <div id="chartTrend"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xl-4">
-                        <div class="card custom-card">
-                            <div class="card-header">
-                                <div class="card-title">Pipeline This Quarter</div>
-                            </div>
-                            <div class="card-body">
-                                <div id="chartFunnel"></div>
-                            </div>
-                        </div>
+            </div>
+        </div>
+        <div class="col-xxl col-lg-4 col-md-6">
+            <div class="card custom-card">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <span class="avatar avatar-lg bg-warning-transparent avatar-rounded"><i class="fe fe-clock fs-20"></i></span>
+                    <div>
+                        <p class="text-muted mb-1 fs-13">Awaiting fee payment</p>
+                        <h3 class="mb-0 fw-semibold">{{ awaiting_payment_count }}</h3>
                     </div>
                 </div>
- 
-                <!-- Row 3: tiers + enquiries + upcoming -->
-                <div class="row">
-                    <div class="col-xl-4 col-md-6">
-                        <div class="card custom-card">
-                            <div class="card-header">
-                                <div class="card-title">Members by Tier</div>
-                            </div>
-                            <div class="card-body">
-                                <div id="chartTiers"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xl-4 col-md-6">
-                        <div class="card custom-card">
-                            <div class="card-header">
-                                <div class="card-title">Learn More Enquiries by Tier</div>
-                            </div>
-                            <div class="card-body">
-                                <div id="chartEnquiries"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xl-4">
-                        <div class="card custom-card">
-                            <div class="card-header">
-                                <div class="card-title">Upcoming Consultations</div>
-                            </div>
-                            <div class="card-body p-0">
-                                <ul class="list-group list-group-flush">
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <p class="mb-0 fw-semibold">[Sample] T. Banda</p>
-                                            <span class="text-muted fs-12">With Anisha Namutowe</span>
-                                        </div>
-                                        <span class="fs-13">Mon 6 Oct, 10:00</span>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <p class="mb-0 fw-semibold">[Sample] M. Phiri</p>
-                                            <span class="text-muted fs-12">With Thandie Dunlop</span>
-                                        </div>
-                                        <span class="fs-13">Tue 7 Oct, 14:30</span>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <p class="mb-0 fw-semibold">[Sample] C. Mwale</p>
-                                            <span class="text-muted fs-12">With Annastasia Munyati</span>
-                                        </div>
-                                        <span class="fs-13">Thu 9 Oct, 09:00</span>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <p class="mb-0 fw-semibold">[Sample] J. Zulu</p>
-                                            <span class="text-muted fs-12">With Tonde Lungu</span>
-                                        </div>
-                                        <span class="fs-13">Fri 10 Oct, 11:00</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
+            </div>
+        </div>
+        <div class="col-xxl col-lg-4 col-md-6">
+            <div class="card custom-card">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <span class="avatar avatar-lg bg-info-transparent avatar-rounded"><i class="fe fe-calendar fs-20"></i></span>
+                    <div>
+                        <p class="text-muted mb-1 fs-13">Consultations this week</p>
+                        <h3 class="mb-0 fw-semibold">4</h3>
                     </div>
                 </div>
- 
-                <!-- Row 4: recent requests -->
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card custom-card">
-                            <div class="card-header justify-content-between">
-                                <div class="card-title">Recent Consultation Requests</div>
-                                <a href="requests.html" class="btn btn-sm btn-primary-light"><a href="{% url 'matchmaking:consultation-requests' %}" class="btn btn-sm btn-primary-light">View all</a></a>
-                            </div>
-                            <div class="card-body p-0">
-                                <div class="table-responsive">
-                                    <table class="table table-hover mb-0">
-                                        <thead>
-                                            <tr>
-                                                <th>Name</th>
-                                                <th>Age</th>
-                                                <th>Location</th>
-                                                <th>Submitted</th>
-                                                <th>Status</th>
-                                                <th></th>
-                                            </tr>
-                                        </thead>
-                                       <tbody>
-    {% for c in recent_requests %}
-        <tr>
-            <td class="fw-semibold">{{ c.full_name }}</td>
-            <td>{{ c.age }}</td>
-            <td>{{ c.location }}</td>
-            <td>{{ c.created_at|date:"j M Y" }}</td>
-            <td><span class="badge {{ c.status|status_badge }}">{{ c.get_status_display }}</span></td>
-            <td class="text-end"><a href="{% url 'matchmaking:consultation-request-detail' c.pk %}" class="btn btn-sm btn-light">Open</a></td>
-        </tr>
-    {% empty %}
-        <tr><td colspan="6" class="text-center text-muted py-4">No requests yet.</td></tr>
-    {% endfor %}
-</tbody>
-                                    </table>
+            </div>
+        </div>
+        <div class="col-xxl col-lg-6 col-md-6">
+            <div class="card custom-card">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <span class="avatar avatar-lg bg-success-transparent avatar-rounded"><i class="fe fe-award fs-20"></i></span>
+                    <div>
+                        <p class="text-muted mb-1 fs-13">Active members</p>
+                        <h3 class="mb-0 fw-semibold">38</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xxl col-lg-6 col-md-12">
+            <div class="card custom-card">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <span class="avatar avatar-lg bg-secondary-transparent avatar-rounded"><i class="fe fe-alert-circle fs-20"></i></span>
+                    <div>
+                        <p class="text-muted mb-1 fs-13">Open cross-check items</p>
+                        <h3 class="mb-0 fw-semibold">5</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 2: trend + funnel -->
+    <div class="row">
+        <div class="col-xl-8">
+            <div class="card custom-card">
+                <div class="card-header">
+                    <div class="card-title">Requests and New Members — Last 6 Months</div>
+                </div>
+                <div class="card-body">
+                    <div id="chartTrend"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card custom-card">
+                <div class="card-header">
+                    <div class="card-title">Pipeline This Quarter</div>
+                </div>
+                <div class="card-body">
+                    <div id="chartFunnel"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 3: tiers + enquiries + upcoming -->
+    <div class="row">
+        <div class="col-xl-4 col-md-6">
+            <div class="card custom-card">
+                <div class="card-header">
+                    <div class="card-title">Members by Tier</div>
+                </div>
+                <div class="card-body">
+                    <div id="chartTiers"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="card custom-card">
+                <div class="card-header">
+                    <div class="card-title">Learn More Enquiries by Tier</div>
+                </div>
+                <div class="card-body">
+                    <div id="chartEnquiries"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card custom-card">
+                <div class="card-header">
+                    <div class="card-title">Upcoming Consultations</div>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        {% for meeting in upcoming_consultations %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <a href="{% url 'matchmaking:consultation-request-detail' meeting.request.pk %}"
+                                       class="mb-0 fw-semibold d-block">{{ meeting.request.full_name }}</a>
+                                    <span class="text-muted fs-12">With {{ meeting.request.assigned_to.full_name|default:"(unassigned)" }}</span>
                                 </div>
-                            </div>
-                        </div>
+                                <span class="fs-13">{{ meeting.scheduled_for|date:"D j M, H:i" }}</span>
+                            </li>
+                        {% empty %}
+                            <li class="list-group-item text-center text-muted py-4">No consultations booked.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 4: recent requests -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card custom-card">
+                <div class="card-header justify-content-between">
+                    <div class="card-title">Recent Consultation Requests</div>
+                    <a href="requests.html" class="btn btn-sm btn-primary-light"><a href="{% url 'matchmaking:consultation-requests' %}"
+   class="btn btn-sm btn-primary-light">View all</a></a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Age</th>
+                                    <th>Location</th>
+                                    <th>Submitted</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for c in recent_requests %}
+                                    <tr>
+                                        <td class="fw-semibold">{{ c.full_name }}</td>
+                                        <td>{{ c.age }}</td>
+                                        <td>{{ c.location }}</td>
+                                        <td>{{ c.created_at|date:"j M Y" }}</td>
+                                        <td><span class="badge {{ c.status|status_badge }}">{{ c.get_status_display }}</span></td>
+                                        <td class="text-end"><a href="{% url 'matchmaking:consultation-request-detail' c.pk %}"
+   class="btn btn-sm btn-light">Open</a></td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-4">No requests yet.</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
- 
+            </div>
+        </div>
+    </div>
+
 {% endblock %}
 {% block scripts %}
 
- <script>
-    // ----- Sample data for the preview. In Django, these arrays come from the view. -----
-    (function () {
-        var maroon = '#6E1423', gold = '#C9A227', muted = '#857a72';
-        var font = '"IBM Plex Sans", sans-serif';
-        var base = { chart: { fontFamily: font, toolbar: { show: false } } };
- 
-        // Requests vs new members, last 6 months
-        new ApexCharts(document.querySelector('#chartTrend'), Object.assign({}, base, {
-            chart: Object.assign({}, base.chart, { type: 'area', height: 300 }),
-            series: [
-                { name: 'Consultation requests', data: [9, 12, 10, 15, 13, 14] },
-                { name: 'New members',           data: [2, 4, 3, 5, 4, 6] }
-            ],
-            xaxis: { categories: ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'] },
-            colors: [maroon, gold],
-            stroke: { curve: 'smooth', width: 2 },
-            fill: { type: 'gradient', gradient: { opacityFrom: 0.25, opacityTo: 0.02 } },
-            dataLabels: { enabled: false },
-            legend: { position: 'top', horizontalAlign: 'left' },
-            grid: { borderColor: '#ece6df' }
-        })).render();
- 
-        // Pipeline funnel: how many made it to each stage this quarter
-        new ApexCharts(document.querySelector('#chartFunnel'), Object.assign({}, base, {
-            chart: Object.assign({}, base.chart, { type: 'bar', height: 300 }),
-            series: [{ name: 'Clients', data: [42, 31, 26, 15, 12] }],
-            xaxis: { categories: ['Requested', 'Fee paid', 'Consulted', 'Members', 'Profile done'] },
-            plotOptions: { bar: { horizontal: true, borderRadius: 2, barHeight: '60%', distributed: true } },
-            colors: [maroon, '#8a2b3b', '#a34a58', gold, '#d8b64a'],
-            legend: { show: false },
-            dataLabels: { enabled: true, style: { colors: ['#fff'] } },
-            grid: { borderColor: '#ece6df' }
-        })).render();
- 
-        // Members by tier
-        new ApexCharts(document.querySelector('#chartTiers'), Object.assign({}, base, {
-            chart: Object.assign({}, base.chart, { type: 'donut', height: 280 }),
-            series: [14, 12, 9, 3],
-            labels: ['Bronze', 'Silver', 'Gold', 'Elite Grade'],
-            colors: ['#a0785a', '#9aa0a6', gold, maroon],
-            legend: { position: 'bottom' },
-            dataLabels: { enabled: false },
-            plotOptions: { pie: { donut: { size: '68%', labels: { show: true, total: { show: true, label: 'Members', color: muted } } } } }
-        })).render();
- 
-        // Learn More enquiries by tier
-        new ApexCharts(document.querySelector('#chartEnquiries'), Object.assign({}, base, {
-            chart: Object.assign({}, base.chart, { type: 'bar', height: 280 }),
-            series: [{ name: 'Enquiries', data: [6, 9, 11, 4] }],
-            xaxis: { categories: ['Bronze', 'Silver', 'Gold', 'Elite'] },
-            plotOptions: { bar: { borderRadius: 2, columnWidth: '45%' } },
-            colors: [maroon],
-            dataLabels: { enabled: false },
-            grid: { borderColor: '#ece6df' }
-        })).render();
-    })();
+    <script>
+        // ----- Sample data for the preview. In Django, these arrays come from the view. -----
+        (function() {
+            var maroon = '#6E1423',
+                gold = '#C9A227',
+                muted = '#857a72';
+            var font = '"IBM Plex Sans", sans-serif';
+            var base = {
+                chart: {
+                    fontFamily: font,
+                    toolbar: {
+                        show: false
+                    }
+                }
+            };
+
+            // Requests vs new members, last 6 months
+            new ApexCharts(document.querySelector('#chartTrend'), Object.assign({}, base, {
+                chart: Object.assign({}, base.chart, {
+                    type: 'area',
+                    height: 300
+                }),
+                series: [{
+                    name: 'Consultation requests',
+                    data: [9, 12, 10, 15, 13, 14]
+                }, {
+                    name: 'New members',
+                    data: [2, 4, 3, 5, 4, 6]
+                }],
+                xaxis: {
+                    categories: ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct']
+                },
+                colors: [maroon, gold],
+                stroke: {
+                    curve: 'smooth',
+                    width: 2
+                },
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        opacityFrom: 0.25,
+                        opacityTo: 0.02
+                    }
+                },
+                dataLabels: {
+                    enabled: false
+                },
+                legend: {
+                    position: 'top',
+                    horizontalAlign: 'left'
+                },
+                grid: {
+                    borderColor: '#ece6df'
+                }
+            })).render();
+
+            // Pipeline funnel: how many made it to each stage this quarter
+            new ApexCharts(document.querySelector('#chartFunnel'), Object.assign({}, base, {
+                chart: Object.assign({}, base.chart, {
+                    type: 'bar',
+                    height: 300
+                }),
+                series: [{
+                    name: 'Clients',
+                    data: [42, 31, 26, 15, 12]
+                }],
+                xaxis: {
+                    categories: ['Requested', 'Fee paid', 'Consulted', 'Members', 'Profile done']
+                },
+                plotOptions: {
+                    bar: {
+                        horizontal: true,
+                        borderRadius: 2,
+                        barHeight: '60%',
+                        distributed: true
+                    }
+                },
+                colors: [maroon, '#8a2b3b', '#a34a58', gold, '#d8b64a'],
+                legend: {
+                    show: false
+                },
+                dataLabels: {
+                    enabled: true,
+                    style: {
+                        colors: ['#fff']
+                    }
+                },
+                grid: {
+                    borderColor: '#ece6df'
+                }
+            })).render();
+
+            // Members by tier
+            new ApexCharts(document.querySelector('#chartTiers'), Object.assign({}, base, {
+                chart: Object.assign({}, base.chart, {
+                    type: 'donut',
+                    height: 280
+                }),
+                series: [14, 12, 9, 3],
+                labels: ['Bronze', 'Silver', 'Gold', 'Elite Grade'],
+                colors: ['#a0785a', '#9aa0a6', gold, maroon],
+                legend: {
+                    position: 'bottom'
+                },
+                dataLabels: {
+                    enabled: false
+                },
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            size: '68%',
+                            labels: {
+                                show: true,
+                                total: {
+                                    show: true,
+                                    label: 'Members',
+                                    color: muted
+                                }
+                            }
+                        }
+                    }
+                }
+            })).render();
+
+            // Learn More enquiries by tier
+            new ApexCharts(document.querySelector('#chartEnquiries'), Object.assign({}, base, {
+                chart: Object.assign({}, base.chart, {
+                    type: 'bar',
+                    height: 280
+                }),
+                series: [{
+                    name: 'Enquiries',
+                    data: [6, 9, 11, 4]
+                }],
+                xaxis: {
+                    categories: ['Bronze', 'Silver', 'Gold', 'Elite']
+                },
+                plotOptions: {
+                    bar: {
+                        borderRadius: 2,
+                        columnWidth: '45%'
+                    }
+                },
+                colors: [maroon],
+                dataLabels: {
+                    enabled: false
+                },
+                grid: {
+                    borderColor: '#ece6df'
+                }
+            })).render();
+        })();
     </script>
 {% endblock %}

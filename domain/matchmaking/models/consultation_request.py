@@ -45,6 +45,17 @@ class ConsultationRequest(TimeStampedModel):
         DECLINED = "declined", "Declined"
         CLOSED = "closed", "Closed"
 
+
+    class Currency(models.TextChoices):
+        ZMW = "ZMW", "ZMW (Kwacha)"
+        USD = "USD", "USD"
+
+    class PaymentMethod(models.TextChoices):
+        BANK_TRANSFER = "bank_transfer", "Bank transfer"
+        MOBILE_MONEY = "mobile_money", "Mobile money"
+        CASH = "cash", "Cash"
+        OTHER = "other", "Other"
+
     BLOCKED_STATUSES = [RelationshipStatus.MARRIED, RelationshipStatus.SEPARATED]
     OPEN_STATUSES = [Status.AWAITING_PAYMENT, Status.FEE_PAID, Status.CONSULTED]
 
@@ -89,6 +100,11 @@ class ConsultationRequest(TimeStampedModel):
             blank=True,
             related_name="+",
         )
+
+    fee_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    fee_currency = models.CharField(max_length=3, choices=Currency.choices, blank=True)
+    fee_payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices, blank=True)
+    fee_reference = models.CharField(max_length=100, blank=True, help_text="Bank or mobile money reference.")
 
     objects = ConsultationRequestQuerySet.as_manager()
 

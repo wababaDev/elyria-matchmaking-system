@@ -1,0 +1,71 @@
+{% extends 'layouts/management.html' %}
+{% load matchmaking_tags %}
+{% block title %}My Queue{% endblock %}
+{% block page_title %}My Queue{% endblock %}
+
+{% block content %}
+<div class="card custom-card">
+    <div class="card-header">
+        <ul class="nav nav-pills gap-1 mb-0 flex-wrap">
+            <li class="nav-item">
+                <a class="nav-link py-1 px-3 fs-13 {% if current_tab == 'all' %}active{% endif %}" href="?tab=all">
+                    All <span class="badge bg-light text-dark ms-1">{{ total }}</span>
+                </a>
+            </li>
+            {% for section in sections %}
+                <li class="nav-item">
+                    <a class="nav-link py-1 px-3 fs-13 {% if current_tab == section.key %}active{% endif %}" href="?tab={{ section.key }}">
+                        {{ section.label }} <span class="badge bg-light text-dark ms-1">{{ section.items|length }}</span>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Next step</th>
+                        <th>When</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                        {% with c=row.item %}
+                            <tr>
+                                <td>
+                                    <span class="fw-semibold">{{ c.full_name }}</span>
+                                    <div class="text-muted fs-12">{{ c.age }} · {{ c.location }}</div>
+                                </td>
+                                <td class="fs-13">{{ row.next_step }}</td>
+                                <td class="fs-13">
+                                    {% if c.status == "fee_paid" and c.consultation.scheduled_for %}
+                                        {{ c.consultation.scheduled_for|date:"D j M, H:i" }}
+                                    {% elif c.status == "consulted" %}
+                                        Held {{ c.consultation.held_at|date:"j M" }}
+                                    {% elif c.fee_paid_at %}
+                                        Fee paid {{ c.fee_paid_at|date:"j M" }}
+                                    {% else %}
+                                        Submitted {{ c.created_at|timesince }} ago
+                                    {% endif %}
+                                </td>
+                                <td><span class="badge {{ c.status|status_badge }}">{{ c.get_status_display }}</span></td>
+                                <td class="text-end">
+                                    <a href="{% url 'matchmaking:consultation-request-detail' c.pk %}" class="btn btn-sm btn-light">Open</a>
+                                </td>
+                            </tr>
+                        {% endwith %}
+                    {% empty %}
+                        <tr><td colspan="5" class="text-center text-muted py-5">Nothing to do here. 🎉</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

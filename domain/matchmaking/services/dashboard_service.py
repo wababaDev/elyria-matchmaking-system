@@ -1,6 +1,6 @@
 from django.utils import timezone
 
-from domain.matchmaking.models import ConsultationRequest
+from domain.matchmaking.models import  Consultation, ConsultationRequest
 
 
 def dashboard_summary():
@@ -12,4 +12,10 @@ def dashboard_summary():
             status=ConsultationRequest.Status.AWAITING_PAYMENT
         ).count(),
         "recent_requests": requests.select_related("assigned_to")[:5],
+        "upcoming_consultations": (
+            Consultation.objects
+            .filter(scheduled_for__gte=timezone.now(), request__status=ConsultationRequest.Status.FEE_PAID)
+            .select_related("request", "request__assigned_to")
+            .order_by("scheduled_for")[:5]
+        ),
     }

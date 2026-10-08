@@ -1,0 +1,14 @@
+{% autoescape off %}Dear {{ applicant.preferred_name }},
+
+{% if rebooked %}Your private consultation with Elyria Matchmaking has been moved to a new time.{% else %}Thank you, we've received your consultation fee and your private consultation is now booked.{% endif %}
+
+Date:  {{ consultation.scheduled_for|date:"l j F Y" }}
+Time:  {{ consultation.scheduled_for|date:"H:i" }} (Lusaka time){% if applicant.assigned_to %}
+With:  {{ applicant.assigned_to.full_name }}{% endif %}
+Where: [Location / video call details — to be supplied]
+
+If this time no longer suits you, simply reply to this email and we'll arrange another.
+
+Warm regards,
+The Elyria Matchmaking Team
+{% endautoescape %}
