@@ -1,0 +1,19 @@
+{% autoescape off %}Dear {{ consultation.preferred_name }},
+
+Thank you for requesting a private consultation with Elyria Matchmaking.
+
+To secure your consultation, please pay the consultation fee of [FEE — to be supplied] using one of the options below.
+
+Bank transfer
+[Bank details — to be supplied]
+
+Mobile money
+[Mobile money details — to be supplied]
+
+Please use your full name as the payment reference. Once we've confirmed your payment, we'll be in touch to arrange your consultation.
+
+If you have any questions, simply reply to this email.
+
+Warm regards,
+The Elyria Matchmaking Team
+{% endautoescape %}

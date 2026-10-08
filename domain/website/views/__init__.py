@@ -9,3 +9,5 @@ from .website_views import (
     TeamView,
     WhoWeServeView,
 )
+
+from .consultation_views import ConsultationRequestView, ConsultationThanksView

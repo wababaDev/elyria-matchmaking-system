@@ -228,50 +228,7 @@
                     <p class="text-muted">Begin by requesting a private consultation. Enquiries are reviewed on a rolling basis, and spaces are limited.</p>
                 </div>
                 <div class="col-lg-6 offset-lg-1 reveal delay-2" data-reveal="fade-left">
-                    <form class="register-form" data-demo="true"
-                          data-success="Thank you. Check your email for next steps to secure your consultation.">
-                        <div class="row g-3">
-                            <div class="col-md-6 form-group">
-                                <label for="h-full-name">Full name</label>
-                                <input type="text" id="h-full-name" name="full_name" required>
-                            </div>
-                            <div class="col-md-6 form-group">
-                                <label for="h-preferred-name">Preferred name</label>
-                                <input type="text" id="h-preferred-name" name="preferred_name" required>
-                            </div>
-                            <div class="col-md-6 form-group">
-                                <label for="h-gender">Gender</label>
-                                <div class="select-wrap">
-                                    <select id="h-gender" name="gender" required>
-                                        <option value="" selected disabled>Select</option>
-                                        <option>Female</option>
-                                        <option>Male</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6 form-group">
-                                <label for="h-location">Location (country / city)</label>
-                                <input type="text" id="h-location" name="location" required>
-                            </div>
-                            <div class="col-md-6 form-group">
-                                <label for="h-nationality">Nationality</label>
-                                <input type="text" id="h-nationality" name="nationality" required>
-                            </div>
-                            <div class="col-md-6 form-group">
-                                <label for="h-occupation">Occupation / profession</label>
-                                <input type="text" id="h-occupation" name="occupation" required>
-                            </div>
-                            <div class="col-md-6 form-group">
-                                <label for="h-email">Email address</label>
-                                <input type="email" id="h-email" name="email" required>
-                            </div>
-                            <div class="col-md-6 form-group">
-                                <label for="h-phone">Phone number</label>
-                                <input type="tel" id="h-phone" name="phone" required>
-                            </div>
-                        </div>
-                        <button type="submit" class="register-submit-btn">Request a Private Consultation</button>
-                    </form>
+                {% include "partials/public/_consultation_form.html" with p="h" button="Request a Private Consultation" %}
                 </div>
             </div>
         </div>

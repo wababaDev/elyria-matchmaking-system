@@ -35,50 +35,8 @@
                 </div>
                 <div class="modal-body">
                     <p class="modal-intro">Leave your details below and we'll be in touch about your private consultation.</p>
-                    <form class="register-form" data-demo="true"
-                          data-success="Thank you. Check your email for next steps to secure your consultation.">
-                        <div class="row g-3">
-                            <div class="col-md-6 form-group">
-                                <label for="c-full-name">Full name</label>
-                                <input type="text" id="c-full-name" name="full_name" required>
-                            </div>
-                            <div class="col-md-6 form-group">
-                                <label for="c-preferred-name">Preferred name</label>
-                                <input type="text" id="c-preferred-name" name="preferred_name" required>
-                            </div>
-                            <div class="col-md-6 form-group">
-                                <label for="c-gender">Gender</label>
-                                <div class="select-wrap">
-                                    <select id="c-gender" name="gender" required>
-                                        <option value="" selected disabled>Select</option>
-                                        <option>Female</option>
-                                        <option>Male</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6 form-group">
-                                <label for="c-location">Location (country / city)</label>
-                                <input type="text" id="c-location" name="location" required>
-                            </div>
-                            <div class="col-md-6 form-group">
-                                <label for="c-nationality">Nationality</label>
-                                <input type="text" id="c-nationality" name="nationality" required>
-                            </div>
-                            <div class="col-md-6 form-group">
-                                <label for="c-occupation">Occupation / profession</label>
-                                <input type="text" id="c-occupation" name="occupation" required>
-                            </div>
-                            <div class="col-md-6 form-group">
-                                <label for="c-email">Email address</label>
-                                <input type="email" id="c-email" name="email" required>
-                            </div>
-                            <div class="col-md-6 form-group">
-                                <label for="c-phone">Phone number</label>
-                                <input type="tel" id="c-phone" name="phone" required>
-                            </div>
-                        </div>
-                        <button type="submit" class="register-submit-btn">Send request</button>
-                    </form>
+                    
+                    {% include "partials/public/_consultation_form.html" with p="c" button="Send request" %}
                 </div>
             </div>
         </div>

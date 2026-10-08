@@ -1,0 +1,129 @@
+{% load static %}
+{% comment %}
+Consultation request form, shared by the modal, the home page closing section
+and the full-page version shown when there are errors.
+Usage: {% include "partials/_consultation_form.html" with p="c" button="Send request" %}
+"p" keeps ids unique when the form appears twice on one page.
+{% endcomment %}
+{% with f=consultation_form %}
+<form class="register-form" method="post" action="{% url 'website:consultation-request' %}" data-consultation-form>
+    {% csrf_token %}
+
+    {% if f.non_field_errors %}
+        <p class="text-danger mb-3">{{ f.non_field_errors.0 }}</p>
+    {% endif %}
+
+    <div class="d-none" aria-hidden="true">
+        <label for="{{ p }}-website">Website</label>
+        <input type="text" id="{{ p }}-website" name="website" tabindex="-1" autocomplete="off">
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6 form-group">
+            <label for="{{ p }}-full-name">Full name</label>
+            <input type="text" id="{{ p }}-full-name" name="full_name" value="{{ f.full_name.value|default:'' }}" maxlength="150" required>
+            {% if f.full_name.errors %}<small class="text-danger">{{ f.full_name.errors.0 }}</small>{% endif %}
+        </div>
+        <div class="col-md-6 form-group">
+            <label for="{{ p }}-preferred-name">Preferred name</label>
+            <input type="text" id="{{ p }}-preferred-name" name="preferred_name" value="{{ f.preferred_name.value|default:'' }}" maxlength="80" required>
+            {% if f.preferred_name.errors %}<small class="text-danger">{{ f.preferred_name.errors.0 }}</small>{% endif %}
+        </div>
+        <div class="col-md-6 form-group">
+            <label for="{{ p }}-gender">Gender</label>
+            <div class="select-wrap">
+                <select id="{{ p }}-gender" name="gender" required>
+                    <option value="" disabled {% if not f.gender.value %}selected{% endif %}>Select</option>
+                    {% for value, label in f.fields.gender.choices %}{% if value %}
+                        <option value="{{ value }}" {% if f.gender.value == value %}selected{% endif %}>{{ label }}</option>
+                    {% endif %}{% endfor %}
+                </select>
+            </div>
+            {% if f.gender.errors %}<small class="text-danger">{{ f.gender.errors.0 }}</small>{% endif %}
+        </div>
+        <div class="col-md-6 form-group">
+            <label for="{{ p }}-age">Age</label>
+            <input type="text" id="{{ p }}-age" name="age" value="{{ f.age.value|default:'' }}"
+                  inputmode="numeric" pattern="[0-9]{2}" maxlength="2"
+                  title="Please enter your age in numbers, e.g. 34" required>
+            {% if f.age.errors %}<small class="text-danger">{{ f.age.errors.0 }}</small>{% endif %}
+        </div>
+        <div class="col-md-6 form-group">
+            <label for="{{ p }}-seeking">Seeking</label>
+            <div class="select-wrap">
+                <select id="{{ p }}-seeking" name="seeking" required>
+                    <option value="" disabled {% if not f.seeking.value %}selected{% endif %}>Select</option>
+                    {% for value, label in f.fields.seeking.choices %}{% if value %}
+                        <option value="{{ value }}" {% if f.seeking.value == value %}selected{% endif %}>{{ label }}</option>
+                    {% endif %}{% endfor %}
+                </select>
+            </div>
+            {% if f.seeking.errors %}<small class="text-danger">{{ f.seeking.errors.0 }}</small>{% endif %}
+        </div>
+        <div class="col-md-6 form-group">
+            <label for="{{ p }}-relationship-status">Relationship status</label>
+            <div class="select-wrap">
+                <select id="{{ p }}-relationship-status" name="relationship_status" data-blocked="{{ consultation_blocked_statuses }}" required>
+                    <option value="" disabled {% if not f.relationship_status.value %}selected{% endif %}>Select</option>
+                    {% for value, label in f.fields.relationship_status.choices %}{% if value %}
+                        <option value="{{ value }}" {% if f.relationship_status.value == value %}selected{% endif %}>{{ label }}</option>
+                    {% endif %}{% endfor %}
+                </select>
+            </div>
+            {% if f.relationship_status.errors %}<small class="text-danger">{{ f.relationship_status.errors.0 }}</small>{% endif %}
+        </div>
+        <div class="col-12">
+            <p class="text-danger mb-0 d-none" data-blocked-message>{{ consultation_not_eligible_message }}</p>
+        </div>
+        <div class="col-md-6 form-group">
+            <label for="{{ p }}-location">Location (country / city)</label>
+            <input type="text" id="{{ p }}-location" name="location" value="{{ f.location.value|default:'' }}" maxlength="150" required>
+            {% if f.location.errors %}<small class="text-danger">{{ f.location.errors.0 }}</small>{% endif %}
+        </div>
+        <div class="col-md-6 form-group">
+            <label for="{{ p }}-nationality">Nationality</label>
+            <input type="text" id="{{ p }}-nationality" name="nationality" value="{{ f.nationality.value|default:'' }}" maxlength="100" required>
+            {% if f.nationality.errors %}<small class="text-danger">{{ f.nationality.errors.0 }}</small>{% endif %}
+        </div>
+        <div class="col-md-6 form-group">
+            <label for="{{ p }}-occupation">Occupation / profession</label>
+            <input type="text" id="{{ p }}-occupation" name="occupation" value="{{ f.occupation.value|default:'' }}" maxlength="150" required>
+            {% if f.occupation.errors %}<small class="text-danger">{{ f.occupation.errors.0 }}</small>{% endif %}
+        </div>
+        <div class="col-md-6 form-group">
+            <label for="{{ p }}-email">Email address</label>
+            <input type="email" id="{{ p }}-email" name="email" value="{{ f.email.value|default:'' }}" required>
+            {% if f.email.errors %}<small class="text-danger">{{ f.email.errors.0 }}</small>{% endif %}
+        </div>
+        <div class="col-md-6 form-group">
+            <label for="{{ p }}-phone">Phone number</label>
+            <input type="tel" id="{{ p }}-phone" name="phone" value="{{ f.phone.value|default:'' }}" maxlength="30" required>
+            {% if f.phone.errors %}<small class="text-danger">{{ f.phone.errors.0 }}</small>{% endif %}
+        </div>
+    </div>
+    <button type="submit" class="register-submit-btn">{{ button|default:"Send request" }}</button>
+</form>
+{% endwith %}
+
+<script>
+// Show the polite message and disable submit when a blocked status is chosen.
+(function () {
+    if (window.elyriaConsultationFormInit) return;
+    window.elyriaConsultationFormInit = true;
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-consultation-form]').forEach(function (form) {
+            var select = form.querySelector('select[name="relationship_status"]');
+            var note = form.querySelector('[data-blocked-message]');
+            var button = form.querySelector('button[type="submit"]');
+            var blocked = (select.dataset.blocked || '').split(',');
+            function update() {
+                var isBlocked = blocked.indexOf(select.value) !== -1;
+                note.classList.toggle('d-none', !isBlocked);
+                button.disabled = isBlocked;
+            }
+            select.addEventListener('change', update);
+            update();
+        });
+    });
+})();
+</script>

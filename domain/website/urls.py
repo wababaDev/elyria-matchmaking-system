@@ -5,6 +5,7 @@ from domain.website import views
 app_name = "website"
 
 urlpatterns = [
+    # Static pages
     path("", views.HomeView.as_view(), name="home"),
     path("about/", views.AboutView.as_view(), name="about"),
     path("services/", views.ServicesView.as_view(), name="services"),
@@ -14,4 +15,17 @@ urlpatterns = [
     path("events/", views.EventsView.as_view(), name="events"),
     path("faq/", views.FaqView.as_view(), name="faq"),
     path("privacy/", views.PrivacyView.as_view(), name="privacy"),
+
+    
+    # Consultation request form and thank-you page
+    path(
+        "request-consultation/",
+        views.ConsultationRequestView.as_view(),
+        name="consultation-request",
+    ),
+    path(
+        "request-consultation/thank-you/",
+        views.ConsultationThanksView.as_view(),
+        name="consultation-thanks",
+    ),
 ]

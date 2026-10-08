@@ -1,0 +1,25 @@
+{% extends "layouts/public.html" %}
+{% load static %}
+{% block title %}Thank You{% endblock %}
+{% block content %}
+    <section class="page-hero">
+        <div class="page-hero-media"><img src="{% static 'front/assets/image(5).jpg' %}" alt=""></div>
+        <div class="page-hero-overlay"></div>
+        <div class="container">
+            <div class="page-hero-content">
+                <h1 class="page-hero-title">Thank You</h1>
+            </div>
+        </div>
+    </section>
+
+    <section class="section-padding">
+        <div class="container">
+            <div class="row justify-content-center text-center">
+                <div class="col-lg-7">
+                    <p class="lead">Thank you. Check your email for next steps to secure your consultation.</p>
+                    <a href="{% url 'website:home' %}" class="register-submit-btn mt-3">Back to home</a>
+                </div>
+            </div>
+        </div>
+    </section>
+{% endblock %}

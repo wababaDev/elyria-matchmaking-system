@@ -1,0 +1,17 @@
+{% autoescape off %}New consultation request
+
+Name:                {{ consultation.full_name }} (prefers "{{ consultation.preferred_name }}")
+Gender / seeking:    {{ consultation.get_gender_display }} / {{ consultation.get_seeking_display }}
+Age:                 {{ consultation.age }}
+Relationship status: {{ consultation.get_relationship_status_display }}
+Location:            {{ consultation.location }}
+Nationality:         {{ consultation.nationality }}
+Occupation:          {{ consultation.occupation }}
+Email:               {{ consultation.email }}
+Phone:               {{ consultation.phone }}
+Submitted:           {{ consultation.created_at|date:"j M Y, H:i" }}
+
+Payment instructions have been sent to the applicant automatically.
+
+Open the staff dashboard: {{ link }}
+{% endautoescape %}

@@ -246,7 +246,7 @@ function scrollFeatureGalleryTo(index) {
     if (lenis) {
         lenis.scrollTo(absoluteTop + (safeIndex / maxIndex) * scrollDistance, { duration: 1.2 });
     } else {
-            $('html, body').stop().animate({ scrollTop: absoluteTop + (safeIndex / maxIndex) * scrollDistance }, 650);
+        $('html, body').stop().animate({ scrollTop: absoluteTop + (safeIndex / maxIndex) * scrollDistance }, 650);
     }
 }
 
@@ -339,13 +339,13 @@ $(document).ready(function () {
 
         if (isInHero || isInGallery) {
             $header.addClass('is-hidden').removeClass('scrolled');
-            
+
             if (isInGallery) {
                 $header.addClass('gallery-hidden');
             } else {
                 $header.removeClass('gallery-hidden');
             }
-            
+
             lastHeaderScrollY = scrollY;
             return;
         }
@@ -423,10 +423,10 @@ $(document).ready(function () {
 
     // === Initialize Hero Slider (If it exists) ===
     let heroSwiper;
-    
+
     // Check if hero swiper exists in DOM (can be .hero-swiper or .hero-slider)
     const swiperContainer = $('.hero-swiper, .hero-slider').get(0);
-    
+
     if (swiperContainer && typeof Swiper !== 'undefined') {
         heroSwiper = new Swiper(swiperContainer, {
             loop: true,
@@ -505,11 +505,11 @@ $(document).ready(function () {
     });
 
     $('.room-showcase').each(function () {
-    const showcase = $(this);
-    const media = showcase.find('.room-showcase-media');
-    const trigger = showcase.find('.room-showcase-trigger');
-    const panelButton = showcase.find('[data-load-room-preview]');
-    const frame = showcase.find('.room-showcase-frame');
+        const showcase = $(this);
+        const media = showcase.find('.room-showcase-media');
+        const trigger = showcase.find('.room-showcase-trigger');
+        const panelButton = showcase.find('[data-load-room-preview]');
+        const frame = showcase.find('.room-showcase-frame');
 
         function loadRoomPreview() {
             if (!media.length || !frame.length || media.hasClass('is-loaded')) {
@@ -550,6 +550,8 @@ $(document).ready(function () {
     });
 
     $('.register-form').on('submit', function (event) {
+        // Real Django forms submit normally; only preview (data-demo) forms are handled here
+        if (!this.hasAttribute('data-demo')) return;
         event.preventDefault();
 
         const $form = $(this);
@@ -705,14 +707,14 @@ $(document).ready(function () {
     }));
 
     // Interactive Map Markers Hover Effect
-    $('.map-marker').on('mouseenter', function() { 
-        $(this).css('transform', 'scale(1.15)'); 
-    }).on('mouseleave', function() { 
-        $(this).css('transform', 'scale(1)'); 
+    $('.map-marker').on('mouseenter', function () {
+        $(this).css('transform', 'scale(1.15)');
+    }).on('mouseleave', function () {
+        $(this).css('transform', 'scale(1)');
     });
-    
+
     // Prevent tooltip from getting stuck on mobile after click
-    $('.map-marker').on('click', function(e) {
+    $('.map-marker').on('click', function (e) {
         e.preventDefault();
         $(this).tooltip('toggle');
     });
