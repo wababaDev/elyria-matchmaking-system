@@ -81,6 +81,14 @@ class ConsultationRequest(TimeStampedModel):
         default=0, help_text="Times the same email submitted again while this request was open."
     )
     last_resubmitted_at = models.DateTimeField(null=True, blank=True)
+    fee_paid_at = models.DateTimeField(null=True, blank=True)
+    fee_marked_paid_by = models.ForeignKey(
+            settings.AUTH_USER_MODEL,
+            on_delete=models.SET_NULL,
+            null=True,
+            blank=True,
+            related_name="+",
+        )
 
     objects = ConsultationRequestQuerySet.as_manager()
 

@@ -1,0 +1,101 @@
+{% extends 'layouts/management.html' %}
+{% load matchmaking_tags %}
+{% block title %}{{ consultation.full_name }}{% endblock %}
+{% block page_title %}{{ consultation.full_name }}{% endblock %}
+{% block page_actions %}
+    <a href="{% url 'matchmaking:consultation-requests' %}" class="btn btn-sm btn-light">
+        <i class="fe fe-arrow-left me-1"></i>All requests
+    </a>
+{% endblock %}
+
+{% block content %}
+{% if consultation.resubmission_count %}
+    <div class="alert alert-warning fs-13">
+        This person submitted the form again {{ consultation.resubmission_count }} time{{ consultation.resubmission_count|pluralize }}
+        while this request was open (last on {{ consultation.last_resubmitted_at|date:"j M Y, H:i" }}).
+        They may not have received the payment email, or may be waiting to hear back.
+    </div>
+{% endif %}
+
+<div class="row">
+    <div class="col-xl-8">
+        <div class="card custom-card">
+            <div class="card-header"><div class="card-title">Applicant</div></div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4 text-muted fw-normal">Full name</dt>
+                    <dd class="col-sm-8">{{ consultation.full_name }}</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Preferred name</dt>
+                    <dd class="col-sm-8">{{ consultation.preferred_name }}</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Gender / seeking</dt>
+                    <dd class="col-sm-8">{{ consultation.get_gender_display }} / {{ consultation.get_seeking_display }}</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Age</dt>
+                    <dd class="col-sm-8">{{ consultation.age }}</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Relationship status</dt>
+                    <dd class="col-sm-8">{{ consultation.get_relationship_status_display }}</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Location</dt>
+                    <dd class="col-sm-8">{{ consultation.location }}</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Nationality</dt>
+                    <dd class="col-sm-8">{{ consultation.nationality }}</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Occupation</dt>
+                    <dd class="col-sm-8">{{ consultation.occupation }}</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Email</dt>
+                    <dd class="col-sm-8"><a href="mailto:{{ consultation.email }}">{{ consultation.email }}</a></dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Phone</dt>
+                    <dd class="col-sm-8 mb-0"><a href="tel:{{ consultation.phone }}">{{ consultation.phone }}</a></dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="card custom-card">
+            <div class="card-header"><div class="card-title">Status</div></div>
+            <div class="card-body">
+                <p class="mb-3">
+                    <span class="badge {{ consultation.status|status_badge }} fs-12">{{ consultation.get_status_display }}</span>
+                </p>
+                <ul class="list-unstyled fs-13 mb-4">
+                    <li class="mb-2"><span class="text-muted">Submitted:</span> {{ consultation.created_at|date:"j M Y, H:i" }}</li>
+                    <li class="mb-2"><span class="text-muted">Assigned to:</span> {{ consultation.assigned_to.full_name|default:"Unassigned" }}</li>
+                    {% if consultation.fee_paid_at %}
+                        <li class="mb-2">
+                            <span class="text-muted">Fee paid:</span> {{ consultation.fee_paid_at|date:"j M Y" }}
+                            {% if consultation.fee_marked_paid_by %}(marked by {{ consultation.fee_marked_paid_by.full_name }}){% endif %}
+                        </li>
+                    {% endif %}
+                </ul>
+
+                {% if perms.base.manage_consultation_request and consultation.is_open %}
+                    <div class="d-grid gap-2">
+                        {% if consultation.status == "awaiting_payment" %}
+                            <form method="post" action="{% url 'matchmaking:consultation-request-mark-paid' consultation.pk %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-primary w-100"
+                                        onclick="return confirm('Mark the consultation fee as paid for {{ consultation.preferred_name|escapejs }}?');">
+                                    Mark fee as paid
+                                </button>
+                            </form>
+                        {% endif %}
+
+                        {% if consultation.assigned_to_id != request.user.id %}
+                            <form method="post" action="{% url 'matchmaking:consultation-request-assign' consultation.pk %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-light w-100">Assign to me</button>
+                            </form>
+                        {% endif %}
+
+                        <form method="post" action="{% url 'matchmaking:consultation-request-decline' consultation.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger w-100"
+                                    onclick="return confirm('Decline this request? This closes it.');">
+                                Decline request
+                            </button>
+                        </form>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

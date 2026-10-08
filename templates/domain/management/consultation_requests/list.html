@@ -1,0 +1,82 @@
+{% extends 'layouts/management.html' %}
+{% load matchmaking_tags %}
+{% block title %}Consultation Requests{% endblock %}
+{% block page_title %}Consultation Requests{% endblock %}
+
+{% block content %}
+<div class="card custom-card">
+    <div class="card-header justify-content-between flex-wrap gap-3">
+        <ul class="nav nav-pills gap-1 mb-0">
+            {% for value, label in filters %}
+                <li class="nav-item">
+                    <a class="nav-link py-1 px-3 fs-13 {% if value == current_status %}active{% endif %}"
+                       href="?status={{ value }}{% if q %}&q={{ q|urlencode }}{% endif %}">{{ label }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+        <form method="get" class="d-flex gap-2">
+            <input type="hidden" name="status" value="{{ current_status }}">
+            <input type="search" name="q" value="{{ q }}" class="form-control form-control-sm"
+                   placeholder="Search name, email or phone">
+            <button type="submit" class="btn btn-sm btn-primary">Search</button>
+        </form>
+    </div>
+
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Age</th>
+                        <th>Location</th>
+                        <th>Submitted</th>
+                        <th>Status</th>
+                        <th>Assigned to</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in consultation_requests %}
+                        <tr>
+                            <td>
+                                <span class="fw-semibold">{{ c.full_name }}</span>
+                                {% if c.resubmission_count %}
+                                    <span class="badge bg-warning-transparent ms-1" title="Submitted the form again">+{{ c.resubmission_count }}</span>
+                                {% endif %}
+                                <div class="text-muted fs-12">{{ c.email }}</div>
+                            </td>
+                            <td>{{ c.age }}</td>
+                            <td>{{ c.location }}</td>
+                            <td>{{ c.created_at|date:"j M Y" }}</td>
+                            <td><span class="badge {{ c.status|status_badge }}">{{ c.get_status_display }}</span></td>
+                            <td>{{ c.assigned_to.full_name|default:"—" }}</td>
+                            <td class="text-end">
+                                <a href="{% url 'matchmaking:consultation-request-detail' c.pk %}" class="btn btn-sm btn-light">Open</a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-5">No requests here.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if is_paginated %}
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <span class="text-muted fs-13">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            <div class="d-flex gap-2">
+                {% if page_obj.has_previous %}
+                    <a class="btn btn-sm btn-light" href="?status={{ current_status }}&q={{ q|urlencode }}&page={{ page_obj.previous_page_number }}">Previous</a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                    <a class="btn btn-sm btn-light" href="?status={{ current_status }}&q={{ q|urlencode }}&page={{ page_obj.next_page_number }}">Next</a>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

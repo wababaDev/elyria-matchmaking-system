@@ -3,7 +3,7 @@
 <!-- ===== SIDEBAR (same on every staff page) ===== -->
         <aside class="app-sidebar sticky" id="sidebar">
             <div class="main-sidebar-header">
-                <a href="dashboard.html" class="header-logo">
+                <a href="{% url 'matchmaking:dashboard' %}" class="header-logo">
                     <img src="{% static 'front/assets/logo-white.png' %}" alt="Elyria" class="desktop-logo"
                         style="width: 40px; height: auto;">
                     <img src="{% static 'front/assets/logo-words-gold.png' %}" alt="Elyria" class="toggle-logo">
@@ -19,7 +19,7 @@
                     <ul class="main-menu">
                         <li class="slide__category"><span class="category-name">Main</span></li>
                         <li class="slide">
-                            <a href="dashboard.html" class="side-menu__item active">
+                            <a href="{% url 'matchmaking:dashboard' %}" class="side-menu__item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
                                 <i class="fe fe-home side-menu__icon"></i>
                                 <span class="side-menu__label">Overview</span>
                             </a>
@@ -34,7 +34,7 @@
 
                         <li class="slide__category"><span class="category-name">Pipeline</span></li>
                         <li class="slide">
-                            <a href="requests.html" class="side-menu__item">
+                            <a href="{% url 'matchmaking:consultation-requests' %}" class="side-menu__item {% if 'consultation-request' in request.resolver_match.url_name %}active{% endif %}">
                                 <i class="fe fe-inbox side-menu__icon"></i>
                                 <span class="side-menu__label">Consultation Requests</span>
                             </a>

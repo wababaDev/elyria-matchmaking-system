@@ -1,5 +1,6 @@
 {% extends 'layouts/management.html' %}
 {% load static%}
+{% load matchmaking_tags %}
 {% block title %}Dashboard{% endblock %}
 
 {% block page_title %}Overview{% endblock %}
@@ -16,7 +17,7 @@
                                 <span class="avatar avatar-lg bg-primary-transparent avatar-rounded"><i class="fe fe-inbox fs-20"></i></span>
                                 <div>
                                     <p class="text-muted mb-1 fs-13">New requests (this month)</p>
-                                    <h3 class="mb-0 fw-semibold">14</h3>
+                                     <h3 class="mb-0 fw-semibold">{{ requests_this_month }}</h3>
                                 </div>
                             </div>
                         </div>
@@ -27,7 +28,7 @@
                                 <span class="avatar avatar-lg bg-warning-transparent avatar-rounded"><i class="fe fe-clock fs-20"></i></span>
                                 <div>
                                     <p class="text-muted mb-1 fs-13">Awaiting fee payment</p>
-                                    <h3 class="mb-0 fw-semibold">6</h3>
+                                     <h3 class="mb-0 fw-semibold">{{ awaiting_payment_count }}</h3>
                                 </div>
                             </div>
                         </div>
@@ -160,7 +161,7 @@
                         <div class="card custom-card">
                             <div class="card-header justify-content-between">
                                 <div class="card-title">Recent Consultation Requests</div>
-                                <a href="requests.html" class="btn btn-sm btn-primary-light">View all</a>
+                                <a href="requests.html" class="btn btn-sm btn-primary-light"><a href="{% url 'matchmaking:consultation-requests' %}" class="btn btn-sm btn-primary-light">View all</a></a>
                             </div>
                             <div class="card-body p-0">
                                 <div class="table-responsive">
@@ -175,48 +176,20 @@
                                                 <th></th>
                                             </tr>
                                         </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td class="fw-semibold">[Sample] Natasha K.</td>
-                                                <td>34</td>
-                                                <td>Lusaka, Zambia</td>
-                                                <td>3 Oct 2026</td>
-                                                <td><span class="badge status-new">New</span></td>
-                                                <td class="text-end"><a href="#" class="btn btn-sm btn-light">Open</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="fw-semibold">[Sample] David M.</td>
-                                                <td>41</td>
-                                                <td>London, UK</td>
-                                                <td>2 Oct 2026</td>
-                                                <td><span class="badge status-awaiting">Awaiting payment</span></td>
-                                                <td class="text-end"><a href="#" class="btn btn-sm btn-light">Open</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="fw-semibold">[Sample] Grace L.</td>
-                                                <td>29</td>
-                                                <td>Ndola, Zambia</td>
-                                                <td>30 Sep 2026</td>
-                                                <td><span class="badge status-paid">Fee paid</span></td>
-                                                <td class="text-end"><a href="#" class="btn btn-sm btn-light">Open</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="fw-semibold">[Sample] Peter S.</td>
-                                                <td>52</td>
-                                                <td>Johannesburg, SA</td>
-                                                <td>28 Sep 2026</td>
-                                                <td><span class="badge status-complete">Consulted</span></td>
-                                                <td class="text-end"><a href="#" class="btn btn-sm btn-light">Open</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="fw-semibold">[Sample] Ruth N.</td>
-                                                <td>37</td>
-                                                <td>Lusaka, Zambia</td>
-                                                <td>25 Sep 2026</td>
-                                                <td><span class="badge status-declined">Declined</span></td>
-                                                <td class="text-end"><a href="#" class="btn btn-sm btn-light">Open</a></td>
-                                            </tr>
-                                        </tbody>
+                                       <tbody>
+    {% for c in recent_requests %}
+        <tr>
+            <td class="fw-semibold">{{ c.full_name }}</td>
+            <td>{{ c.age }}</td>
+            <td>{{ c.location }}</td>
+            <td>{{ c.created_at|date:"j M Y" }}</td>
+            <td><span class="badge {{ c.status|status_badge }}">{{ c.get_status_display }}</span></td>
+            <td class="text-end"><a href="{% url 'matchmaking:consultation-request-detail' c.pk %}" class="btn btn-sm btn-light">Open</a></td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-4">No requests yet.</td></tr>
+    {% endfor %}
+</tbody>
                                     </table>
                                 </div>
                             </div>

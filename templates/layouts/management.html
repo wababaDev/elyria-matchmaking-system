@@ -37,8 +37,14 @@
  
                 <div class="page-header">
                       <h1 class="page-title my-auto">{% block page_title %}{% endblock %}</h1>
-+                    {% block page_actions %}{% endblock %}
+                   {% block page_actions %}{% endblock %}
                 </div>
+                {% for message in messages %}
+                   <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show fs-13" role="alert">
+                       {{ message }}
+                       <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                   </div>
+               {% endfor %}
 
                 {% block content %}
                 {% endblock %}
