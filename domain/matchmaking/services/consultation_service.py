@@ -13,18 +13,20 @@ def _lock(consultation_request):
 
 
 @transaction.atomic
-def book_consultation(consultation_request, *, scheduled_for, by):
+def book_consultation(consultation_request, *, scheduled_for, location="", by):
     consultation_request = _lock(consultation_request)
     if consultation_request.status != Status.FEE_PAID:
         raise InvalidTransitionError("A consultation can only be booked once the fee has been paid.")
     consultation, _ = Consultation.objects.get_or_create(request=consultation_request)
     
-    if consultation.scheduled_for == scheduled_for:
+    location = location.strip()
+    if consultation.scheduled_for == scheduled_for and consultation.location == location:
        return consultation  # nothing changed: no email
 
     rebooked = consultation.scheduled_for is not None
     consultation.scheduled_for = scheduled_for
-    consultation.save(update_fields=["scheduled_for", "updated_at"])
+    consultation.location = location
+    consultation.save(update_fields=["scheduled_for", "location", "updated_at"])
     transaction.on_commit(lambda: notify_consultation_booked(consultation, rebooked=rebooked))
     return consultation
 

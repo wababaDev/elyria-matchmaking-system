@@ -28,6 +28,7 @@ from domain.matchmaking.services.consultation_service import (
     mark_consulted,
     save_consultation_notes,
 )
+from django.conf import settings
 
 
 class ConsultationRequestListView(StaffRequiredMixin, ListView):
@@ -81,7 +82,11 @@ class ConsultationRequestDetailView(StaffRequiredMixin, DetailView):
             consultation=consultation,
             fee_form=FeePaymentForm(),
             book_form=BookConsultationForm(
-                initial={"scheduled_for": consultation.scheduled_for} if consultation else None
+                 initial={
+                    "scheduled_for": consultation.scheduled_for if consultation else None,
+                    "location": (consultation.location if consultation and consultation.location
+                                 else settings.CONSULTATION_DEFAULT_LOCATION),
+                }
             ),
             notes_form=ConsultationNotesForm(initial={"notes": consultation.notes if consultation else ""}),
             assign_form=AssignForm(initial={"assigned_to": self.object.assigned_to_id}),
@@ -173,8 +178,12 @@ class BookConsultationView(ConsultationRequestActionView):
     success_message = "Consultation booked for {name}."
 
     def perform(self, consultation_request, data):
-        book_consultation(consultation_request, scheduled_for=data["scheduled_for"], by=self.request.user)
-
+        book_consultation(
+           consultation_request,
+           scheduled_for=data["scheduled_for"],
+           location=data["location"],
+           by=self.request.user,
+       )
 
 class SaveNotesView(ConsultationRequestActionView):
     form_class = ConsultationNotesForm

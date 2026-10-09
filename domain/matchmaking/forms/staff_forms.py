@@ -7,8 +7,8 @@ from domain.matchmaking.models import ConsultationRequest
 
 def staff_members():
     return (
-        get_user_model().objects
-        .filter(is_active=True, groups__name__in=STAFF_GROUPS)
+        get_user_model()
+        .objects.filter(is_active=True, groups__name__in=STAFF_GROUPS)
         .distinct()
         .order_by("first_name", "last_name")
     )
@@ -16,7 +16,9 @@ def staff_members():
 
 class FeePaymentForm(forms.Form):
     amount = forms.DecimalField(
-        max_digits=10, decimal_places=2, min_value=0,
+        max_digits=10,
+        decimal_places=2,
+        min_value=0,
         widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
     )
     currency = forms.ChoiceField(
@@ -29,8 +31,11 @@ class FeePaymentForm(forms.Form):
         widget=forms.Select(attrs={"class": "form-select"}),
     )
     reference = forms.CharField(
-        max_length=100, required=False,
-        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Optional"}),
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "Optional"}
+        ),
     )
 
 
@@ -42,7 +47,13 @@ class BookConsultationForm(forms.Form):
             format="%Y-%m-%dT%H:%M",
         ),
     )
-
+    location = forms.CharField(
+        max_length=200,
+        required=False,
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "e.g. Video call, or venue agreed on the call"}
+        ),
+    )
 
 class ConsultationNotesForm(forms.Form):
     notes = forms.CharField(
@@ -52,7 +63,9 @@ class ConsultationNotesForm(forms.Form):
 
 
 class AssignForm(forms.Form):
-    assigned_to = forms.ModelChoiceField(queryset=None, required=False, empty_label="Unassigned")
+    assigned_to = forms.ModelChoiceField(
+        queryset=None, required=False, empty_label="Unassigned"
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

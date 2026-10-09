@@ -5,7 +5,7 @@
 Date:  {{ consultation.scheduled_for|date:"l j F Y" }}
 Time:  {{ consultation.scheduled_for|date:"H:i" }} (Lusaka time){% if applicant.assigned_to %}
 With:  {{ applicant.assigned_to.full_name }}{% endif %}
-Where: [Location / video call details — to be supplied]
+Where: {{ consultation.location|default:"We'll confirm the venue with you directly." }}
 
 If this time no longer suits you, simply reply to this email and we'll arrange another.
 

@@ -158,3 +158,6 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Elyria Matchmaking <enquiries@example.com>")  # TODO: real Zoho address
 TEAM_INBOX_EMAIL = env("TEAM_INBOX_EMAIL", default="enquiries@example.com")  # TODO: real team inbox
 SITE_URL = env("SITE_URL", default="http://127.0.0.1:8000")  # used for links in emails
+
+# --- Consultation defaults ---
+CONSULTATION_DEFAULT_LOCATION = env("CONSULTATION_DEFAULT_LOCATION", default="")

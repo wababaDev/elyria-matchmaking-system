@@ -14,6 +14,10 @@ class Consultation(TimeStampedModel):
         ConsultationRequest, on_delete=models.CASCADE, related_name="consultation"
     )
     scheduled_for = models.DateTimeField(null=True, blank=True)
+    location = models.CharField(
+        max_length=200, blank=True,
+        help_text="Where it will happen, e.g. Elyria office, video call, or an agreed venue.",
+    )
     held_at = models.DateTimeField(null=True, blank=True)
     conducted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
