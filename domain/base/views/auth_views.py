@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.views import LoginView, LogoutView, PasswordResetConfirmView
 
 from domain.base.services.groups import home_url_for
 
@@ -22,3 +22,13 @@ class StaffSignInView(SignInView):
 class SignOutView(LogoutView):
     """POST only (Django 5). Use a small form, not a plain link."""
     next_page = "/"
+
+
+class SetPasswordView(PasswordResetConfirmView):
+    """From the welcome email: choose a password, get signed in, land on your home page."""
+    template_name = "domain/portal/auth/set_password.html"
+    post_reset_login = True
+    post_reset_login_backend = "django.contrib.auth.backends.ModelBackend"
+
+    def get_success_url(self):
+        return home_url_for(self.request.user)

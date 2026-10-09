@@ -1,0 +1,15 @@
+{% autoescape off %}Dear {{ client.preferred_name }},
+
+Welcome to Elyria Matchmaking. We're delighted to confirm your {{ membership.get_tier_display }} Membership.
+
+Your private member account is ready. Please use the link below to choose your password:
+
+{{ link }}
+
+This link is personal to you and expires in 7 days. Once you're signed in, you can complete your profile at your own pace. You can save and return to it at any time.
+
+If the link has expired, simply reply to this email and we'll send you a new one.
+
+Warm regards,
+The Elyria Matchmaking Team
+{% endautoescape %}

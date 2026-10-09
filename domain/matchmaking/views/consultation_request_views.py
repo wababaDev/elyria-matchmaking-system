@@ -14,6 +14,9 @@ from domain.matchmaking.forms import (
     FeePaymentForm,
     staff_members,
 )
+from domain.matchmaking.forms.staff_forms import ConfirmMembershipForm, one_year_from
+from domain.matchmaking.services.membership_service import confirm_membership
+from django.utils import timezone
 from domain.matchmaking.models import ConsultationRequest
 from domain.matchmaking.services.consultation_request_service import (
     LIST_FILTERS,
@@ -59,7 +62,9 @@ class ConsultationRequestListView(StaffRequiredMixin, ListView):
             assigned=assigned,
             staff_members=staff_members(),
             # keeps search + assigned filter when switching tabs or pages
-            base_query=urlencode({k: v for k, v in {"q": q, "assigned": assigned}.items() if v}),
+            base_query=urlencode(
+                {k: v for k, v in {"q": q, "assigned": assigned}.items() if v}
+            ),
         )
         return context
 
@@ -72,7 +77,10 @@ class ConsultationRequestDetailView(StaffRequiredMixin, DetailView):
 
     def get_queryset(self):
         return ConsultationRequest.objects.select_related(
-            "assigned_to", "fee_marked_paid_by", "consultation", "consultation__conducted_by"
+            "assigned_to",
+            "fee_marked_paid_by",
+            "consultation",
+            "consultation__conducted_by",
         )
 
     def get_context_data(self, **kwargs):
@@ -82,15 +90,29 @@ class ConsultationRequestDetailView(StaffRequiredMixin, DetailView):
             consultation=consultation,
             fee_form=FeePaymentForm(),
             book_form=BookConsultationForm(
-                 initial={
-                    "scheduled_for": consultation.scheduled_for if consultation else None,
-                    "location": (consultation.location if consultation and consultation.location
-                                 else settings.CONSULTATION_DEFAULT_LOCATION),
+                initial={
+                    "scheduled_for": (
+                        consultation.scheduled_for if consultation else None
+                    ),
+                    "location": (
+                        consultation.location
+                        if consultation and consultation.location
+                        else settings.CONSULTATION_DEFAULT_LOCATION
+                    ),
                 }
             ),
-            notes_form=ConsultationNotesForm(initial={"notes": consultation.notes if consultation else ""}),
+            notes_form=ConsultationNotesForm(
+                initial={"notes": consultation.notes if consultation else ""}
+            ),
             assign_form=AssignForm(initial={"assigned_to": self.object.assigned_to_id}),
+            confirm_form=ConfirmMembershipForm(
+                initial={
+                    "start_date": timezone.localdate(),
+                    "end_date": one_year_from(timezone.localdate()),
+                }
+            ),
         )
+
         return context
 
 
@@ -103,6 +125,7 @@ def _first_error(form):
 
 class ConsultationRequestActionView(StaffRequiredMixin, SingleObjectMixin, View):
     """Base for the POST-only buttons and small forms on the detail page."""
+
     permission_required = "base.manage_consultation_request"
     model = ConsultationRequest
     http_method_names = ["post"]
@@ -126,11 +149,16 @@ class ConsultationRequestActionView(StaffRequiredMixin, SingleObjectMixin, View)
         except InvalidTransitionError as error:
             messages.error(request, str(error))
         else:
-            messages.success(request, self.success_message.format(name=consultation_request.preferred_name))
+            messages.success(
+                request,
+                self.success_message.format(name=consultation_request.preferred_name),
+            )
         return self._back(consultation_request)
 
     def _back(self, consultation_request):
-        return redirect("matchmaking:consultation-request-detail", pk=consultation_request.pk)
+        return redirect(
+            "matchmaking:consultation-request-detail", pk=consultation_request.pk
+        )
 
 
 class MarkFeePaidView(ConsultationRequestActionView):
@@ -157,13 +185,16 @@ class AssignToMeView(ConsultationRequestActionView):
 
 class AssignRequestView(ConsultationRequestActionView):
     """Admin only: assign to any staff member, or unassign."""
+
     permission_required = "base.manage_staff"
     form_class = AssignForm
 
     def perform(self, consultation_request, data):
         user = data["assigned_to"]
         assign_request(consultation_request, to=user)
-        self.success_message = f"Assigned to {user.full_name}." if user else "Request is now unassigned."
+        self.success_message = (
+            f"Assigned to {user.full_name}." if user else "Request is now unassigned."
+        )
 
 
 class DeclineRequestView(ConsultationRequestActionView):
@@ -179,25 +210,49 @@ class BookConsultationView(ConsultationRequestActionView):
 
     def perform(self, consultation_request, data):
         book_consultation(
-           consultation_request,
-           scheduled_for=data["scheduled_for"],
-           location=data["location"],
-           by=self.request.user,
-       )
+            consultation_request,
+            scheduled_for=data["scheduled_for"],
+            location=data["location"],
+            by=self.request.user,
+        )
+
 
 class SaveNotesView(ConsultationRequestActionView):
     form_class = ConsultationNotesForm
     success_message = "Notes saved."
 
     def perform(self, consultation_request, data):
-        save_consultation_notes(consultation_request, notes=data["notes"], by=self.request.user)
+        save_consultation_notes(
+            consultation_request, notes=data["notes"], by=self.request.user
+        )
 
 
 class MarkConsultedView(ConsultationRequestActionView):
     """Saves the notes in the box, then marks the consultation as held."""
+
     form_class = ConsultationNotesForm
     success_message = "{name}'s consultation is marked as held."
 
     def perform(self, consultation_request, data):
-        save_consultation_notes(consultation_request, notes=data["notes"], by=self.request.user)
+        save_consultation_notes(
+            consultation_request, notes=data["notes"], by=self.request.user
+        )
         mark_consulted(consultation_request, by=self.request.user)
+
+
+class ConfirmMembershipView(ConsultationRequestActionView):
+    form_class = ConfirmMembershipForm
+    success_message = "{name} is now a member. Their sign-in email has been sent."
+
+    def perform(self, consultation_request, data):
+        confirm_membership(
+            consultation_request,
+            tier=data["tier"],
+            start_date=data["start_date"],
+            end_date=data["end_date"],
+            amount=data["amount"],
+            currency=data["currency"],
+            method=data["method"],
+            reference=data["reference"],
+            by=self.request.user,
+        )

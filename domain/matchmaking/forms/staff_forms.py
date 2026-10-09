@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 
 from domain.base.models import STAFF_GROUPS
 from domain.matchmaking.models import ConsultationRequest
+from domain.matchmaking.models import ConsultationRequest, Membership
 
 
 def staff_members():
@@ -73,3 +74,28 @@ class AssignForm(forms.Form):
         field.queryset = staff_members()
         field.label_from_instance = lambda user: user.full_name
         field.widget.attrs["class"] = "form-select form-select-sm"
+
+class ConfirmMembershipForm(FeePaymentForm):
+    """Tier + dates, plus the same payment fields as the consultation fee."""
+    tier = forms.ChoiceField(
+        choices=Membership.Tier.choices,
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    start_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date", "class": "form-control"}))
+    end_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date", "class": "form-control"}))
+
+    field_order = ["tier", "start_date", "end_date", "amount", "currency", "method", "reference"]
+
+    def clean(self):
+        cleaned = super().clean()
+        start, end = cleaned.get("start_date"), cleaned.get("end_date")
+        if start and end and end <= start:
+            raise forms.ValidationError("The end date must be after the start date.")
+        return cleaned
+
+
+def one_year_from(day):
+    try:
+        return day.replace(year=day.year + 1)
+    except ValueError:  # 29 Feb
+        return day.replace(year=day.year + 1, day=28)

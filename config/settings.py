@@ -161,3 +161,6 @@ SITE_URL = env("SITE_URL", default="http://127.0.0.1:8000")  # used for links in
 
 # --- Consultation defaults ---
 CONSULTATION_DEFAULT_LOCATION = env("CONSULTATION_DEFAULT_LOCATION", default="")
+
+# --- Password reset timeout (in seconds) ---
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24 * 7

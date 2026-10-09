@@ -1,7 +1,7 @@
 from django.utils import timezone
 
 from domain.matchmaking.models import  Consultation, ConsultationRequest
-
+from domain.matchmaking.models import Consultation, ConsultationRequest, Membership
 
 def dashboard_summary():
     month_start = timezone.localtime().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -18,4 +18,7 @@ def dashboard_summary():
             .select_related("request", "request__assigned_to")
             .order_by("scheduled_for")[:5]
         ),
+        "active_members": Membership.objects.filter(
+           status=Membership.Status.ACTIVE, end_date__gte=timezone.localdate()
+        ).count(),
     }

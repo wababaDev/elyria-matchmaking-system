@@ -150,10 +150,22 @@
                             {% if cr.fee_marked_paid_by %}<br><span class="text-muted">Recorded by</span> {{ cr.fee_marked_paid_by.full_name }}{% endif %}
                         </li>
                     {% endif %}
+                    {% if cr.client %}
+                        <li class="mb-2">
+                            <span class="text-muted">Member:</span>
+                            {{ cr.client.membership.get_tier_display }},
+                            {{ cr.client.membership.start_date|date:"j M Y" }} – {{ cr.client.membership.end_date|date:"j M Y" }}
+                        </li>
+                    {% endif %}
                 </ul>
 
                 {% if cr.is_open and perms.base.manage_consultation_request %}
                     <div class="d-grid gap-2">
+                        {% if cr.status == "consulted" %}
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#confirmMembershipModal">
+                                Confirm membership
+                            </button>
+                        {% endif %}
                         {% if cr.status == "awaiting_payment" %}
                             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#feePaidModal">
                                 Mark fee as paid
@@ -220,6 +232,61 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
                 <button type="submit" class="btn btn-primary">Confirm payment</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Confirm membership -->
+{% if cr.status == "consulted" %}
+<div class="modal fade" id="confirmMembershipModal" tabindex="-1" aria-labelledby="confirmMembershipTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" action="{% url 'matchmaking:consultation-request-confirm-membership' cr.pk %}" class="modal-content">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h6 class="modal-title" id="confirmMembershipTitle">Confirm membership: {{ cr.preferred_name }}</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fs-13">Tier</label>
+                        {{ confirm_form.tier }}
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fs-13">Start date</label>
+                        {{ confirm_form.start_date }}
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fs-13">End date</label>
+                        {{ confirm_form.end_date }}
+                    </div>
+                    <div class="col-12"><hr class="my-1"><span class="fs-13 fw-semibold">Membership payment</span></div>
+                    <div class="col-7">
+                        <label class="form-label fs-13">Amount</label>
+                        {{ confirm_form.amount }}
+                    </div>
+                    <div class="col-5">
+                        <label class="form-label fs-13">Currency</label>
+                        {{ confirm_form.currency }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fs-13">Method</label>
+                        {{ confirm_form.method }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fs-13">Payment reference</label>
+                        {{ confirm_form.reference }}
+                    </div>
+                </div>
+                <p class="text-muted fs-12 mt-3 mb-0">
+                    This creates their client record and member account, and emails them a link to set their password.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Confirm membership</button>
             </div>
         </form>
     </div>
