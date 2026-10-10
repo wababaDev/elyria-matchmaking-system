@@ -437,3 +437,14 @@ textarea:focus-visible {
     .policy-download { flex-direction: column; align-items: flex-start; text-align: left; }
     .policy-download .register-submit-btn { width: 100%; text-align: center; }
 }
+
+
+/* Married/Separated decline: respectful note, not an error */
+.consult-blocked-note {
+    background: var(--elyria-offwhite);
+    border-left: 3px solid var(--elyria-gold);
+    color: #4a4a4a;
+    padding: 0.85rem 1rem;
+    border-radius: 4px;
+    font-size: 0.95rem;
+}

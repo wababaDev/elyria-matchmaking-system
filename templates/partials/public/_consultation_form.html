@@ -26,7 +26,8 @@ Usage: {% include "partials/_consultation_form.html" with p="c" button="Send req
         </div>
         <div class="col-md-6 form-group">
             <label for="{{ p }}-preferred-name">Preferred name</label>
-            <input type="text" id="{{ p }}-preferred-name" name="preferred_name" value="{{ f.preferred_name.value|default:'' }}" maxlength="80" required>
+           <input type="text" id="{{ p }}-preferred-name" name="preferred_name" value="{{ f.preferred_name.value|default:'' }}" maxlength="80"
++                   placeholder="Optional">
             {% if f.preferred_name.errors %}<small class="text-danger">{{ f.preferred_name.errors.0 }}</small>{% endif %}
         </div>
         <div class="col-md-6 form-group">
@@ -70,10 +71,16 @@ Usage: {% include "partials/_consultation_form.html" with p="c" button="Send req
                     {% endif %}{% endfor %}
                 </select>
             </div>
-            {% if f.relationship_status.errors %}<small class="text-danger">{{ f.relationship_status.errors.0 }}</small>{% endif %}
+            {% if f.relationship_status.errors %}<p class="consult-blocked-note mt-2 mb-0">{{ f.relationship_status.errors.0 }}</p>{% endif %}
         </div>
         <div class="col-12">
-            <p class="text-danger mb-0 d-none" data-blocked-message>{{ consultation_not_eligible_message }}</p>
+            <p class="consult-blocked-note d-none" data-blocked-message>{{ consultation_not_eligible_message }}</p>
+        </div>
+         <div class="col-12 form-group d-none" data-other-status>
+            <label for="{{ p }}-relationship-other">Please explain</label>
+            <input type="text" id="{{ p }}-relationship-other" name="relationship_status_other"
+                   value="{{ f.relationship_status_other.value|default:'' }}" maxlength="200">
+            {% if f.relationship_status_other.errors %}<small class="text-danger">{{ f.relationship_status_other.errors.0 }}</small>{% endif %}
         </div>
         <div class="col-md-6 form-group">
             <label for="{{ p }}-location">Location (country / city)</label>
@@ -116,10 +123,20 @@ Usage: {% include "partials/_consultation_form.html" with p="c" button="Send req
             var note = form.querySelector('[data-blocked-message]');
             var button = form.querySelector('button[type="submit"]');
             var blocked = (select.dataset.blocked || '').split(',');
+            var otherBox = form.querySelector('[data-other-status]');
+            var otherInput = otherBox.querySelector('input');
             function update() {
                 var isBlocked = blocked.indexOf(select.value) !== -1;
                 note.classList.toggle('d-none', !isBlocked);
                 button.disabled = isBlocked;
+                // Brief: rest of the prompt stays visible but inactive
+                form.querySelectorAll('input:not([type=hidden]), select').forEach(function (el) {
+                    if (el !== select) el.disabled = isBlocked;
+                });
+
+                var isOther = select.value === 'other';
+                otherBox.classList.toggle('d-none', !isOther);
+                otherInput.required = isOther;
             }
             select.addEventListener('change', update);
             update();

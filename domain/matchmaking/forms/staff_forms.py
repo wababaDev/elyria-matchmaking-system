@@ -59,7 +59,14 @@ class BookConsultationForm(forms.Form):
 class ConsultationNotesForm(forms.Form):
     notes = forms.CharField(
         required=False,
-        widget=forms.Textarea(attrs={"rows": 8, "class": "form-control"}),
+        widget=forms.Textarea(attrs={
+           "rows": 8,
+           "class": "form-control",
+           "placeholder": (
+               "e.g. general impressions · readiness · key topics discussed · "
+               "concerns or hesitations · recommended tier"
+           ),
+       }),
     )
 
 
