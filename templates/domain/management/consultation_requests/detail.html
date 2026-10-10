@@ -3,295 +3,354 @@
 {% block title %}{{ consultation_request.full_name }}{% endblock %}
 {% block page_title %}{{ consultation_request.full_name }}{% endblock %}
 {% block page_actions %}
-    <a href="{% url 'matchmaking:consultation-requests' %}" class="btn btn-sm btn-light">
-        <i class="fe fe-arrow-left me-1"></i>All requests
-    </a>
+    {% if perms.base.view_all_consultation_requests %}
+        <a href="{% url 'matchmaking:consultation-requests' %}"
+           class="btn btn-sm btn-light"><i class="fe fe-arrow-left me-1"></i>All requests</a>
+    {% else %}
+        <a href="{% url 'matchmaking:my-queue' %}" class="btn btn-sm btn-light"><i class="fe fe-arrow-left me-1"></i>My Queue</a>
+    {% endif %}
 {% endblock %}
 
 {% block content %}
-{% with cr=consultation_request %}
+    {% with cr=consultation_request %}
 
-{% if cr.resubmission_count %}
-    <div class="alert alert-warning fs-13">
-        This person submitted the form again {{ cr.resubmission_count }} time{{ cr.resubmission_count|pluralize }}
-        while this request was open (last on {{ cr.last_resubmitted_at|date:"j M Y, H:i" }}).
-        They may not have received the payment email, or may be waiting to hear back.
-    </div>
-{% endif %}
+        {% if cr.resubmission_count %}
+            <div class="alert alert-warning fs-13">
+                This person submitted the form again {{ cr.resubmission_count }} time{{ cr.resubmission_count|pluralize }}
+                while this request was open (last on {{ cr.last_resubmitted_at|date:"j M Y, H:i" }}).
+                They may not have received the payment email, or may be waiting to hear back.
+            </div>
+        {% endif %}
 
-<div class="row">
-    <div class="col-xl-8">
+        <div class="row">
+            <div class="col-xl-8">
 
-        <!-- Applicant -->
-        <div class="card custom-card">
-            <div class="card-header"><div class="card-title">Applicant</div></div>
-            <div class="card-body">
-                <dl class="row mb-0">
-                    <dt class="col-sm-4 text-muted fw-normal">Full name</dt>
-                    <dd class="col-sm-8">{{ cr.full_name }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Preferred name</dt>
-                    <dd class="col-sm-8">{{ cr.preferred_name }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Gender / seeking</dt>
-                    <dd class="col-sm-8">{{ cr.get_gender_display }} / {{ cr.get_seeking_display }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Age</dt>
-                    <dd class="col-sm-8">{{ cr.age }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Relationship status</dt>
-                    <dd class="col-sm-8">{{ cr.get_relationship_status_display }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Location</dt>
-                    <dd class="col-sm-8">{{ cr.location }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Nationality</dt>
-                    <dd class="col-sm-8">{{ cr.nationality }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Occupation</dt>
-                    <dd class="col-sm-8">{{ cr.occupation }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Email</dt>
-                    <dd class="col-sm-8"><a href="mailto:{{ cr.email }}">{{ cr.email }}</a></dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Phone</dt>
-                    <dd class="col-sm-8 mb-0"><a href="tel:{{ cr.phone }}">{{ cr.phone }}</a></dd>
-                </dl>
+                <!-- Applicant -->
+                <div class="card custom-card">
+                    <div class="card-header">
+                        <div class="card-title">Applicant</div>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4 text-muted fw-normal">Full name</dt>
+                            <dd class="col-sm-8">
+                                {{ cr.full_name }}
+                            </dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Preferred name</dt>
+                            <dd class="col-sm-8">
+                                {{ cr.preferred_name }}
+                            </dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Gender / seeking</dt>
+                            <dd class="col-sm-8">
+                                {{ cr.get_gender_display }} / {{ cr.get_seeking_display }}
+                            </dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Age</dt>
+                            <dd class="col-sm-8">
+                                {{ cr.age }}
+                            </dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Relationship status</dt>
+                            <dd class="col-sm-8">
+                                {{ cr.get_relationship_status_display }}
+                            </dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Location</dt>
+                            <dd class="col-sm-8">
+                                {{ cr.location }}
+                            </dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Nationality</dt>
+                            <dd class="col-sm-8">
+                                {{ cr.nationality }}
+                            </dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Occupation</dt>
+                            <dd class="col-sm-8">
+                                {{ cr.occupation }}
+                            </dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Email</dt>
+                            <dd class="col-sm-8">
+                                <a href="mailto:{{ cr.email }}">{{ cr.email }}</a>
+                            </dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Phone</dt>
+                            <dd class="col-sm-8 mb-0">
+                                <a href="tel:{{ cr.phone }}">{{ cr.phone }}</a>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Consultation -->
+                <!-- Booking -->
+                <div class="card custom-card">
+                    <div class="card-header">
+                        <div class="card-title">Consultation booking</div>
+                    </div>
+                    <div class="card-body">
+                        {% if cr.status == "awaiting_payment" %}
+                            <p class="text-muted mb-0">The consultation can be booked once the fee has been paid.</p>
+
+                        {% elif cr.status == "fee_paid" and perms.base.manage_consultation_request %}
+                            {% if consultation.scheduled_for %}
+                                <p class="fs-13 mb-3">
+                                    <span class="text-muted">Booked for:</span>
+                                    <strong>{{ consultation.scheduled_for|date:"l j F Y, H:i" }}</strong>
+                                    {% if consultation.location %}<br><span class="text-muted">Where:</span> {{ consultation.location }}{% endif %}
+                                </p>
+                            {% endif %}
+                            <form method="post"
+                                  action="{% url 'matchmaking:consultation-request-book' cr.pk %}"
+                                  class="row g-2 align-items-end">
+                                {% csrf_token %}
+                                <div class="col-sm-7">
+                                    <label class="form-label fs-13">{% if consultation.scheduled_for %}New date and time{% else %}Date and time{% endif %}</label>
+                                    {{ book_form.scheduled_for }}
+                                </div>
+                                <div class="col-sm-7">
+                                    <label class="form-label fs-13">Location</label>
+                                    {{ book_form.location }}
+                                </div>
+                                <div class="col-sm-5">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        {% if consultation.scheduled_for %}Reschedule{% else %}Book consultation{% endif %}
+                                    </button>
+                                </div>
+                            </form>
+                            <p class="text-muted fs-12 mt-2 mb-0">The applicant is emailed the date and time automatically.</p>
+
+                        {% elif consultation.held_at %}
+                            <p class="fs-13 mb-0">
+                                <span class="text-muted">Held:</span> {{ consultation.held_at|date:"j M Y, H:i" }}
+                                {% if consultation.conducted_by %}by {{ consultation.conducted_by.full_name }}{% endif %}
+                            </p>
+
+                        {% else %}
+                            <p class="text-muted mb-0">No consultation was held.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                {% if cr.status != "awaiting_payment" %}
+                    <div class="card custom-card">
+                        <div class="card-header">
+                            <div class="card-title">Consultation notes</div>
+                            <span class="text-muted fs-12 ms-2">Internal only, never shown to the client</span>
+                        </div>
+                        <div class="card-body">
+                            {% if cr.status == "fee_paid" or cr.status == "consulted" %}
+                                {% if perms.base.manage_consultation_request %}
+                                    <form method="post"
+                                          action="{% url 'matchmaking:consultation-request-notes' cr.pk %}">
+                                        {% csrf_token %}
+                                        {{ notes_form.notes }}
+                                        <div class="d-flex gap-2 mt-3">
+                                            <button type="submit" class="btn btn-light">Save notes</button>
+                                            {% if cr.status == "fee_paid" %}
+                                                <button type="submit"
+                                                        class="btn btn-primary"
+                                                        formaction="{% url 'matchmaking:consultation-request-mark-consulted' cr.pk %}"
+                                                        data-confirm-title="Mark as consulted"
+                                                        data-confirm="Save the notes and mark {{ cr.preferred_name }}'s consultation as held? It will move to 'To decide' in the queue."
+                                                        data-confirm-button="Save & mark as consulted">
+                                                    Save &amp; mark as consulted
+                                                </button>
+                                            {% endif %}
+                                        </div>
+                                    </form>
+                                {% endif %}
+                            {% else %}
+                                <div class="fs-14">{{ consultation.notes|linebreaksbr|default:"No notes recorded." }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Status + actions -->
+            <div class="col-xl-4">
+                <div class="card custom-card">
+                    <div class="card-header">
+                        <div class="card-title">Status</div>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-3">
+                            <span class="badge {{ cr.status|status_badge }} fs-12">{{ cr.get_status_display }}</span>
+                        </p>
+                        <ul class="list-unstyled fs-13 mb-4">
+                            <li class="mb-2"><span class="text-muted">Submitted:</span> {{ cr.created_at|date:"j M Y, H:i" }}</li>
+                            <li class="mb-2"><span class="text-muted">Assigned to:</span> {{ cr.assigned_to.full_name|default:"Unassigned" }}</li>
+                            {% if cr.fee_paid_at %}
+                                <li class="mb-2">
+                                    <span class="text-muted">Fee paid:</span>
+                                    {{ cr.fee_currency }} {{ cr.fee_amount|floatformat:2 }}
+                                    by {{ cr.get_fee_payment_method_display|lower }}, {{ cr.fee_paid_at|date:"j M Y" }}
+                                    {% if cr.fee_reference %}<br><span class="text-muted">Ref:</span> {{ cr.fee_reference }}{% endif %}
+                                    {% if cr.fee_marked_paid_by %}<br><span class="text-muted">Recorded by</span> {{ cr.fee_marked_paid_by.full_name }}{% endif %}
+                                </li>
+                            {% endif %}
+                            {% if cr.client %}
+                                <li class="mb-2">
+                                    <span class="text-muted">Member:</span>
+                                    {{ cr.client.membership.get_tier_display }},
+                                    {{ cr.client.membership.start_date|date:"j M Y" }} – {{ cr.client.membership.end_date|date:"j M Y" }}
+                                </li>
+                            {% endif %}
+                        </ul>
+
+                        {% if cr.is_open and perms.base.manage_consultation_request %}
+                            <div class="d-grid gap-2">
+                                {% if cr.status == "consulted" %}
+                                    <button type="button"
+                                            class="btn btn-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#confirmMembershipModal">Confirm membership</button>
+                                {% endif %}
+                                {% if cr.status == "awaiting_payment" %}
+                                    <button type="button"
+                                            class="btn btn-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#feePaidModal">Mark fee as paid</button>
+                                {% endif %}
+
+                                {% if perms.base.manage_staff %}
+                                    <form method="post"
+                                          action="{% url 'matchmaking:consultation-request-assign-to' cr.pk %}"
+                                          class="d-flex gap-2">
+                                        {% csrf_token %}
+                                        {{ assign_form.assigned_to }}
+                                        <button type="submit" class="btn btn-sm btn-light text-nowrap">Assign</button>
+                                    </form>
+
+                                {% endif %}
+
+                                <form method="post"
+                                      action="{% url 'matchmaking:consultation-request-decline' cr.pk %}">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                            class="btn btn-outline-danger w-100"
+                                            data-confirm-title="Decline request"
+                                            data-confirm="Decline {{ cr.preferred_name }}'s request? This closes it and removes it from the queue."
+                                            data-confirm-button="Decline"
+                                            data-confirm-variant="danger">Decline request</button>
+                                </form>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Consultation -->
-                <!-- Booking -->
-        <div class="card custom-card">
-            <div class="card-header"><div class="card-title">Consultation booking</div></div>
-            <div class="card-body">
-                {% if cr.status == "awaiting_payment" %}
-                    <p class="text-muted mb-0">The consultation can be booked once the fee has been paid.</p>
-
-                {% elif cr.status == "fee_paid" and perms.base.manage_consultation_request %}
-                    {% if consultation.scheduled_for %}
-                        <p class="fs-13 mb-3">
-                            <span class="text-muted">Booked for:</span>
-                            <strong>{{ consultation.scheduled_for|date:"l j F Y, H:i" }}</strong>
-                            {% if consultation.location %}<br><span class="text-muted">Where:</span> {{ consultation.location }}{% endif %}
-                        </p>
-                    {% endif %}
-                    <form method="post" action="{% url 'matchmaking:consultation-request-book' cr.pk %}" class="row g-2 align-items-end">
+        <!-- Mark fee as paid -->
+        {% if cr.status == "awaiting_payment" %}
+            <div class="modal fade"
+                 id="feePaidModal"
+                 tabindex="-1"
+                 aria-labelledby="feePaidModalTitle"
+                 aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <form method="post"
+                          action="{% url 'matchmaking:consultation-request-mark-paid' cr.pk %}"
+                          class="modal-content">
                         {% csrf_token %}
-                        <div class="col-sm-7">
-                            <label class="form-label fs-13">{% if consultation.scheduled_for %}New date and time{% else %}Date and time{% endif %}</label>
-                            {{ book_form.scheduled_for }}
+                        <div class="modal-header">
+                            <h6 class="modal-title" id="feePaidModalTitle">Mark fee as paid: {{ cr.preferred_name }}</h6>
+                            <button type="button"
+                                    class="btn-close"
+                                    data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
                         </div>
-                        <div class="col-sm-7">
-                           <label class="form-label fs-13">Location</label>
-                           {{ book_form.location }}
-                       </div>
-                        <div class="col-sm-5">
-                            <button type="submit" class="btn btn-primary w-100">
-                                {% if consultation.scheduled_for %}Reschedule{% else %}Book consultation{% endif %}
-                            </button>
+                        <div class="modal-body">
+                            <div class="row g-3">
+                                <div class="col-7">
+                                    <label class="form-label fs-13">Amount</label>
+                                    {{ fee_form.amount }}
+                                </div>
+                                <div class="col-5">
+                                    <label class="form-label fs-13">Currency</label>
+                                    {{ fee_form.currency }}
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fs-13">Method</label>
+                                    {{ fee_form.method }}
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fs-13">Payment reference</label>
+                                    {{ fee_form.reference }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Confirm payment</button>
                         </div>
                     </form>
-                    <p class="text-muted fs-12 mt-2 mb-0">The applicant is emailed the date and time automatically.</p>
-
-                {% elif consultation.held_at %}
-                    <p class="fs-13 mb-0">
-                        <span class="text-muted">Held:</span> {{ consultation.held_at|date:"j M Y, H:i" }}
-                        {% if consultation.conducted_by %}by {{ consultation.conducted_by.full_name }}{% endif %}
-                    </p>
-
-                {% else %}
-                    <p class="text-muted mb-0">No consultation was held.</p>
-                {% endif %}
+                </div>
             </div>
-        </div>
-
-        <!-- Notes -->
-        {% if cr.status != "awaiting_payment" %}
-        <div class="card custom-card">
-            <div class="card-header">
-                <div class="card-title">Consultation notes</div>
-                <span class="text-muted fs-12 ms-2">Internal only, never shown to the client</span>
-            </div>
-            <div class="card-body">
-                {% if cr.status == "fee_paid" or cr.status == "consulted" %}
-                    {% if perms.base.manage_consultation_request %}
-                        <form method="post" action="{% url 'matchmaking:consultation-request-notes' cr.pk %}">
-                            {% csrf_token %}
-                            {{ notes_form.notes }}
-                            <div class="d-flex gap-2 mt-3">
-                                <button type="submit" class="btn btn-light">Save notes</button>
-                                {% if cr.status == "fee_paid" %}
-                                    <button type="submit" class="btn btn-primary"
-                                            formaction="{% url 'matchmaking:consultation-request-mark-consulted' cr.pk %}"
-                                            onclick="return confirm('Save the notes and mark this consultation as held?');">
-                                        Save &amp; mark as consulted
-                                    </button>
-                                {% endif %}
-                            </div>
-                        </form>
-                    {% endif %}
-                {% else %}
-                    <div class="fs-14">{{ consultation.notes|linebreaksbr|default:"No notes recorded." }}</div>
-                {% endif %}
-            </div>
-        </div>
         {% endif %}
-    </div>
 
-    <!-- Status + actions -->
-    <div class="col-xl-4">
-        <div class="card custom-card">
-            <div class="card-header"><div class="card-title">Status</div></div>
-            <div class="card-body">
-                <p class="mb-3">
-                    <span class="badge {{ cr.status|status_badge }} fs-12">{{ cr.get_status_display }}</span>
-                </p>
-                <ul class="list-unstyled fs-13 mb-4">
-                    <li class="mb-2"><span class="text-muted">Submitted:</span> {{ cr.created_at|date:"j M Y, H:i" }}</li>
-                    <li class="mb-2"><span class="text-muted">Assigned to:</span> {{ cr.assigned_to.full_name|default:"Unassigned" }}</li>
-                    {% if cr.fee_paid_at %}
-                        <li class="mb-2">
-                            <span class="text-muted">Fee paid:</span>
-                            {{ cr.fee_currency }} {{ cr.fee_amount|floatformat:2 }}
-                            by {{ cr.get_fee_payment_method_display|lower }}, {{ cr.fee_paid_at|date:"j M Y" }}
-                            {% if cr.fee_reference %}<br><span class="text-muted">Ref:</span> {{ cr.fee_reference }}{% endif %}
-                            {% if cr.fee_marked_paid_by %}<br><span class="text-muted">Recorded by</span> {{ cr.fee_marked_paid_by.full_name }}{% endif %}
-                        </li>
-                    {% endif %}
-                    {% if cr.client %}
-                        <li class="mb-2">
-                            <span class="text-muted">Member:</span>
-                            {{ cr.client.membership.get_tier_display }},
-                            {{ cr.client.membership.start_date|date:"j M Y" }} – {{ cr.client.membership.end_date|date:"j M Y" }}
-                        </li>
-                    {% endif %}
-                </ul>
-
-                {% if cr.is_open and perms.base.manage_consultation_request %}
-                    <div class="d-grid gap-2">
-                        {% if cr.status == "consulted" %}
-                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#confirmMembershipModal">
-                                Confirm membership
-                            </button>
-                        {% endif %}
-                        {% if cr.status == "awaiting_payment" %}
-                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#feePaidModal">
-                                Mark fee as paid
-                            </button>
-                        {% endif %}
-
-                        {% if perms.base.manage_staff %}
-                            <form method="post" action="{% url 'matchmaking:consultation-request-assign-to' cr.pk %}" class="d-flex gap-2">
-                                {% csrf_token %}
-                                {{ assign_form.assigned_to }}
-                                <button type="submit" class="btn btn-sm btn-light text-nowrap">Assign</button>
-                            </form>
-                        {% elif cr.assigned_to_id != request.user.id %}
-                            <form method="post" action="{% url 'matchmaking:consultation-request-assign' cr.pk %}">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-light w-100">Assign to me</button>
-                            </form>
-                        {% endif %}
-
-                        <form method="post" action="{% url 'matchmaking:consultation-request-decline' cr.pk %}">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-outline-danger w-100"
-                                    onclick="return confirm('Decline this request? This closes it.');">
-                                Decline request
-                            </button>
-                        </form>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Mark fee as paid -->
-{% if cr.status == "awaiting_payment" %}
-<div class="modal fade" id="feePaidModal" tabindex="-1" aria-labelledby="feePaidModalTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <form method="post" action="{% url 'matchmaking:consultation-request-mark-paid' cr.pk %}" class="modal-content">
-            {% csrf_token %}
-            <div class="modal-header">
-                <h6 class="modal-title" id="feePaidModalTitle">Mark fee as paid: {{ cr.preferred_name }}</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="row g-3">
-                    <div class="col-7">
-                        <label class="form-label fs-13">Amount</label>
-                        {{ fee_form.amount }}
-                    </div>
-                    <div class="col-5">
-                        <label class="form-label fs-13">Currency</label>
-                        {{ fee_form.currency }}
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fs-13">Method</label>
-                        {{ fee_form.method }}
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fs-13">Payment reference</label>
-                        {{ fee_form.reference }}
-                    </div>
+        <!-- Confirm membership -->
+        {% if cr.status == "consulted" %}
+            <div class="modal fade"
+                 id="confirmMembershipModal"
+                 tabindex="-1"
+                 aria-labelledby="confirmMembershipTitle"
+                 aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <form method="post"
+                          action="{% url 'matchmaking:consultation-request-confirm-membership' cr.pk %}"
+                          class="modal-content">
+                        {% csrf_token %}
+                        <div class="modal-header">
+                            <h6 class="modal-title" id="confirmMembershipTitle">Confirm membership: {{ cr.preferred_name }}</h6>
+                            <button type="button"
+                                    class="btn-close"
+                                    data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label fs-13">Tier</label>
+                                    {{ confirm_form.tier }}
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fs-13">Start date</label>
+                                    {{ confirm_form.start_date }}
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fs-13">End date</label>
+                                    {{ confirm_form.end_date }}
+                                </div>
+                                <div class="col-12">
+                                    <hr class="my-1">
+                                    <span class="fs-13 fw-semibold">Membership payment</span>
+                                </div>
+                                <div class="col-7">
+                                    <label class="form-label fs-13">Amount</label>
+                                    {{ confirm_form.amount }}
+                                </div>
+                                <div class="col-5">
+                                    <label class="form-label fs-13">Currency</label>
+                                    {{ confirm_form.currency }}
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fs-13">Method</label>
+                                    {{ confirm_form.method }}
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fs-13">Payment reference</label>
+                                    {{ confirm_form.reference }}
+                                </div>
+                            </div>
+                            <p class="text-muted fs-12 mt-3 mb-0">
+                                This creates their client record and member account, and emails them a link to set their password.
+                            </p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Confirm membership</button>
+                        </div>
+                    </form>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-primary">Confirm payment</button>
-            </div>
-        </form>
-    </div>
-</div>
-{% endif %}
+        {% endif %}
 
-<!-- Confirm membership -->
-{% if cr.status == "consulted" %}
-<div class="modal fade" id="confirmMembershipModal" tabindex="-1" aria-labelledby="confirmMembershipTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <form method="post" action="{% url 'matchmaking:consultation-request-confirm-membership' cr.pk %}" class="modal-content">
-            {% csrf_token %}
-            <div class="modal-header">
-                <h6 class="modal-title" id="confirmMembershipTitle">Confirm membership: {{ cr.preferred_name }}</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="row g-3">
-                    <div class="col-12">
-                        <label class="form-label fs-13">Tier</label>
-                        {{ confirm_form.tier }}
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label fs-13">Start date</label>
-                        {{ confirm_form.start_date }}
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label fs-13">End date</label>
-                        {{ confirm_form.end_date }}
-                    </div>
-                    <div class="col-12"><hr class="my-1"><span class="fs-13 fw-semibold">Membership payment</span></div>
-                    <div class="col-7">
-                        <label class="form-label fs-13">Amount</label>
-                        {{ confirm_form.amount }}
-                    </div>
-                    <div class="col-5">
-                        <label class="form-label fs-13">Currency</label>
-                        {{ confirm_form.currency }}
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fs-13">Method</label>
-                        {{ confirm_form.method }}
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fs-13">Payment reference</label>
-                        {{ confirm_form.reference }}
-                    </div>
-                </div>
-                <p class="text-muted fs-12 mt-3 mb-0">
-                    This creates their client record and member account, and emails them a link to set their password.
-                </p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-primary">Confirm membership</button>
-            </div>
-        </form>
-    </div>
-</div>
-{% endif %}
-
-{% endwith %}
+    {% endwith %}
 {% endblock %}

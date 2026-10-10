@@ -33,12 +33,14 @@
                         </li>
 
                         <li class="slide__category"><span class="category-name">Pipeline</span></li>
+                         {% if perms.base.view_all_consultation_requests %}
                         <li class="slide">
                             <a href="{% url 'matchmaking:consultation-requests' %}" class="side-menu__item {% if 'consultation-request' in request.resolver_match.url_name %}active{% endif %}">
                                 <i class="fe fe-inbox side-menu__icon"></i>
                                 <span class="side-menu__label">Consultation Requests</span>
                             </a>
                         </li>
+                        {% endif %}
                         <li class="slide">
                             <a href="enquiries.html" class="side-menu__item">
                                 <i class="fe fe-help-circle side-menu__icon"></i>
@@ -52,6 +54,7 @@
                             </a>
                         </li>
 
+                        {% if perms.base.view_all_consultation_requests %}
                         <li class="slide__category"><span class="category-name">Website</span></li>
                         <li class="slide">
                             <a href="events.html" class="side-menu__item">
@@ -67,6 +70,8 @@
                                 <span class="side-menu__label">Settings</span>
                             </a>
                         </li>
+
+                        {% endif %}
                     </ul>
                 </nav>
             </div>

@@ -1,85 +1,103 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en" dir="ltr" data-nav-layout="vertical" data-vertical-style="overlay" data-theme-mode="light" data-header-styles="light" data-menu-styles="color" data-toggled="close">
+<html lang="en"
+      dir="ltr"
+      data-nav-layout="vertical"
+      data-vertical-style="overlay"
+      data-theme-mode="light"
+      data-header-styles="light"
+      data-menu-styles="color"
+      data-toggled="close">
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="robots" content="noindex, nofollow">
-     <title>{% block title %}Overview{% endblock %} — Elyria Staff</title>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="robots" content="noindex, nofollow">
+        <title>{% block title %}Overview{% endblock %} — Elyria Staff</title>
 
-    <link rel="icon" href="{% static 'back/assets/images/brand-logos/favicon.ico' %}" type="image/x-icon">
+        <link rel="icon"
+              href="{% static 'back/assets/images/brand-logos/favicon.ico' %}"
+              type="image/x-icon">
 
-    <!-- Main Theme Js (Sash needs this in the head) -->
-    <script src="{% static 'back/assets/js/main.js' %}"></script>
+        <!-- Main Theme Js (Sash needs this in the head) -->
+        <script src="{% static 'back/assets/js/main.js' %}"></script>
 
-    <link id="style" href="{% static 'back/assets/libs/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
-    <link href="{% static 'back/assets/css/styles.min.css' %}" rel="stylesheet">
-    <link href="{% static 'back/assets/css/icons.css' %}" rel="stylesheet">
-    <link href="{% static 'back/assets/libs/node-waves/waves.min.css' %}" rel="stylesheet">
-    <link href="{% static 'back/assets/libs/simplebar/simplebar.min.css' %}" rel="stylesheet">
-    <link href="{% static 'back/assets/css/elyria-admin.css' %}" rel="stylesheet">
+        <link id="style"
+              href="{% static 'back/assets/libs/bootstrap/css/bootstrap.min.css' %}"
+              rel="stylesheet">
+        <link href="{% static 'back/assets/css/styles.min.css' %}" rel="stylesheet">
+        <link href="{% static 'back/assets/css/icons.css' %}" rel="stylesheet">
+        <link href="{% static 'back/assets/libs/node-waves/waves.min.css' %}"
+              rel="stylesheet">
+        <link href="{% static 'back/assets/libs/simplebar/simplebar.min.css' %}"
+              rel="stylesheet">
+        <link href="{% static 'back/assets/css/elyria-admin.css' %}"
+              rel="stylesheet">
 
-    {% block style %}
-    {% endblock %}
-</head>
+        {% block style %}{% endblock %}
+    </head>
 
-<body>
+    <body>
 
-    <div class="page">
-        {% include "partials/management/_header.html" %}
-       
-        
-        {% include "partials/management/_sidebar.html" %}
-        <!-- ===== PAGE CONTENT (changes per page) ===== -->
-    <div class="main-content app-content">
-            <div class="container-fluid">
- 
-                <div class="page-header">
-                      <h1 class="page-title my-auto">{% block page_title %}{% endblock %}</h1>
-                   {% block page_actions %}{% endblock %}
+        <div class="page">
+            {% include "partials/management/_header.html" %}
+
+
+            {% include "partials/management/_sidebar.html" %}
+            <!-- ===== PAGE CONTENT (changes per page) ===== -->
+            <div class="main-content app-content">
+                <div class="container-fluid">
+
+                    <div class="page-header">
+                        <h1 class="page-title my-auto">
+                            {% block page_title %}{% endblock %}
+                        </h1>
+                        {% block page_actions %}{% endblock %}
+                    </div>
+                    {% for message in messages %}
+                        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show fs-13"
+                             role="alert">
+                            {{ message }}
+                            <button type="button"
+                                    class="btn-close"
+                                    data-bs-dismiss="alert"
+                                    aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+
+                    {% block content %}{% endblock %}
+
                 </div>
-                {% for message in messages %}
-                   <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show fs-13" role="alert">
-                       {{ message }}
-                       <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                   </div>
-               {% endfor %}
-
-                {% block content %}
-                {% endblock %}
- 
             </div>
+
+            {% include "partials/management/_footer.html" %}
+
+
         </div>
 
-        {% include "partials/management/_footer.html" %}
-       
+        <div class="scrollToTop">
+            <span class="arrow"><i class="ri-arrow-up-s-fill fs-20"></i></span>
+        </div>
+        <div id="responsive-overlay"></div>
 
-    </div>
+        <script src="{% static 'back/assets/libs/@popperjs/core/umd/popper.min.js' %}"></script>
+        <script src="{% static 'back/assets/libs/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+        {% include "partials/management/_confirm_modal.html" %}
+        <script src="{% static 'back/assets/js/defaultmenu.min.js' %}"></script>
+        <script src="{% static 'back/assets/libs/node-waves/waves.min.js' %}"></script>
+        <script src="{% static 'back/assets/js/sticky.js' %}"></script>
+        <script src="{% static 'back/assets/libs/simplebar/simplebar.min.js' %}"></script>
+        <script src="{% static 'back/assets/js/simplebar.js' %}"></script>
+        <script src="{% static 'back/assets/js/custom.js' %}"></script>
 
-    <div class="scrollToTop">
-        <span class="arrow"><i class="ri-arrow-up-s-fill fs-20"></i></span>
-    </div>
-    <div id="responsive-overlay"></div>
-
-     <script src="{% static 'back/assets/libs/@popperjs/core/umd/popper.min.js' %}"></script>
-    <script src="{% static 'back/assets/libs/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
-    <script src="{% static 'back/assets/js/defaultmenu.min.js' %}"></script>
-    <script src="{% static 'back/assets/libs/node-waves/waves.min.js' %}"></script>
-    <script src="{% static 'back/assets/js/sticky.js' %}"></script>
-    <script src="{% static 'back/assets/libs/simplebar/simplebar.min.js' %}"></script>
-    <script src="{% static 'back/assets/js/simplebar.js' %}"></script>
-    <script src="{% static 'back/assets/js/custom.js' %}"></script>
- 
-    <!-- ApexCharts (ships with Sash). If this path doesn't exist, use:
+        <!-- ApexCharts (ships with Sash). If this path doesn't exist, use:
          https://cdn.jsdelivr.net/npm/apexcharts -->
-    <script src="{% static 'back/assets/libs/apexcharts/apexcharts.min.js' %}"></script>
+        <script src="{% static 'back/assets/libs/apexcharts/apexcharts.min.js' %}"></script>
 
-    {% block scripts  %}
-    {% endblock %}
-   
- 
+        {% block scripts %}{% endblock %}
 
-</body>
+
+
+    </body>
 
 </html>

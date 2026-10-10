@@ -18,6 +18,7 @@ PERMISSIONS = [
     ("manage_matching", "Can shortlist matches and record feedback and observations"),
     ("manage_event", "Can manage events"),
     ("manage_staff", "Can manage staff accounts and settings"),
+    ("view_all_consultation_requests", "Can see every consultation request, not just assigned ones"),
 ]
 
 _STAFF_PERMISSIONS = [
@@ -33,6 +34,7 @@ GROUP_PERMISSIONS = {
     Groups.MEMBER: ["access_member_portal"],
     Groups.MATCHMAKER: _STAFF_PERMISSIONS,
     Groups.ADMIN: _STAFF_PERMISSIONS + ["manage_staff"],
+    Groups.ADMIN: _STAFF_PERMISSIONS + ["manage_staff", "view_all_consultation_requests"],
 }
 
 

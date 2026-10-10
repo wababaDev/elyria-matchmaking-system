@@ -46,6 +46,9 @@ class ConfirmMembershipTests(TestCase):
     def setUp(self):
         self.client.force_login(self.matchmaker)
 
+    def mine(self, **overrides):
+        return make_request(assigned_to=self.matchmaker, **overrides)
+
     def confirm(self, c, data=MEMBERSHIP, follow=False):
         url = reverse("matchmaking:consultation-request-confirm-membership", args=[c.pk])
         with self.captureOnCommitCallbacks(execute=True):

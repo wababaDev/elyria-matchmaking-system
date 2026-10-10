@@ -25,6 +25,7 @@ from domain.matchmaking.services.consultation_request_service import (
     decline_request,
     filter_consultation_requests,
     mark_fee_paid,
+    requests_visible_to,
 )
 from domain.matchmaking.services.consultation_service import (
     book_consultation,
@@ -35,7 +36,7 @@ from django.conf import settings
 
 
 class ConsultationRequestListView(StaffRequiredMixin, ListView):
-    permission_required = "base.view_consultation_request"
+    permission_required = "base.view_all_consultation_requests"
     template_name = "domain/management/consultation_requests/list.html"
     context_object_name = "consultation_requests"
     paginate_by = 20
@@ -76,7 +77,7 @@ class ConsultationRequestDetailView(StaffRequiredMixin, DetailView):
     context_object_name = "consultation_request"
 
     def get_queryset(self):
-        return ConsultationRequest.objects.select_related(
+        return requests_visible_to(self.request.user).select_related(
             "assigned_to",
             "fee_marked_paid_by",
             "consultation",
@@ -131,6 +132,9 @@ class ConsultationRequestActionView(StaffRequiredMixin, SingleObjectMixin, View)
     http_method_names = ["post"]
     form_class = None
     success_message = ""
+
+    def get_queryset(self):
+        return requests_visible_to(self.request.user)
 
     def perform(self, consultation_request, data):
         raise NotImplementedError
