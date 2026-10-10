@@ -1,4 +1,4 @@
-{% autoescape off %}Dear {{ applicant.preferred_name }},
+{% autoescape off %}Dear {{ applicant.display_name }},
 
 {% if rebooked %}Your private consultation with Elyria Matchmaking has been moved to a new time.{% else %}Thank you, we've received your consultation fee and your private consultation is now booked.{% endif %}
 

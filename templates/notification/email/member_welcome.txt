@@ -1,4 +1,4 @@
-{% autoescape off %}Dear {{ client.preferred_name }},
+{% autoescape off %}Dear {{ client.display_name }},
 
 Welcome to Elyria Matchmaking. We're delighted to confirm your {{ membership.tier.name }} Membership.
 

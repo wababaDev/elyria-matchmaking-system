@@ -47,7 +47,7 @@ def confirm_membership(
         user=user,
         consultation_request=consultation_request,
         full_name=consultation_request.full_name,
-        preferred_name=consultation_request.preferred_name,
+        preferred_name=consultation_request.display_name,
         matchmaker=consultation_request.assigned_to or by,
     )
     membership = Membership.objects.create(
