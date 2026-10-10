@@ -3,6 +3,7 @@ from django.views.generic import RedirectView
 
 from domain.matchmaking.views import consultation_request_views as requests
 from domain.matchmaking.views import dashboard_views, queue_views
+from domain.matchmaking.views import dashboard_views, member_views as members, queue_views
 from domain.matchmaking.views import settings_views as settings_
 
 app_name = "matchmaking"
@@ -36,4 +37,12 @@ urlpatterns = [
     path("settings/tiers/add/", settings_.TierCreateView.as_view(), name="settings-tiers-add"),
     path("settings/tiers/<int:pk>/edit/", settings_.TierUpdateView.as_view(), name="settings-tiers-edit"),
     path("settings/documents/", settings_.DocumentsView.as_view(), name="settings-documents"),
+
+    # Members
+    path("members/", members.MemberListView.as_view(), name="members"),
+    path("members/<int:pk>/", members.MemberDetailView.as_view(), name="member-detail"),
+    path("members/<int:pk>/renew/", members.RenewMembershipView.as_view(), name="member-renew"),
+    path("members/<int:pk>/cancel/", members.CancelMembershipView.as_view(), name="member-cancel"),
+    path("members/<int:pk>/resend-link/", members.ResendSignInLinkView.as_view(), name="member-resend-link"),
+    path("members/<int:pk>/reassign/", members.ReassignMatchmakerView.as_view(), name="member-reassign"),
 ]

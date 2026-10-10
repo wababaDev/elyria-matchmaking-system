@@ -1,0 +1,11 @@
+{% autoescape off %}Dear {{ client.preferred_name }},
+
+As requested, here is a new link to set your password and sign in to your Elyria account:
+
+{{ link }}
+
+The link expires in 7 days. If you didn't ask for this, you can ignore this email; your account is unchanged.
+
+Warm regards,
+The Elyria Matchmaking Team
+{% endautoescape %}

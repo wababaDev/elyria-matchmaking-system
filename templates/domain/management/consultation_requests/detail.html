@@ -189,7 +189,7 @@
                             {% if cr.client %}
                                 <li class="mb-2">
                                     <span class="text-muted">Member:</span>
-                                    {{ cr.client.membership.tier.name }},
+                                    <a href="{% url 'matchmaking:member-detail' cr.client.pk %}">{{ cr.client.membership.tier.name }}</a>,
                                     {{ cr.client.membership.start_date|date:"j M Y" }} – {{ cr.client.membership.end_date|date:"j M Y" }}
                                 </li>
                             {% endif %}
@@ -366,43 +366,46 @@
     {% endwith %}
 {% endblock %}
 {% block scripts %}
-<script>
-// Fill amount + end date from the chosen tier (staff can still edit them)
-document.addEventListener('DOMContentLoaded', function () {
-    var modal = document.getElementById('confirmMembershipModal');
-    if (!modal) return;
-    var tier = modal.querySelector('[data-tier-select]');
-    var start = modal.querySelector('input[name="start_date"]');
-    var end = modal.querySelector('input[name="end_date"]');
-    var amount = modal.querySelector('input[name="amount"]');
-    var currency = modal.querySelector('select[name="currency"]');
+    <script>
+        // Fill amount + end date from the chosen tier (staff can still edit them)
+        document.addEventListener('DOMContentLoaded', function() {
+            var modal = document.getElementById('confirmMembershipModal');
+            if (!modal) return;
+            var tier = modal.querySelector('[data-tier-select]');
+            var start = modal.querySelector('input[name="start_date"]');
+            var end = modal.querySelector('input[name="end_date"]');
+            var amount = modal.querySelector('input[name="amount"]');
+            var currency = modal.querySelector('select[name="currency"]');
 
-    function addMonths(iso, months) {
-        var p = iso.split('-').map(Number);
-        var d = new Date(Date.UTC(p[0], p[1] - 1 + months, 1));
-        var lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
-        d.setUTCDate(Math.min(p[2], lastDay));
-        return d.toISOString().slice(0, 10);
-    }
-    function selected() { return tier.selectedOptions[0]; }
+            function addMonths(iso, months) {
+                var p = iso.split('-').map(Number);
+                var d = new Date(Date.UTC(p[0], p[1] - 1 + months, 1));
+                var lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+                d.setUTCDate(Math.min(p[2], lastDay));
+                return d.toISOString().slice(0, 10);
+            }
 
-    function updateEndDate() {
-        var opt = selected();
-        if (opt && opt.value && start.value) end.value = addMonths(start.value, Number(opt.dataset.months));
-    }
+            function selected() {
+                return tier.selectedOptions[0];
+            }
 
-    tier.addEventListener('change', function () {
-        var opt = selected();
-        if (opt.dataset.price) {
-            amount.value = opt.dataset.price;
-            currency.value = opt.dataset.currency;
-        } else {
-            amount.value = '';
-            amount.placeholder = 'No standard price: enter amount';
-        }
-        updateEndDate();
-    });
-    start.addEventListener('change', updateEndDate);  // only the date follows the start; never overwrites an edited amount
-});
-</script>
+            function updateEndDate() {
+                var opt = selected();
+                if (opt && opt.value && start.value) end.value = addMonths(start.value, Number(opt.dataset.months));
+            }
+
+            tier.addEventListener('change', function() {
+                var opt = selected();
+                if (opt.dataset.price) {
+                    amount.value = opt.dataset.price;
+                    currency.value = opt.dataset.currency;
+                } else {
+                    amount.value = '';
+                    amount.placeholder = 'No standard price: enter amount';
+                }
+                updateEndDate();
+            });
+            start.addEventListener('change', updateEndDate); // only the date follows the start; never overwrites an edited amount
+        });
+    </script>
 {% endblock %}

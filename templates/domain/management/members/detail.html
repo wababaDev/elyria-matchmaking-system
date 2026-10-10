@@ -1,0 +1,195 @@
+{% extends 'layouts/management.html' %}
+{% load matchmaking_tags %}
+{% block title %}{{ member.full_name }}{% endblock %}
+{% block page_title %}{{ member.full_name }}{% endblock %}
+{% block page_actions %}
+    <a href="{% url 'matchmaking:members' %}" class="btn btn-sm btn-light"><i class="fe fe-arrow-left me-1"></i>Members</a>
+{% endblock %}
+
+{% block content %}
+{% with status=membership.display_status %}
+<div class="row">
+    <div class="col-xl-8">
+
+        <!-- Details (from their original request) -->
+        <div class="card custom-card">
+            <div class="card-header"><div class="card-title">Details</div></div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4 text-muted fw-normal">Preferred name</dt><dd class="col-sm-8">{{ member.preferred_name }}</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Gender / seeking</dt><dd class="col-sm-8">{{ details.get_gender_display }} / {{ details.get_seeking_display }}</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Age (at request)</dt><dd class="col-sm-8">{{ details.age }}</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Location</dt><dd class="col-sm-8">{{ details.location }}</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Nationality</dt><dd class="col-sm-8">{{ details.nationality }}</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Occupation</dt><dd class="col-sm-8">{{ details.occupation }}</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Email</dt><dd class="col-sm-8"><a href="mailto:{{ member.user.email }}">{{ member.user.email }}</a></dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Phone</dt><dd class="col-sm-8 mb-0"><a href="tel:{{ details.phone }}">{{ details.phone }}</a></dd>
+                </dl>
+            </div>
+        </div>
+
+        <!-- Consultation notes (read-only here) -->
+        <div class="card custom-card">
+            <div class="card-header">
+                <div class="card-title">Consultation notes</div>
+                <span class="text-muted fs-12 ms-2">Internal only</span>
+            </div>
+            <div class="card-body">
+                {% if consultation %}
+                    <p class="text-muted fs-12 mb-2">
+                        Held {{ consultation.held_at|date:"j M Y" }}{% if consultation.conducted_by %} by {{ consultation.conducted_by.full_name }}{% endif %}
+                    </p>
+                    <div class="fs-14">{{ consultation.notes|linebreaksbr|default:"No notes recorded." }}</div>
+                {% else %}
+                    <p class="text-muted mb-0">No consultation recorded.</p>
+                {% endif %}
+                <a href="{% url 'matchmaking:consultation-request-detail' member.consultation_request_id %}" class="fs-12 d-inline-block mt-3">View original request</a>
+            </div>
+        </div>
+
+        <!-- Payments -->
+        <div class="card custom-card">
+            <div class="card-header"><div class="card-title">Membership payments</div></div>
+            <div class="card-body p-0">
+                <table class="table mb-0 align-middle fs-13">
+                    <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Method</th><th>Reference</th><th>Recorded by</th></tr></thead>
+                    <tbody>
+                        {% for p in payments %}
+                            <tr>
+                                <td>{{ p.paid_on|date:"j M Y" }}</td>
+                                <td>{{ p.get_kind_display }}</td>
+                                <td class="fw-semibold">{{ p.currency }} {{ p.amount|floatformat:2 }}</td>
+                                <td>{{ p.get_method_display }}</td>
+                                <td>{{ p.reference|default:"—" }}</td>
+                                <td>{{ p.recorded_by.full_name|default:"—" }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="6" class="text-center text-muted py-4">No payments recorded.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <p class="text-muted fs-12">Profile, cross-check log, shortlist, post-date feedback and observations will appear here as they're built.</p>
+    </div>
+
+    <div class="col-xl-4">
+
+        <!-- Membership -->
+        <div class="card custom-card">
+            <div class="card-header justify-content-between">
+                <div class="card-title">Membership</div>
+                <span class="badge {{ status|member_badge }}">{{ status|member_status_label }}</span>
+            </div>
+            <div class="card-body">
+                <p class="fs-5 fw-semibold mb-1">{{ membership.tier.name }}</p>
+                <p class="fs-13 mb-3">
+                    {{ membership.start_date|date:"j M Y" }} – {{ membership.end_date|date:"j M Y" }}
+                    {% if status == "active" or status == "expiring" %}<br><span class="text-muted">{{ membership.days_left }} day{{ membership.days_left|pluralize }} left</span>{% endif %}
+                </p>
+                {% if status == "cancelled" %}
+                    <p class="fs-13 text-muted mb-0">
+                        Cancelled {{ membership.cancelled_at|date:"j M Y" }}.<br>{{ membership.cancellation_reason }}
+                    </p>
+                {% else %}
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#renewModal">Record renewal</button>
+                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelModal">Cancel membership</button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Account -->
+        <div class="card custom-card">
+            <div class="card-header"><div class="card-title">Account</div></div>
+            <div class="card-body fs-13">
+                {% if not member.user.is_active %}
+                    <p class="mb-0"><span class="badge bg-light text-muted">Sign-in disabled</span></p>
+                {% elif not member.user.has_usable_password %}
+                    <p class="mb-3"><span class="badge bg-warning-transparent">Hasn't set a password yet</span></p>
+                {% else %}
+                    <p class="mb-3"><span class="text-muted">Last sign-in:</span> {{ member.user.last_login|date:"j M Y, H:i"|default:"Never" }}</p>
+                {% endif %}
+                {% if member.user.is_active %}
+                    <form method="post" action="{% url 'matchmaking:member-resend-link' member.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-light w-100"
+                                data-confirm-title="Send sign-in link"
+                                data-confirm="Have you checked this request came from {{ member.preferred_name }}? A new link will be emailed to {{ member.user.email }}."
+                                data-confirm-button="Send link">Resend sign-in link</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Matchmaker -->
+        <div class="card custom-card">
+            <div class="card-header"><div class="card-title">Matchmaker</div></div>
+            <div class="card-body">
+                <p class="mb-3">{{ member.matchmaker.full_name|default:"Not assigned" }}</p>
+                {% if perms.base.manage_staff %}
+                    <form method="post" action="{% url 'matchmaking:member-reassign' member.pk %}" class="d-flex gap-2">
+                        {% csrf_token %}
+                        {{ assign_form.assigned_to }}
+                        <button type="submit" class="btn btn-sm btn-light text-nowrap">Change</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if status != "cancelled" %}
+<!-- Renew -->
+<div class="modal fade" id="renewModal" tabindex="-1" aria-labelledby="renewTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" action="{% url 'matchmaking:member-renew' member.pk %}" class="modal-content">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h6 class="modal-title" id="renewTitle">Record renewal: {{ member.preferred_name }}</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted fs-12">Currently ends {{ membership.end_date|date:"j M Y" }}. Renewing early extends from that date; renewing after it ends starts from today.</p>
+                {% include "partials/management/_field.html" with field=renew_form.tier %}
+                {% include "partials/management/_field.html" with field=renew_form.end_date %}
+                <div class="row">
+                    <div class="col-7">{% include "partials/management/_field.html" with field=renew_form.amount %}</div>
+                    <div class="col-5">{% include "partials/management/_field.html" with field=renew_form.currency %}</div>
+                </div>
+                {% include "partials/management/_field.html" with field=renew_form.method %}
+                {% include "partials/management/_field.html" with field=renew_form.reference %}
+            </div>
+            <div class="modal-footer d-flex flex-nowrap gap-2">
+                <button type="button" class="btn btn-light flex-fill m-0" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary flex-fill m-0">Record renewal</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Cancel -->
+<div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" action="{% url 'matchmaking:member-cancel' member.pk %}" class="modal-content">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h6 class="modal-title" id="cancelTitle">Cancel membership: {{ member.preferred_name }}</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                {% include "partials/management/_field.html" with field=cancel_form.reason %}
+                <p class="text-muted fs-12 mb-0">They will no longer be able to sign in. Their records and payment history are kept.</p>
+            </div>
+            <div class="modal-footer d-flex flex-nowrap gap-2">
+                <button type="button" class="btn btn-light flex-fill m-0" data-bs-dismiss="modal">Keep membership</button>
+                <button type="submit" class="btn btn-danger flex-fill m-0">Cancel membership</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endwith %}
+{% endblock %}

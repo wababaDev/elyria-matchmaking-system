@@ -33,3 +33,20 @@ def send_member_welcome(client):
         )
     except Exception:
         logger.exception("Welcome email failed for client %s", client.pk)
+
+
+def send_sign_in_link(client):
+    """For lost or expired links: the brief's 'resend' fallback."""
+    try:
+        body = render_to_string(
+            "notification/email/member_sign_in_link.txt",
+            {"client": client, "link": set_password_link(client.user)},
+        )
+        send_mail(
+            subject="Your Elyria sign-in link",
+            message=body,
+            from_email=None,
+            recipient_list=[client.user.email],
+        )
+    except Exception:
+        logger.exception("Sign-in link email failed for client %s", client.pk)

@@ -1,0 +1,81 @@
+{% extends 'layouts/management.html' %}
+{% load matchmaking_tags %}
+{% block title %}Members{% endblock %}
+{% block page_title %}{% if perms.base.view_all_members %}Members{% else %}My Members{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card custom-card">
+    <div class="card-header justify-content-between flex-wrap gap-3">
+        <ul class="nav nav-pills gap-1 mb-0">
+            {% for value, label in filters %}
+                <li class="nav-item">
+                    <a class="nav-link py-1 px-3 fs-13 {% if value == current_status %}active{% endif %}"
+                       href="?status={{ value }}{% if base_query %}&{{ base_query }}{% endif %}">{{ label }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+        <form method="get" class="d-flex gap-2">
+            <input type="hidden" name="status" value="{{ current_status }}">
+            {% if perms.base.view_all_members %}
+                <select name="matchmaker" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">Any matchmaker</option>
+                    <option value="none" {% if matchmaker == "none" %}selected{% endif %}>No matchmaker</option>
+                    {% for s in staff_members %}
+                        <option value="{{ s.pk }}" {% if matchmaker == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.full_name }}</option>
+                    {% endfor %}
+                </select>
+            {% endif %}
+            <input type="search" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Search name or email">
+            <button type="submit" class="btn btn-sm btn-primary">Search</button>
+        </form>
+    </div>
+
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Tier</th>
+                        <th>Membership</th>
+                        <th>Ends</th>
+                        {% if perms.base.view_all_members %}<th>Matchmaker</th>{% endif %}
+                        <th>Member since</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in members %}
+                        {% with status=m.membership.display_status %}
+                            <tr>
+                                <td>
+                                    <span class="fw-semibold">{{ m.full_name }}</span>
+                                    <div class="text-muted fs-12">{{ m.user.email }}</div>
+                                </td>
+                                <td>{{ m.membership.tier.name }}</td>
+                                <td><span class="badge {{ status|member_badge }}">{{ status|member_status_label }}</span></td>
+                                <td class="fs-13">{{ m.membership.end_date|date:"j M Y" }}</td>
+                                {% if perms.base.view_all_members %}<td>{{ m.matchmaker.full_name|default:"—" }}</td>{% endif %}
+                                <td class="fs-13">{{ m.created_at|date:"j M Y" }}</td>
+                                <td class="text-end"><a href="{% url 'matchmaking:member-detail' m.pk %}" class="btn btn-sm btn-light">Open</a></td>
+                            </tr>
+                        {% endwith %}
+                    {% empty %}
+                        <tr><td colspan="7" class="text-center text-muted py-5">No members here.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if is_paginated %}
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <span class="text-muted fs-13">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            <div class="d-flex gap-2">
+                {% if page_obj.has_previous %}<a class="btn btn-sm btn-light" href="?status={{ current_status }}&{{ base_query }}&page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+                {% if page_obj.has_next %}<a class="btn btn-sm btn-light" href="?status={{ current_status }}&{{ base_query }}&page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

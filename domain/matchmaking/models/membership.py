@@ -6,6 +6,9 @@ from domain.base.models import TimeStampedModel
 from domain.matchmaking.models.client import Client
 from domain.matchmaking.models.consultation_request import ConsultationRequest
 from domain.matchmaking.models.membership_tier import MembershipTier
+from datetime import timedelta
+
+EXPIRING_SOON_DAYS = 30
 
 class Membership(TimeStampedModel):
     class Status(models.TextChoices):
@@ -27,6 +30,21 @@ class Membership(TimeStampedModel):
     def is_current(self):
         return self.status == self.Status.ACTIVE and self.end_date >= timezone.localdate()
 
+    @property
+    def display_status(self):
+        """active / expiring / expired / cancelled, for badges and filters."""
+        if self.status == self.Status.CANCELLED:
+            return "cancelled"
+        today = timezone.localdate()
+        if self.end_date < today:
+            return "expired"
+        if self.end_date <= today + timedelta(days=EXPIRING_SOON_DAYS):
+            return "expiring"
+        return "active"
+
+    @property
+    def days_left(self):
+        return (self.end_date - timezone.localdate()).days
 
 class MembershipPayment(TimeStampedModel):
     """One row per payment, so renewals build a history instead of overwriting."""

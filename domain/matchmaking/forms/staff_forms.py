@@ -6,6 +6,7 @@ from domain.matchmaking.models import ConsultationRequest
 from domain.matchmaking.models import ConsultationRequest, Membership
 from domain.matchmaking.models import ConsultationRequest, MembershipTier
 from domain.matchmaking.utils import add_months
+from domain.base.forms.base_forms import BootstrapFormMixin
 
 def staff_members():
     return (
@@ -122,3 +123,24 @@ def one_year_from(day):
         return day.replace(year=day.year + 1)
     except ValueError:  # 29 Feb
         return day.replace(year=day.year + 1, day=28)
+
+
+class RenewMembershipForm(BootstrapFormMixin, FeePaymentForm):
+    tier = forms.ModelChoiceField(queryset=MembershipTier.objects.none())
+    end_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+        help_text="Leave blank to extend by the tier's duration.",
+    )
+
+    field_order = ["tier", "end_date", "amount", "currency", "method", "reference"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["tier"].queryset = MembershipTier.objects.filter(is_active=True)
+        self.fields["amount"].required = False
+        self.fields["amount"].help_text = "Leave blank to use the tier's standard price."
+
+
+class CancelMembershipForm(BootstrapFormMixin, forms.Form):
+    reason = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}), label="Reason for cancelling")

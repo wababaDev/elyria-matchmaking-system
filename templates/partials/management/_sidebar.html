@@ -63,9 +63,9 @@
                     </a>
                 </li>
                 <li class="slide">
-                    <a href="clients.html" class="side-menu__item">
+                    <a href="{% url 'matchmaking:members' %}" class="side-menu__item {% if 'member' in request.resolver_match.url_name %}active{% endif %}">
                         <i class="fe fe-users side-menu__icon"></i>
-                        <span class="side-menu__label">Clients</span>
+                        <span class="side-menu__label">{% if perms.base.view_all_members %}Members{% else %}My Members{% endif %}</span>
                     </a>
                 </li>
 
