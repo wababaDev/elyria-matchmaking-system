@@ -1,6 +1,6 @@
 {% autoescape off %}Dear {{ client.preferred_name }},
 
-Welcome to Elyria Matchmaking. We're delighted to confirm your {{ membership.get_tier_display }} Membership.
+Welcome to Elyria Matchmaking. We're delighted to confirm your {{ membership.tier.name }} Membership.
 
 Your private member account is ready. Please use the link below to choose your password:
 

@@ -4,7 +4,8 @@ from django.contrib.auth import get_user_model
 from domain.base.models import STAFF_GROUPS
 from domain.matchmaking.models import ConsultationRequest
 from domain.matchmaking.models import ConsultationRequest, Membership
-
+from domain.matchmaking.models import ConsultationRequest, MembershipTier
+from domain.matchmaking.utils import add_months
 
 def staff_members():
     return (
@@ -83,23 +84,38 @@ class AssignForm(forms.Form):
         field.widget.attrs["class"] = "form-select form-select-sm"
 
 class ConfirmMembershipForm(FeePaymentForm):
-    """Tier + dates, plus the same payment fields as the consultation fee."""
-    tier = forms.ChoiceField(
-        choices=Membership.Tier.choices,
-        widget=forms.Select(attrs={"class": "form-select"}),
-    )
+    """Picking a tier fills in the price and end date; staff can still override both."""
+    tier = forms.ModelChoiceField(queryset=MembershipTier.objects.none())
     start_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date", "class": "form-control"}))
-    end_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date", "class": "form-control"}))
+    end_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+    )
 
     field_order = ["tier", "start_date", "end_date", "amount", "currency", "method", "reference"]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["tier"].queryset = MembershipTier.objects.filter(is_active=True)
+        self.fields["amount"].required = False
+
     def clean(self):
         cleaned = super().clean()
-        start, end = cleaned.get("start_date"), cleaned.get("end_date")
+        tier, start = cleaned.get("tier"), cleaned.get("start_date")
+
+        if tier and start and not cleaned.get("end_date"):
+            cleaned["end_date"] = add_months(start, tier.duration_months)
+
+        if tier and cleaned.get("amount") is None:
+            if tier.price is None:
+                self.add_error("amount", "Enter the amount paid. This tier has no standard price.")
+            else:
+                cleaned["amount"] = tier.price
+
+        end = cleaned.get("end_date")
         if start and end and end <= start:
             raise forms.ValidationError("The end date must be after the start date.")
         return cleaned
-
 
 def one_year_from(day):
     try:

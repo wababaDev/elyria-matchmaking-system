@@ -4,6 +4,7 @@ from domain.matchmaking.models import Consultation, ConsultationRequest
 from domain.matchmaking.models import (
     Client, Consultation, ConsultationRequest, Membership, MembershipPayment,
 )
+from domain.matchmaking.models import MembershipTier
 
 class ConsultationInline(admin.StackedInline):
     model = Consultation
@@ -35,3 +36,8 @@ class MembershipAdmin(admin.ModelAdmin):
 class ClientAdmin(admin.ModelAdmin):
     list_display = ("full_name", "user", "matchmaker", "created_at")
     search_fields = ("full_name", "preferred_name", "user__email")
+
+@admin.register(MembershipTier)
+class MembershipTierAdmin(admin.ModelAdmin):
+    list_display = ("name", "price", "currency", "duration_months", "display_order", "is_active")
+    list_editable = ("price", "currency", "duration_months", "display_order", "is_active")

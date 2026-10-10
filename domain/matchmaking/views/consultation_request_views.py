@@ -14,10 +14,10 @@ from domain.matchmaking.forms import (
     FeePaymentForm,
     staff_members,
 )
-from domain.matchmaking.forms.staff_forms import ConfirmMembershipForm, one_year_from
+from domain.matchmaking.forms.staff_forms import ConfirmMembershipForm
 from domain.matchmaking.services.membership_service import confirm_membership
 from django.utils import timezone
-from domain.matchmaking.models import ConsultationRequest
+from domain.matchmaking.models import ConsultationRequest, MembershipTier
 from domain.matchmaking.services.consultation_request_service import (
     LIST_FILTERS,
     InvalidTransitionError,
@@ -109,9 +109,9 @@ class ConsultationRequestDetailView(StaffRequiredMixin, DetailView):
             confirm_form=ConfirmMembershipForm(
                 initial={
                     "start_date": timezone.localdate(),
-                    "end_date": one_year_from(timezone.localdate()),
                 }
             ),
+            active_tiers=MembershipTier.objects.filter(is_active=True),
         )
 
         return context

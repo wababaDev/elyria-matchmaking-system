@@ -1,5 +1,6 @@
 {% extends 'layouts/management.html' %}
 {% load matchmaking_tags %}
+{% load l10n %}
 {% block title %}{{ consultation_request.full_name }}{% endblock %}
 {% block page_title %}{{ consultation_request.full_name }}{% endblock %}
 {% block page_actions %}
@@ -188,7 +189,7 @@
                             {% if cr.client %}
                                 <li class="mb-2">
                                     <span class="text-muted">Member:</span>
-                                    {{ cr.client.membership.get_tier_display }},
+                                    {{ cr.client.membership.tier.name }},
                                     {{ cr.client.membership.start_date|date:"j M Y" }} – {{ cr.client.membership.end_date|date:"j M Y" }}
                                 </li>
                             {% endif %}
@@ -308,7 +309,17 @@
                             <div class="row g-3">
                                 <div class="col-12">
                                     <label class="form-label fs-13">Tier</label>
-                                    {{ confirm_form.tier }}
+                                    <select name="tier" class="form-select" data-tier-select required>
+                                        <option value="" selected disabled>Select a tier</option>
+                                        {% for tier in active_tiers %}
+                                            <option value="{{ tier.pk }}"
+                                                    data-price="{% if tier.price is not None %}{{ tier.price|unlocalize }}{% endif %}"
+                                                    data-currency="{{ tier.currency }}"
+                                                    data-months="{{ tier.duration_months }}">
+                                                {{ tier.name }}{% if tier.price is not None %} ({{ tier.currency }} {{ tier.price|floatformat:2 }}, {{ tier.duration_months }} months){% endif %}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label fs-13">Start date</label>
@@ -353,4 +364,45 @@
         {% endif %}
 
     {% endwith %}
+{% endblock %}
+{% block scripts %}
+<script>
+// Fill amount + end date from the chosen tier (staff can still edit them)
+document.addEventListener('DOMContentLoaded', function () {
+    var modal = document.getElementById('confirmMembershipModal');
+    if (!modal) return;
+    var tier = modal.querySelector('[data-tier-select]');
+    var start = modal.querySelector('input[name="start_date"]');
+    var end = modal.querySelector('input[name="end_date"]');
+    var amount = modal.querySelector('input[name="amount"]');
+    var currency = modal.querySelector('select[name="currency"]');
+
+    function addMonths(iso, months) {
+        var p = iso.split('-').map(Number);
+        var d = new Date(Date.UTC(p[0], p[1] - 1 + months, 1));
+        var lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+        d.setUTCDate(Math.min(p[2], lastDay));
+        return d.toISOString().slice(0, 10);
+    }
+    function selected() { return tier.selectedOptions[0]; }
+
+    function updateEndDate() {
+        var opt = selected();
+        if (opt && opt.value && start.value) end.value = addMonths(start.value, Number(opt.dataset.months));
+    }
+
+    tier.addEventListener('change', function () {
+        var opt = selected();
+        if (opt.dataset.price) {
+            amount.value = opt.dataset.price;
+            currency.value = opt.dataset.currency;
+        } else {
+            amount.value = '';
+            amount.placeholder = 'No standard price: enter amount';
+        }
+        updateEndDate();
+    });
+    start.addEventListener('change', updateEndDate);  // only the date follows the start; never overwrites an edited amount
+});
+</script>
 {% endblock %}
