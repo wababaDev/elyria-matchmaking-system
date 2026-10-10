@@ -32,8 +32,7 @@ from domain.matchmaking.services.consultation_service import (
     mark_consulted,
     save_consultation_notes,
 )
-from django.conf import settings
-
+from domain.website.models import SiteSettings
 
 class ConsultationRequestListView(StaffRequiredMixin, ListView):
     permission_required = "base.view_all_consultation_requests"
@@ -98,7 +97,7 @@ class ConsultationRequestDetailView(StaffRequiredMixin, DetailView):
                     "location": (
                         consultation.location
                         if consultation and consultation.location
-                        else settings.CONSULTATION_DEFAULT_LOCATION
+                        else SiteSettings.load().default_consultation_location
                     ),
                 }
             ),

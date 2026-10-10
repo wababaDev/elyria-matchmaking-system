@@ -1,0 +1,13 @@
+{% extends 'layouts/management.html' %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<ul class="nav nav-pills gap-1 mb-3">
+    <li class="nav-item"><a class="nav-link {% if settings_tab == 'general' %}active{% endif %}" href="{% url 'matchmaking:settings-general' %}">General</a></li>
+    <li class="nav-item"><a class="nav-link {% if settings_tab == 'staff' %}active{% endif %}" href="{% url 'matchmaking:settings-staff' %}">Staff</a></li>
+    <li class="nav-item"><a class="nav-link {% if settings_tab == 'tiers' %}active{% endif %}" href="{% url 'matchmaking:settings-tiers' %}">Membership tiers</a></li>
+    <li class="nav-item"><a class="nav-link {% if settings_tab == 'documents' %}active{% endif %}" href="{% url 'matchmaking:settings-documents' %}">Documents</a></li>
+</ul>
+{% block settings_content %}{% endblock %}
+{% endblock %}

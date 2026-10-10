@@ -1,0 +1,26 @@
+{% extends 'domain/management/settings/_base.html' %}
+
+{% block settings_content %}
+<div class="card custom-card" style="max-width: 640px;">
+    <div class="card-header"><div class="card-title">{% if object %}Edit {{ object.name }}{% else %}Add tier{% endif %}</div></div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            {% include "partials/management/_field.html" with field=form.name %}
+            <div class="row">
+                <div class="col-7">{% include "partials/management/_field.html" with field=form.price %}</div>
+                <div class="col-5">{% include "partials/management/_field.html" with field=form.currency %}</div>
+            </div>
+            <div class="row">
+                <div class="col-6">{% include "partials/management/_field.html" with field=form.duration_months %}</div>
+                <div class="col-6">{% include "partials/management/_field.html" with field=form.display_order %}</div>
+            </div>
+            {% include "partials/management/_field.html" with field=form.is_active %}
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'matchmaking:settings-tiers' %}" class="btn btn-light">Cancel</a>
+                <button type="submit" class="btn btn-primary">Save tier</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

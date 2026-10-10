@@ -9,9 +9,9 @@
                 <div class="footer-links-wrap">
                     <div class="footer-links-group">
                         <span class="footer-label">Contact</span>
-                        <span class="footer-meta"> Business address — Lusaka Zambia</span>
-                         <a href="tel:+260779127695" class="footer-link">+260 779 127 695</a>
-                        <a href="mailto:info@elyriamatchmaking.com" class="footer-link">info@elyriamatchmaking.com</a>
+                         {% if site.business_address %}<span class="footer-meta">{{ site.business_address }}</span>{% endif %}
+                        {% if site.contact_phone %}<a href="tel:{{ site.contact_phone|cut:' ' }}" class="footer-link">{{ site.contact_phone }}</a>{% endif %}
+                        {% if site.contact_email %}<a href="mailto:{{ site.contact_email }}" class="footer-link">{{ site.contact_email }}</a>{% endif %}
                     </div>
                     <div class="footer-links-group">
                         <span class="footer-label">More</span>

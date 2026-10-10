@@ -1,0 +1,41 @@
+{% extends 'domain/management/settings/_base.html' %}
+
+{% block settings_content %}
+{% if not object.payment_details_ready %}
+    <div class="alert alert-warning fs-13">
+        No payment details yet. The payment email applicants receive still shows placeholders.
+        Add bank or mobile money details below before going live.
+    </div>
+{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+    <div class="row">
+        <div class="col-xl-6">
+            <div class="card custom-card">
+                <div class="card-header"><div class="card-title">Consultation fee &amp; payment</div></div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-7">{% include "partials/management/_field.html" with field=form.consultation_fee %}</div>
+                        <div class="col-5">{% include "partials/management/_field.html" with field=form.consultation_fee_currency %}</div>
+                    </div>
+                    {% include "partials/management/_field.html" with field=form.bank_details %}
+                    {% include "partials/management/_field.html" with field=form.mobile_money_details %}
+                    {% include "partials/management/_field.html" with field=form.default_consultation_location %}
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-6">
+            <div class="card custom-card">
+                <div class="card-header"><div class="card-title">Contact details (website footer)</div></div>
+                <div class="card-body">
+                    {% include "partials/management/_field.html" with field=form.contact_phone %}
+                    {% include "partials/management/_field.html" with field=form.contact_email %}
+                    {% include "partials/management/_field.html" with field=form.business_address %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Save settings</button>
+</form>
+{% endblock %}

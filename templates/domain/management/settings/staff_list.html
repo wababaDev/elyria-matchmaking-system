@@ -1,0 +1,50 @@
+{% extends 'domain/management/settings/_base.html' %}
+
+{% block settings_content %}
+<div class="card custom-card">
+    <div class="card-header justify-content-between">
+        <div class="card-title">Staff</div>
+        <a href="{% url 'matchmaking:settings-staff-add' %}" class="btn btn-sm btn-primary"><i class="fe fe-plus me-1"></i>Add staff member</a>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr><th>Name</th><th>Job title</th><th>Role</th><th>Status</th><th>Last sign-in</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for member, role in staff %}
+                        <tr class="{% if not member.is_active %}text-muted{% endif %}">
+                            <td>
+                                <span class="fw-semibold">{{ member.full_name }}</span>
+                                <div class="fs-12 text-muted">{{ member.email }}</div>
+                            </td>
+                            <td>{{ member.profile.job_title|default:"—" }}</td>
+                            <td>{{ role }}</td>
+                            <td>
+                                {% if not member.is_active %}<span class="badge bg-light text-muted">Deactivated</span>
+                                {% elif not member.has_usable_password %}<span class="badge bg-warning-transparent">Invite pending</span>
+                                {% else %}<span class="badge bg-success-transparent">Active</span>{% endif %}
+                            </td>
+                            <td class="fs-13">{{ member.last_login|date:"j M Y"|default:"Never" }}</td>
+                            <td class="text-end text-nowrap">
+                                {% if member.is_active and not member.has_usable_password %}
+                                    <form method="post" action="{% url 'matchmaking:settings-staff-resend' member.pk %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-light"
+                                                data-confirm="Send {{ member.first_name }} a new password link?"
+                                                data-confirm-button="Send link">Resend invite</button>
+                                    </form>
+                                {% endif %}
+                                <a href="{% url 'matchmaking:settings-staff-edit' member.pk %}" class="btn btn-sm btn-light">Edit</a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="6" class="text-center text-muted py-4">No staff yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

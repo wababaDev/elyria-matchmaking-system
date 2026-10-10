@@ -1,14 +1,16 @@
 {% autoescape off %}Dear {{ consultation.display_name }},
 
-Thank you for your interest in Elyria Matchmaking. Before we can schedule your private consultation, a consultation fee of K1,000 applies. This is separate from, and not the same as, any future Membership fee — it secures your consultation slot only.
+Thank you for your interest in Elyria Matchmaking. Before we can schedule your private consultation, a consultation fee of {{ site.fee_display }} applies. This is separate from, and not the same as, any future Membership fee — it secures your consultation slot only.
 
 This fee reflects the depth of our process: a professional assessment of fit conducted by an experienced matchmaker, not a sales call. Our vetting and matchmaking process is thorough by design, and this fee reflects the genuine time, discretion, and diligence involved from this very first step.
 
-To proceed, please send K1,000 via:
+To proceed, please send {{ site.fee_display }} via:
 
-Bank transfer: [Elyria's Bank Account details — TBC]
-Mobile money: [Mobile Money details — TBC]
+Bank transfer:
+{{ site.bank_details|default:"[Bank details — to be supplied]" }}
 
+Mobile money:
+{{site.mobile_money_details|default:"[Mobile money details — to be supplied]" }}
 Once paid, please contact us by phone, email, or WhatsApp with proof of payment, and a member of our team will be in touch within three working days.
 
 Warm regards,

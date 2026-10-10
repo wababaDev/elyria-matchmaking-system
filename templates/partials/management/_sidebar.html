@@ -1,78 +1,96 @@
 {% load static %}
 
 <!-- ===== SIDEBAR (same on every staff page) ===== -->
-        <aside class="app-sidebar sticky" id="sidebar">
-            <div class="main-sidebar-header">
-                <a href="{% url 'matchmaking:dashboard' %}" class="header-logo">
-                    <img src="{% static 'front/assets/logo-white.png' %}" alt="Elyria" class="desktop-logo"
-                        style="width: 40px; height: auto;">
-                    <img src="{% static 'front/assets/logo-words-gold.png' %}" alt="Elyria" class="toggle-logo">
+<aside class="app-sidebar sticky" id="sidebar">
+    <div class="main-sidebar-header">
+        <a href="{% url 'matchmaking:dashboard' %}" class="header-logo">
+            <img src="{% static 'front/assets/logo-white.png' %}"
+                 alt="Elyria"
+                 class="desktop-logo"
+                 style="width: 40px;
+                        height: auto">
+            <img src="{% static 'front/assets/logo-words-gold.png' %}"
+                 alt="Elyria"
+                 class="toggle-logo">
 
-                    <img src="{% static 'front/assets/logo-words-gold.png' %}" alt="Elyria" class="desktop-white"
-                        style="width: 145px; height: auto;">
-                    <img src="{% static 'front/assets/logo-head.png' %}" alt="Elyria" class="toggle-white"  style="width: 24px; height: auto;">
-                </a>
-            </div>
+            <img src="{% static 'front/assets/logo-words-gold.png' %}"
+                 alt="Elyria"
+                 class="desktop-white"
+                 style="width: 145px;
+                        height: auto">
+            <img src="{% static 'front/assets/logo-head.png' %}"
+                 alt="Elyria"
+                 class="toggle-white"
+                 style="width: 24px;
+                        height: auto">
+        </a>
+    </div>
 
-            <div class="main-sidebar" id="sidebar-scroll">
-                <nav class="main-menu-container nav nav-pills flex-column sub-open">
-                    <ul class="main-menu">
-                        <li class="slide__category"><span class="category-name">Main</span></li>
-                        <li class="slide">
-                            <a href="{% url 'matchmaking:dashboard' %}" class="side-menu__item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-                                <i class="fe fe-home side-menu__icon"></i>
-                                <span class="side-menu__label">Overview</span>
-                            </a>
-                        </li>
-                        <li class="slide">
-                            <a href="{% url 'matchmaking:my-queue' %}" class="side-menu__item {% if request.resolver_match.url_name == 'my-queue' %}active{% endif %}">
-                                <i class="fe fe-check-square side-menu__icon"></i>
-                                <span class="side-menu__label">My Queue</span>
-                                 {% if staff_queue_count %}<span class="badge bg-elyria-gold ms-auto">{{ staff_queue_count }}</span>{% endif %}
-                            </a>
-                        </li>
+    <div class="main-sidebar" id="sidebar-scroll">
+        <nav class="main-menu-container nav nav-pills flex-column sub-open">
+            <ul class="main-menu">
+                <li class="slide__category"><span class="category-name">Main</span></li>
+                <li class="slide">
+                    <a href="{% url 'matchmaking:dashboard' %}"
+                       class="side-menu__item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                        <i class="fe fe-home side-menu__icon"></i>
+                        <span class="side-menu__label">Overview</span>
+                    </a>
+                </li>
+                <li class="slide">
+                    <a href="{% url 'matchmaking:my-queue' %}"
+                       class="side-menu__item {% if request.resolver_match.url_name == 'my-queue' %}active{% endif %}">
+                        <i class="fe fe-check-square side-menu__icon"></i>
+                        <span class="side-menu__label">My Queue</span>
+                        {% if staff_queue_count %}<span class="badge bg-elyria-gold ms-auto">{{ staff_queue_count }}</span>{% endif %}
+                    </a>
+                </li>
 
-                        <li class="slide__category"><span class="category-name">Pipeline</span></li>
-                         {% if perms.base.view_all_consultation_requests %}
-                        <li class="slide">
-                            <a href="{% url 'matchmaking:consultation-requests' %}" class="side-menu__item {% if 'consultation-request' in request.resolver_match.url_name %}active{% endif %}">
-                                <i class="fe fe-inbox side-menu__icon"></i>
-                                <span class="side-menu__label">Consultation Requests</span>
-                            </a>
-                        </li>
-                        {% endif %}
-                        <li class="slide">
-                            <a href="enquiries.html" class="side-menu__item">
-                                <i class="fe fe-help-circle side-menu__icon"></i>
-                                <span class="side-menu__label">Enquiries</span>
-                            </a>
-                        </li>
-                        <li class="slide">
-                            <a href="clients.html" class="side-menu__item">
-                                <i class="fe fe-users side-menu__icon"></i>
-                                <span class="side-menu__label">Clients</span>
-                            </a>
-                        </li>
+                <li class="slide__category"><span class="category-name">Pipeline</span></li>
+                {% if perms.base.view_all_consultation_requests %}
+                    <li class="slide">
+                        <a href="{% url 'matchmaking:consultation-requests' %}"
+                           class="side-menu__item {% if 'consultation-request' in request.resolver_match.url_name %}active{% endif %}">
+                            <i class="fe fe-inbox side-menu__icon"></i>
+                            <span class="side-menu__label">Consultation Requests</span>
+                        </a>
+                    </li>
+                {% endif %}
+                <li class="slide">
+                    <a href="enquiries.html" class="side-menu__item">
+                        <i class="fe fe-help-circle side-menu__icon"></i>
+                        <span class="side-menu__label">Enquiries</span>
+                    </a>
+                </li>
+                <li class="slide">
+                    <a href="clients.html" class="side-menu__item">
+                        <i class="fe fe-users side-menu__icon"></i>
+                        <span class="side-menu__label">Clients</span>
+                    </a>
+                </li>
 
-                        {% if perms.base.view_all_consultation_requests %}
-                        <li class="slide__category"><span class="category-name">Website</span></li>
-                        <li class="slide">
-                            <a href="events.html" class="side-menu__item">
-                                <i class="fe fe-calendar side-menu__icon"></i>
-                                <span class="side-menu__label">Events</span>
-                            </a>
-                        </li>
+                {% if perms.base.view_all_consultation_requests %}
+                    <li class="slide__category"><span class="category-name">Website</span></li>
+                    <li class="slide">
+                        <a href="events.html" class="side-menu__item">
+                            <i class="fe fe-calendar side-menu__icon"></i>
+                            <span class="side-menu__label">Events</span>
+                        </a>
+                    </li>
 
+                    {% if perms.base.manage_staff %}
                         <li class="slide__category"><span class="category-name">Admin</span></li>
                         <li class="slide">
-                            <a href="settings.html" class="side-menu__item">
+                            <a href="{% url 'matchmaking:settings' %}"
+                               class="side-menu__item {% if 'settings' in request.resolver_match.url_name %}active{% endif %}">
                                 <i class="fe fe-settings side-menu__icon"></i>
                                 <span class="side-menu__label">Settings</span>
                             </a>
                         </li>
+                    {% endif %}
 
-                        {% endif %}
-                    </ul>
-                </nav>
-            </div>
-        </aside>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+</aside>

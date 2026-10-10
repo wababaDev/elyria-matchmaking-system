@@ -6,8 +6,17 @@ from .staff_forms import (
     FeePaymentForm,
     staff_members,
 )
+from .settings_forms import (
+    MembershipTierForm,
+    PrivacyPolicyUploadForm,
+    SiteSettingsForm,
+    StaffCreateForm,
+    StaffUpdateForm,
+)
 
 __all__ = [
     "ConsultationRequestForm", "AssignForm", "BookConsultationForm",
     "ConsultationNotesForm", "FeePaymentForm", "staff_members",
+    "MembershipTierForm", "PrivacyPolicyUploadForm", "SiteSettingsForm",
+    "StaffCreateForm", "StaffUpdateForm",
 ]

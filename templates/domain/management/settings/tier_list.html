@@ -1,0 +1,27 @@
+{% extends 'domain/management/settings/_base.html' %}
+
+{% block settings_content %}
+<div class="card custom-card">
+    <div class="card-header justify-content-between">
+        <div class="card-title">Membership tiers</div>
+        <a href="{% url 'matchmaking:settings-tiers-add' %}" class="btn btn-sm btn-primary"><i class="fe fe-plus me-1"></i>Add tier</a>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead><tr><th>Name</th><th>Standard price</th><th>Duration</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+                {% for tier in tiers %}
+                    <tr class="{% if not tier.is_active %}text-muted{% endif %}">
+                        <td class="fw-semibold">{{ tier.name }}</td>
+                        <td>{% if tier.price is not None %}{{ tier.currency }} {{ tier.price|floatformat:2 }}{% else %}<span class="text-muted">Agreed case by case</span>{% endif %}</td>
+                        <td>{{ tier.duration_months }} month{{ tier.duration_months|pluralize }}</td>
+                        <td>{% if tier.is_active %}<span class="badge bg-success-transparent">Active</span>{% else %}<span class="badge bg-light text-muted">Retired</span>{% endif %}</td>
+                        <td class="text-end"><a href="{% url 'matchmaking:settings-tiers-edit' tier.pk %}" class="btn btn-sm btn-light">Edit</a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer text-muted fs-12">Changes apply to new memberships only. Existing members keep what they paid.</div>
+</div>
+{% endblock %}

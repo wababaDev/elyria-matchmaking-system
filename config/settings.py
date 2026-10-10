@@ -76,6 +76,8 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "domain.website.context_processors.consultation_form",
                 "domain.matchmaking.context_processors.staff_queue",
+                "domain.website.context_processors.site_settings",
+
             ],
         },
     },
@@ -140,6 +142,9 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 # --- Sign-in / redirects ---
 LOGIN_URL = "base:sign-in"
 STAFF_LOGIN_URL = "base:staff-sign-in"
@@ -148,8 +153,8 @@ STAFF_HOME_URL = "matchmaking:dashboard"
 
 
 # --- Email (terminal locally; Zoho on the server via .env) ---
-# EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
-EMAIL_BACKEND = env("EMAIL_BACKEND", default="notification.backends.OneLineConsoleBackend")
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+# EMAIL_BACKEND = env("EMAIL_BACKEND", default="notification.backends.OneLineConsoleBackend")
 EMAIL_HOST = env("EMAIL_HOST", default="smtppro.zoho.com")
 EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
@@ -157,10 +162,7 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Elyria Matchmaking <enquiries@example.com>")  # TODO: real Zoho address
 TEAM_INBOX_EMAIL = env("TEAM_INBOX_EMAIL", default="enquiries@example.com")  # TODO: real team inbox
-SITE_URL = env("SITE_URL", default="http://127.0.0.1:8000")  # used for links in emails
-
-# --- Consultation defaults ---
-CONSULTATION_DEFAULT_LOCATION = env("CONSULTATION_DEFAULT_LOCATION", default="")
+SITE_URL = env("SITE_URL", default="http://127.0.0.1:2004")  # used for links in emails
 
 # --- Password reset timeout (in seconds) ---
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24 * 7
