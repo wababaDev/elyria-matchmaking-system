@@ -448,3 +448,35 @@ textarea:focus-visible {
     border-radius: 4px;
     font-size: 0.95rem;
 }
+
+/* ---------- Social media icons ---------- */
+/* ---------- Social media icons ---------- */
+.footer .social-links,
+.social-links {
+    display: flex;
+    flex-direction: row;
+    gap: 0.6rem;
+    margin-top: 0.9rem;
+    flex-wrap: wrap;
+}
+.footer .social-links a,
+.social-links a {
+    width: 36px;
+    height: 36px;
+    display: inline-grid !important;
+    place-items: center;
+    padding: 0 !important;
+    border-radius: 50%;
+    border: 1px solid var(--elyria-gold);
+    color: var(--elyria-gold) !important;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: background 0.2s, color 0.2s;
+}
+.footer .social-links a:hover,
+.social-links a:hover {
+    background: var(--elyria-gold);
+    color: var(--elyria-maroon) !important;
+}
+.footer .social-links a i,
+.social-links a i { line-height: 1; }

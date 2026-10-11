@@ -1,0 +1,9 @@
+{% if site.social_links %}
+    <div class="social-links">
+        {% for name, url, icon in site.social_links %}
+            <a href="{{ url }}" target="_blank" rel="noopener" aria-label="Elyria on {{ name }}" title="{{ name }}">
+                <i class="fa-brands {{ icon }}"></i>
+            </a>
+        {% endfor %}
+    </div>
+{% endif %}

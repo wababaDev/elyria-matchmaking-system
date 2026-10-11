@@ -314,7 +314,7 @@ $(document).ready(function () {
         const delta = scrollY - lastHeaderScrollY;
         const $heroSection = $('#home');
         const heroHeight = $heroSection.length ? $heroSection.outerHeight() : window.innerHeight;
-        const isInHero = scrollY < heroHeight * 0.7;
+        const isInHero = scrollY < heroHeight * 0.4;
 
         if (isInHero) {
             $header.addClass('is-hidden');

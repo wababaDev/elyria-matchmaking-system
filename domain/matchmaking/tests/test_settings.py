@@ -110,3 +110,16 @@ class SettingsTests(TestCase):
     def test_privacy_page_hides_button_without_document(self):
         response = self.client.get(reverse("website:privacy"))
         self.assertNotContains(response, "Download PDF")
+
+    def test_social_links_only_show_when_set(self):
+        response = self.client.get(reverse("website:events"))
+        self.assertContains(response, "No upcoming events at present.")
+        self.assertNotContains(response, "fa-instagram")
+
+        site = SiteSettings.load()
+        site.instagram_url = "https://instagram.com/elyriamatchmaking"
+        site.save()
+
+        response = self.client.get(reverse("website:events"))
+        self.assertContains(response, "https://instagram.com/elyriamatchmaking")
+        self.assertNotContains(response, "fa-facebook-f")  # still blank, still hidden

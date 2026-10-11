@@ -16,6 +16,13 @@ class SiteSettings(TimeStampedModel):
     contact_email = models.EmailField(blank=True, default="info@elyriamatchmaking.com")
     business_address = models.CharField(max_length=200, blank=True)
 
+    # Social media: leave blank until each page is live; blank ones are hidden on the site
+    facebook_url = models.URLField("Facebook", blank=True)
+    instagram_url = models.URLField("Instagram", blank=True)
+    tiktok_url = models.URLField("TikTok", blank=True)
+    linkedin_url = models.URLField("LinkedIn", blank=True)
+    x_url = models.URLField("X (Twitter)", blank=True)
+
     class Meta:
         verbose_name_plural = "site settings"
 
@@ -40,3 +47,15 @@ class SiteSettings(TimeStampedModel):
     @property
     def payment_details_ready(self):
         return bool(self.bank_details.strip() or self.mobile_money_details.strip())
+
+    @property
+    def social_links(self):
+        """Only the platforms that have a link, in display order."""
+        platforms = [
+            ("Facebook", self.facebook_url, "fa-facebook-f"),
+            ("Instagram", self.instagram_url, "fa-instagram"),
+            ("TikTok", self.tiktok_url, "fa-tiktok"),
+            ("LinkedIn", self.linkedin_url, "fa-linkedin-in"),
+            ("X", self.x_url, "fa-x-twitter"),
+        ]
+        return [(name, url, icon) for name, url, icon in platforms if url]

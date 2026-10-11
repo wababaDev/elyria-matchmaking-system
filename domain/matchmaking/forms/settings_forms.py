@@ -15,10 +15,13 @@ class SiteSettingsForm(BootstrapFormMixin, forms.ModelForm):
         fields = [
             "consultation_fee", "consultation_fee_currency", "bank_details", "mobile_money_details",
             "default_consultation_location", "contact_phone", "contact_email", "business_address",
+            "facebook_url", "instagram_url", "tiktok_url", "linkedin_url", "x_url",
         ]
         widgets = {
             "bank_details": forms.Textarea(attrs={"rows": 3}),
             "mobile_money_details": forms.Textarea(attrs={"rows": 3}),
+            **{f: forms.URLInput(attrs={"placeholder": "https://…"})
+               for f in ["facebook_url", "instagram_url", "tiktok_url", "linkedin_url", "x_url"]},
         }
 
 
