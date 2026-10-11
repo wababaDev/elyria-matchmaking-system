@@ -52,11 +52,11 @@ def submit_consultation_request(candidate: ConsultationRequest) -> SubmissionRes
     return SubmissionResult(candidate, created=True)
 
 
-def is_rate_limited(ip: str | None) -> bool:
+def is_rate_limited(ip: str | None, scope: str = "consultation-request") -> bool:
     """Counts this attempt. True once an address goes over the hourly limit."""
     if not ip:
         return False
-    key = f"consultation-request:{ip}"
+    key = f"{scope}:{ip}"
     if cache.add(key, 1, RATE_LIMIT_WINDOW):
         return False
     try:

@@ -1,0 +1,12 @@
+{% autoescape off %}New Learn More enquiry
+
+Tier:     {{ enquiry.tier.name|default:"Not specified" }}
+Name:     {{ enquiry.first_name }}
+Contact:  {{ enquiry.contact }}
+Received: {{ enquiry.created_at|date:"j M Y, H:i" }}
+
+Question:
+{{ enquiry.question }}
+
+Open it on the staff dashboard: {{ link }}
+{% endautoescape %}

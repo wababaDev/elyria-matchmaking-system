@@ -139,55 +139,56 @@
     </div>
 
     <!-- Row 4: recent requests -->
-     {% if perms.base.view_all_consultation_requests %}
-    <div class="row">
-        <div class="col-12">
-            <div class="card custom-card">
-                <div class="card-header justify-content-between">
-                    <div class="card-title">Recent Consultation Requests</div>
-                    <a href="requests.html" class="btn btn-sm btn-primary-light"><a href="{% url 'matchmaking:consultation-requests' %}"
+    {% if perms.base.view_all_consultation_requests %}
+        <div class="row">
+            <div class="col-12">
+                <div class="card custom-card">
+                    <div class="card-header justify-content-between">
+                        <div class="card-title">Recent Consultation Requests</div>
+                        <a href="requests.html" class="btn btn-sm btn-primary-light"><a href="{% url 'matchmaking:consultation-requests' %}"
    class="btn btn-sm btn-primary-light">View all</a></a>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Age</th>
-                                    <th>Location</th>
-                                    <th>Submitted</th>
-                                    <th>Status</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for c in recent_requests %}
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
                                     <tr>
-                                        <td class="fw-semibold">{{ c.full_name }}</td>
-                                        <td>{{ c.age }}</td>
-                                        <td>{{ c.location }}</td>
-                                        <td>{{ c.created_at|date:"j M Y" }}</td>
-                                        <td><span class="badge {{ c.status|status_badge }}">{{ c.get_status_display }}</span></td>
-                                        <td class="text-end"><a href="{% url 'matchmaking:consultation-request-detail' c.pk %}"
+                                        <th>Name</th>
+                                        <th>Age</th>
+                                        <th>Location</th>
+                                        <th>Submitted</th>
+                                        <th>Status</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for c in recent_requests %}
+                                        <tr>
+                                            <td class="fw-semibold">{{ c.full_name }}</td>
+                                            <td>{{ c.age }}</td>
+                                            <td>{{ c.location }}</td>
+                                            <td>{{ c.created_at|date:"j M Y" }}</td>
+                                            <td><span class="badge {{ c.status|status_badge }}">{{ c.get_status_display }}</span></td>
+                                            <td class="text-end"><a href="{% url 'matchmaking:consultation-request-detail' c.pk %}"
    class="btn btn-sm btn-light">Open</a></td>
-                                    </tr>
-                                {% empty %}
-                                    <tr>
-                                        <td colspan="6" class="text-center text-muted py-4">No requests yet.</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                                        </tr>
+                                    {% empty %}
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-4">No requests yet.</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-{% endif %}
+    {% endif %}
 {% endblock %}
 {% block scripts %}
 
+    {{ enquiries_by_tier|json_script:"enquiries-by-tier" }}
     <script>
         // ----- Sample data for the preview. In Django, these arrays come from the view. -----
         (function() {
@@ -320,10 +321,14 @@
                 }),
                 series: [{
                     name: 'Enquiries',
-                    data: [6, 9, 11, 4]
+                    data: enquiryData.map(function(r) {
+                        return r[1];
+                    })
                 }],
                 xaxis: {
-                    categories: ['Bronze', 'Silver', 'Gold', 'Elite']
+                    categories: enquiryData.map(function(r) {
+                        return r[0];
+                    })
                 },
                 plotOptions: {
                     bar: {

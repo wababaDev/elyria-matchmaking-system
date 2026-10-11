@@ -57,9 +57,10 @@
                     </li>
                 {% endif %}
                 <li class="slide">
-                    <a href="enquiries.html" class="side-menu__item">
+                    <a href="{% url 'matchmaking:enquiries' %}" class="side-menu__item {% if 'enquir' in request.resolver_match.url_name %}active{% endif %}">
                         <i class="fe fe-help-circle side-menu__icon"></i>
                         <span class="side-menu__label">Enquiries</span>
+                        {% if open_enquiries_count %}<span class="badge bg-elyria-gold ms-auto">{{ open_enquiries_count }}</span>{% endif %}
                     </a>
                 </li>
                 <li class="slide">

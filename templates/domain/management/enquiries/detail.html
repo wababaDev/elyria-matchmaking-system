@@ -1,0 +1,54 @@
+{% extends 'layouts/management.html' %}
+{% block title %}Enquiry from {{ enquiry.first_name }}{% endblock %}
+{% block page_title %}Enquiry from {{ enquiry.first_name }}{% endblock %}
+{% block page_actions %}
+    <a href="{% url 'matchmaking:enquiries' %}" class="btn btn-sm btn-light"><i class="fe fe-arrow-left me-1"></i>Enquiries</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-xl-8">
+        <div class="card custom-card">
+            <div class="card-header justify-content-between">
+                <div class="card-title">{{ enquiry.tier.name|default:"General" }} Membership question</div>
+                <span class="text-muted fs-12">{{ enquiry.created_at|date:"j M Y, H:i" }}</span>
+            </div>
+            <div class="card-body">
+                <div class="fs-15">{{ enquiry.question|linebreaksbr }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card custom-card">
+            <div class="card-header"><div class="card-title">Contact</div></div>
+            <div class="card-body">
+                <p class="fw-semibold mb-1">{{ enquiry.first_name }}</p>
+                {% if enquiry.contact_is_email %}
+                    <a href="mailto:{{ enquiry.contact }}">{{ enquiry.contact }}</a>
+                {% else %}
+                    <a href="tel:{{ enquiry.contact|cut:' ' }}">{{ enquiry.contact }}</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card custom-card">
+            <div class="card-header"><div class="card-title">Status</div></div>
+            <div class="card-body">
+                {% if enquiry.status == "answered" %}
+                    <p class="mb-2"><span class="badge status-complete">Answered</span></p>
+                    <p class="fs-13 mb-2">
+                        {{ enquiry.answered_at|date:"j M Y" }}{% if enquiry.answered_by %} by {{ enquiry.answered_by.full_name }}{% endif %}
+                    </p>
+                    {% if enquiry.response_note %}<p class="fs-13 text-muted mb-0">{{ enquiry.response_note|linebreaksbr }}</p>{% endif %}
+                {% else %}
+                    <form method="post" action="{% url 'matchmaking:enquiry-answered' enquiry.pk %}">
+                        {% csrf_token %}
+                        {% include "partials/management/_field.html" with field=answer_form.response_note %}
+                        <button type="submit" class="btn btn-primary w-100">Mark as answered</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

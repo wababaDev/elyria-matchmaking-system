@@ -15,10 +15,12 @@ from .settings_forms import (
     StaffCreateForm,
     StaffUpdateForm,
 )
+from .enquiry_form import AnswerEnquiryForm, EnquiryForm
 
 __all__ = [
     "ConsultationRequestForm", "AssignForm", "BookConsultationForm",
     "ConsultationNotesForm", "FeePaymentForm", "staff_members",
     "MembershipTierForm", "PrivacyPolicyUploadForm", "SiteSettingsForm",
-    "StaffCreateForm", "StaffUpdateForm", "RenewMembershipForm", "CancelMembershipForm"
+    "StaffCreateForm", "StaffUpdateForm", "RenewMembershipForm", "CancelMembershipForm",
+    "EnquiryForm", "AnswerEnquiryForm"
 ]

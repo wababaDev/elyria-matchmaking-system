@@ -1,7 +1,8 @@
+from django.db.models import Count
 from django.utils import timezone
 
 from domain.matchmaking.models import  Consultation, ConsultationRequest
-from domain.matchmaking.models import Consultation, ConsultationRequest, Membership
+from domain.matchmaking.models import Consultation, ConsultationRequest, Membership, MembershipTier
 
 def dashboard_summary():
     month_start = timezone.localtime().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -21,4 +22,8 @@ def dashboard_summary():
         "active_members": Membership.objects.filter(
            status=Membership.Status.ACTIVE, end_date__gte=timezone.localdate()
         ).count(),
+         "enquiries_by_tier": list(
+            MembershipTier.objects.annotate(total=Count("enquiries")).values_list("name", "total")
+        ),
+        
     }
