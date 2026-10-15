@@ -41,6 +41,7 @@ SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=0)
 EMAIL_BACKEND = env(
     "EMAIL_BACKEND", default="notification.backends.EnvironmentTaggedSMTPBackend"
 )
+EMAIL_TIMEOUT = 15  # seconds; a slow Zoho raises an error (and retries) instead of hanging the worker
 EMAIL_SUBJECT_TAG = "[UAT]" if ENVIRONMENT == "uat" else ""
 
 # ---- Logs go to `docker compose logs`

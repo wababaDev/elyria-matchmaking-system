@@ -1,14 +1,14 @@
-import logging
-
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.urls import reverse
+
 from domain.website.models import SiteSettings
-logger = logging.getLogger(__name__)
+from notification.services.queue import enqueue
 
+# ---------- Delivery (run by the worker; errors bubble up so the task retries)
 
-def send_payment_instructions(consultation):
+def deliver_payment_instructions(consultation):
     body = render_to_string(
         "notification/email/consultation_payment_instructions.txt",
         {"consultation": consultation, "site": SiteSettings.load()},
@@ -16,14 +16,15 @@ def send_payment_instructions(consultation):
     send_mail(
         subject="Your private consultation with Elyria Matchmaking",
         message=body,
-        from_email=None,  # uses DEFAULT_FROM_EMAIL
+        from_email=None,
         recipient_list=[consultation.email],
     )
 
 
-def send_team_alert(consultation):
-    # TODO: link to the request's own page once the staff request list is built
-    link = settings.SITE_URL.rstrip("/") + reverse("matchmaking:dashboard")
+def deliver_team_alert(consultation):
+    link = settings.SITE_URL.rstrip("/") + reverse(
+        "matchmaking:consultation-request-detail", args=[consultation.pk]
+    )
     body = render_to_string(
         "notification/email/consultation_team_alert.txt",
         {"consultation": consultation, "link": link},
@@ -36,29 +37,31 @@ def send_team_alert(consultation):
     )
 
 
+def deliver_consultation_booked(consultation, rebooked=False):
+    applicant = consultation.request
+    body = render_to_string(
+        "notification/email/consultation_booked.txt",
+        {"consultation": consultation, "applicant": applicant, "rebooked": rebooked},
+    )
+    subject = "Your consultation has been rescheduled" if rebooked else "Your private consultation is booked"
+    send_mail(
+        subject=f"{subject} | Elyria Matchmaking",
+        message=body,
+        from_email=None,
+        recipient_list=[applicant.email],
+    )
+
+
+# ---------- Called by services (queue only)
+
 def notify_new_consultation_request(consultation):
-    # One failing email must not stop the other, or crash the applicant's page.
-    for send in (send_payment_instructions, send_team_alert):
-        try:
-            send(consultation)
-        except Exception:
-            logger.exception("%s failed for consultation request %s", send.__name__, consultation.pk)
+    from notification import tasks
+
+    enqueue(tasks.send_payment_instructions_email, consultation.pk)
+    enqueue(tasks.send_team_alert_email, consultation.pk)
+
 
 def notify_consultation_booked(consultation, *, rebooked=False):
-    applicant = consultation.request
-    try:
-        body = render_to_string(
-            "notification/email/consultation_booked.txt",
-            {"consultation": consultation, "applicant": applicant, "rebooked": rebooked},
-        )
-        subject = (
-            "Your consultation has been rescheduled" if rebooked else "Your private consultation is booked"
-        )
-        send_mail(
-            subject=f"{subject} | Elyria Matchmaking",
-            message=body,
-            from_email=None,
-            recipient_list=[applicant.email],
-        )
-    except Exception:
-        logger.exception("Booking email failed for consultation %s", consultation.pk)
+    from notification import tasks
+
+    enqueue(tasks.send_consultation_booked_email, consultation.pk, rebooked)

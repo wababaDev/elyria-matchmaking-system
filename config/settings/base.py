@@ -106,3 +106,14 @@ SITE_URL = env("SITE_URL", default="http://127.0.0.1:2004")  # used for links in
 
 # Behind Caddy, the visitor's address comes from X-Forwarded-For (see domain/base/http.py)
 TRUST_PROXY_HEADERS = False
+
+
+# ---------------------------------------------------------------- Celery
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/0")
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_IGNORE_RESULT = True          # we never read task results
+CELERY_TASK_ACKS_LATE = True              # a task isn't lost if the worker restarts mid-send
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+# If Redis is down, give up queuing quickly instead of hanging the request
+CELERY_TASK_PUBLISH_RETRY_POLICY = {"max_retries": 2, "interval_start": 0, "interval_step": 0.5, "interval_max": 1}
