@@ -1,0 +1,29 @@
+{% with f=enquiry_form %}
+<form class="register-form" method="post" action="{% url 'website:enquiry' %}">
+    {% csrf_token %}
+    {% if f.non_field_errors %}<p class="text-danger mb-3">{{ f.non_field_errors.0 }}</p>{% endif %}
+
+    <div class="d-none" aria-hidden="true">
+        <label for="{{ p }}-e-website">Website</label>
+        <input type="text" id="{{ p }}-e-website" name="website" tabindex="-1" autocomplete="off">
+    </div>
+    <input type="hidden" name="tier" value="{{ f.tier.value|default:'' }}">
+
+    <div class="form-group">
+        <label for="{{ p }}-question">Your question</label>
+        <textarea id="{{ p }}-question" name="question" rows="4" required>{{ f.question.value|default:'' }}</textarea>
+        {% if f.question.errors %}<small class="text-danger">{{ f.question.errors.0 }}</small>{% endif %}
+    </div>
+    <div class="form-group">
+        <label for="{{ p }}-first-name">First name</label>
+        <input type="text" id="{{ p }}-first-name" name="first_name" value="{{ f.first_name.value|default:'' }}" maxlength="80" required>
+        {% if f.first_name.errors %}<small class="text-danger">{{ f.first_name.errors.0 }}</small>{% endif %}
+    </div>
+    <div class="form-group">
+        <label for="{{ p }}-contact">Phone number or email</label>
+        <input type="text" id="{{ p }}-contact" name="contact" value="{{ f.contact.value|default:'' }}" maxlength="150" required>
+        {% if f.contact.errors %}<small class="text-danger">{{ f.contact.errors.0 }}</small>{% endif %}
+    </div>
+    <button type="submit" class="register-submit-btn">Send question</button>
+</form>
+{% endwith %}

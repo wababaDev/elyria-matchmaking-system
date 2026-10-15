@@ -1,4 +1,5 @@
 from django.views.generic import TemplateView
+from domain.website.models import SiteDocument
 
 
 class HomeView(TemplateView):
@@ -35,3 +36,8 @@ class FaqView(TemplateView):
 
 class PrivacyView(TemplateView):
     template_name = "domain/website/privacy.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["privacy_document"] = SiteDocument.current(SiteDocument.Kind.PRIVACY_POLICY)
+        return context

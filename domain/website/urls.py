@@ -1,7 +1,7 @@
 from django.urls import path
 
 from domain.website import views
-
+from domain.website.views import enquiry_views as enquiry_views
 app_name = "website"
 
 urlpatterns = [
@@ -28,4 +28,7 @@ urlpatterns = [
         views.ConsultationThanksView.as_view(),
         name="consultation-thanks",
     ),
+
+    path("enquiry/", enquiry_views.EnquiryView.as_view(), name="enquiry"),
+       path("enquiry/thank-you/", enquiry_views.EnquiryThanksView.as_view(), name="enquiry-thanks"),
 ]

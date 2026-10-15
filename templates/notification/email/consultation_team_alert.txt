@@ -1,6 +1,6 @@
 {% autoescape off %}New consultation request
 
-Name:                {{ consultation.full_name }} (prefers "{{ consultation.preferred_name }}")
+Name:                {{ consultation.full_name }} (prefers "{{ consultation.display_name }}")
 Gender / seeking:    {{ consultation.get_gender_display }} / {{ consultation.get_seeking_display }}
 Age:                 {{ consultation.age }}
 Relationship status: {{ consultation.get_relationship_status_display }}

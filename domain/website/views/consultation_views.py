@@ -8,6 +8,7 @@ from domain.matchmaking.services.consultation_request_service import (
     is_rate_limited,
     submit_consultation_request,
 )
+from domain.base.http import client_ip
 
 
 class ConsultationRequestView(FormView):
@@ -20,8 +21,7 @@ class ConsultationRequestView(FormView):
     success_url = reverse_lazy("website:consultation-thanks")
 
     def post(self, request, *args, **kwargs):
-        # TODO: behind nginx, read the real IP from X-Forwarded-For
-        if is_rate_limited(request.META.get("REMOTE_ADDR")):
+        if is_rate_limited(client_ip(request)):
             form = self.get_form()
             form.is_valid()
             form.add_error(None, "Too many requests from your connection. Please try again later.")

@@ -1,0 +1,28 @@
+{% extends 'domain/management/settings/_base.html' %}
+
+{% block settings_content %}
+<div class="card custom-card" style="max-width: 720px;">
+    <div class="card-header"><div class="card-title">Privacy Policy</div></div>
+    <div class="card-body">
+        {% if privacy_document %}
+            <p class="fs-13 mb-3">
+                <i class="fe fe-file-text me-1"></i>
+                <a href="{{ privacy_document.file.url }}" target="_blank" rel="noopener">Current Privacy Policy (PDF)</a>
+                <span class="text-muted">· uploaded {{ privacy_document.updated_at|date:"j M Y" }}
+                {% if privacy_document.uploaded_by %}by {{ privacy_document.uploaded_by.full_name }}{% endif %}</span>
+            </p>
+        {% else %}
+            <div class="alert alert-warning fs-13">
+                No Privacy Policy uploaded yet. The download button on the public Privacy page stays hidden until you upload one.
+            </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {% include "partials/management/_field.html" with field=form.file %}
+            <p class="text-muted fs-12">PDF only, up to 10 MB. Uploading replaces the current file straight away.</p>
+            <button type="submit" class="btn btn-primary">{% if privacy_document %}Replace{% else %}Upload{% endif %} Privacy Policy</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

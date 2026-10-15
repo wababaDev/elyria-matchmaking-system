@@ -38,17 +38,19 @@
                     </p>
 
                     <!-- Privacy Policy download -->
+                     {% if privacy_document %}
                     <div class="policy-download">
                         <div class="policy-download-icon"><i class="fa-regular fa-file-pdf"></i></div>
                         <div class="policy-download-text">
                             <h2 class="h5 mb-1">Keep a copy</h2>
                             <p class="mb-0">Download the full Privacy Policy as a PDF to read offline or keep for your records.</p>
-                            <small>PDF · Last updated [date — to be supplied]</small>
+                           <small>PDF · Last updated {{ privacy_document.updated_at|date:"j F Y" }}</small>
                         </div>
-                        <a href="assets/docs/elyria-privacy-policy.pdf" class="register-submit-btn" download>
+                       <a href="{{ privacy_document.file.url }}" class="register-submit-btn" download>
                             <i class="fa-solid fa-download me-2"></i>Download PDF
                         </a>
                     </div>
+                    {% endif %}
 
                     <p class="text-muted mt-4 mb-0">
                         Questions about this policy or your personal information? Contact us at

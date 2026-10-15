@@ -1,0 +1,12 @@
+{% autoescape off %}Hi {{ user.first_name }},
+
+You've been given access to the Elyria staff dashboard.
+
+Choose your password here (the link expires in 7 days):
+
+{{ link }}
+
+After that, sign in any time at the staff sign-in page with your email and password.
+
+Elyria Matchmaking
+{% endautoescape %}

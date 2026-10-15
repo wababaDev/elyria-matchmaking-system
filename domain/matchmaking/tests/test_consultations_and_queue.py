@@ -77,6 +77,9 @@ class ConsultationTests(BaseCase):
     def setUp(self):
         self.client.force_login(self.matchmaker)
 
+    def mine(self, **overrides):
+        return make_request(assigned_to=self.matchmaker, **overrides)
+
     def test_cannot_book_before_fee_paid(self):
         c = make_request()
         response = self.client.post(self.url("consultation-request-book", c), {"scheduled_for": "2026-11-02T10:00"}, follow=True)

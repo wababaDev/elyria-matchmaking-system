@@ -1,0 +1,32 @@
+{% extends 'domain/management/settings/_base.html' %}
+
+{% block settings_content %}
+<div class="card custom-card" style="max-width: 640px;">
+    <div class="card-header">
+        <div class="card-title">{% if member %}Edit {{ member.full_name }}{% else %}Add staff member{% endif %}</div>
+    </div>
+    <div class="card-body">
+        {% if form.non_field_errors %}<div class="alert alert-danger fs-13">{{ form.non_field_errors.0 }}</div>{% endif %}
+        <form method="post">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-sm-6">{% include "partials/management/_field.html" with field=form.first_name %}</div>
+                <div class="col-sm-6">{% include "partials/management/_field.html" with field=form.last_name %}</div>
+            </div>
+            {% if form.email %}{% include "partials/management/_field.html" with field=form.email %}{% endif %}
+            {% include "partials/management/_field.html" with field=form.job_title %}
+            {% include "partials/management/_field.html" with field=form.role %}
+            {% if form.is_active %}
+                {% include "partials/management/_field.html" with field=form.is_active %}
+                <p class="text-muted fs-12">Deactivated staff can't sign in. Reassign their open requests from the Consultation Requests list.</p>
+            {% else %}
+                <p class="text-muted fs-12">They'll get an email to set their own password.</p>
+            {% endif %}
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'matchmaking:settings-staff' %}" class="btn btn-light">Cancel</a>
+                <button type="submit" class="btn btn-primary">{% if member %}Save changes{% else %}Add and send invite{% endif %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

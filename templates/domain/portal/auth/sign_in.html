@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="{% static 'front/css/elyria.css' %}">
 </head>
 <body class="signin-page">
-
+{% include "partials/_env_banner.html" %}
     <main class="signin-wrap">
         <a href="{% url 'website:home' %}" class="signin-logo">
             <img src="{% static 'front/assets/logo.png' %}" alt="Elyria Matchmaking">

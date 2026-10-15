@@ -32,11 +32,12 @@ class StaffConsultationRequestTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         create_groups_and_permissions()
+        cls.admin = make_user("admin@x.com", Groups.ADMIN)
         cls.matchmaker = make_user("mm@x.com", Groups.MATCHMAKER)
         cls.member = make_user("m@x.com", Groups.MEMBER)
 
     def setUp(self):
-        self.client.force_login(self.matchmaker)
+        self.client.force_login(self.admin)
         self.list_url = reverse("matchmaking:consultation-requests")
 
     def test_anonymous_redirected_to_staff_sign_in(self):
@@ -75,7 +76,7 @@ class StaffConsultationRequestTests(TestCase):
         self.client.post(reverse("matchmaking:consultation-request-mark-paid", args=[c.pk]), PAYMENT)
         c.refresh_from_db()
         self.assertEqual(c.status, ConsultationRequest.Status.FEE_PAID)
-        self.assertEqual(c.fee_marked_paid_by, self.matchmaker)
+        self.assertEqual(c.fee_marked_paid_by, self.admin)
         self.assertIsNotNone(c.fee_paid_at)
 
     def test_mark_fee_paid_twice_shows_error(self):
@@ -87,12 +88,6 @@ class StaffConsultationRequestTests(TestCase):
         c = make_request()
         response = self.client.get(reverse("matchmaking:consultation-request-mark-paid", args=[c.pk]))
         self.assertEqual(response.status_code, 405)
-
-    def test_assign_to_me(self):
-        c = make_request()
-        self.client.post(reverse("matchmaking:consultation-request-assign", args=[c.pk]))
-        c.refresh_from_db()
-        self.assertEqual(c.assigned_to, self.matchmaker)
 
     def test_decline(self):
         c = make_request()
@@ -112,3 +107,25 @@ class StaffConsultationRequestTests(TestCase):
         response = self.client.get(reverse("matchmaking:dashboard"))
         self.assertEqual(response.context["requests_this_month"], 2)
         self.assertEqual(response.context["awaiting_payment_count"], 1)
+
+    def test_matchmaker_cannot_see_full_list(self):
+        self.client.force_login(self.matchmaker)
+        self.assertEqual(self.client.get(self.list_url).status_code, 403)
+
+    def test_matchmaker_can_open_assigned_request(self):
+        c = make_request(assigned_to=self.matchmaker)
+        self.client.force_login(self.matchmaker)
+        response = self.client.get(reverse("matchmaking:consultation-request-detail", args=[c.pk]))
+        self.assertEqual(response.status_code, 200)
+
+    def test_matchmaker_cannot_open_someone_elses_request(self):
+        c = make_request()  # unassigned
+        self.client.force_login(self.matchmaker)
+        response = self.client.get(reverse("matchmaking:consultation-request-detail", args=[c.pk]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_matchmaker_cannot_act_on_someone_elses_request(self):
+        c = make_request()
+        self.client.force_login(self.matchmaker)
+        response = self.client.post(reverse("matchmaking:consultation-request-mark-paid", args=[c.pk]), PAYMENT)
+        self.assertEqual(response.status_code, 404)

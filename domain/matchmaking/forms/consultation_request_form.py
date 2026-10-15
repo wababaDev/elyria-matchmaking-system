@@ -12,9 +12,16 @@ class ConsultationRequestForm(forms.ModelForm):
         model = ConsultationRequest
         fields = [
             "full_name", "preferred_name", "gender", "age", "seeking",
-            "relationship_status", "location", "nationality", "occupation",
+            "relationship_status", "relationship_status_other", "location", "nationality", "occupation",
             "email", "phone",
         ]
+
+        def clean(self):
+            cleaned = super().clean()
+            if (cleaned.get("relationship_status") == ConsultationRequest.RelationshipStatus.OTHER
+                    and not cleaned.get("relationship_status_other", "").strip()):
+                self.add_error("relationship_status_other", "Please tell us a little more.")
+            return cleaned
 
     def clean_email(self):
         return self.cleaned_data["email"].strip().lower()

@@ -1,0 +1,20 @@
+{% extends "layouts/public.html" %}
+{% load static %}
+{% block title %}Ask a Question{% endblock %}
+{% block content %}
+    <section class="page-hero">
+        <div class="page-hero-media"><img src="{% static 'front/assets/image(5).jpg' %}" alt=""></div>
+        <div class="page-hero-overlay"></div>
+        <div class="container"><div class="page-hero-content"><h1 class="page-hero-title">Ask a Question</h1></div></div>
+    </section>
+    <section class="section-padding">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-6">
+                    <p class="lead mb-4">Let us know what you'd like to find out, and leave your details — we'll follow up.</p>
+                    {% include "partials/_enquiry_form.html" with p="pg" %}
+                </div>
+            </div>
+        </div>
+    </section>
+{% endblock %}

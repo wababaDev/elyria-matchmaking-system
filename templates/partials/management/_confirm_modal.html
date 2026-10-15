@@ -1,0 +1,48 @@
+<!-- Shared confirm dialog: add data-confirm="Message" to any submit button -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title" id="confirmModalTitle" data-confirm-title>Are you sure?</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body fs-14" data-confirm-message></div>
+           <div class="modal-footer d-flex flex-nowrap gap-2">
+                <button type="button" class="btn btn-light flex-fill m-0" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary flex-fill m-0 text-nowrap" data-confirm-ok>Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var modalEl = document.getElementById('confirmModal');
+    if (!modalEl || !window.bootstrap) return;
+    var modal = new bootstrap.Modal(modalEl);
+    var okButton = modalEl.querySelector('[data-confirm-ok]');
+    var pending = null;
+
+    document.addEventListener('click', function (event) {
+        var button = event.target.closest('[data-confirm]');
+        if (!button) return;
+        event.preventDefault();
+        pending = button;
+
+        modalEl.querySelector('[data-confirm-title]').textContent = button.dataset.confirmTitle || 'Are you sure?';
+        modalEl.querySelector('[data-confirm-message]').textContent = button.dataset.confirm;
+        okButton.textContent = button.dataset.confirmButton || 'Confirm';
+        okButton.className = 'btn flex-fill m-0 text-nowrap ' + (button.dataset.confirmVariant === 'danger' ? 'btn-danger' : 'btn-primary');
+        modal.show();
+    });
+
+    okButton.addEventListener('click', function () {
+        if (!pending || !pending.form) return;
+        var button = pending;
+        pending = null;
+        modal.hide();
+        // requestSubmit keeps the button's formaction (e.g. "Save & mark as consulted")
+        button.form.requestSubmit(button);
+    });
+})();
+</script>

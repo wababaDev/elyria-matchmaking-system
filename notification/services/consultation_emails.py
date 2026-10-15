@@ -4,14 +4,14 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.urls import reverse
-
+from domain.website.models import SiteSettings
 logger = logging.getLogger(__name__)
 
 
 def send_payment_instructions(consultation):
     body = render_to_string(
         "notification/email/consultation_payment_instructions.txt",
-        {"consultation": consultation},
+        {"consultation": consultation, "site": SiteSettings.load()},
     )
     send_mail(
         subject="Your private consultation with Elyria Matchmaking",

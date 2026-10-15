@@ -52,11 +52,11 @@ def submit_consultation_request(candidate: ConsultationRequest) -> SubmissionRes
     return SubmissionResult(candidate, created=True)
 
 
-def is_rate_limited(ip: str | None) -> bool:
+def is_rate_limited(ip: str | None, scope: str = "consultation-request") -> bool:
     """Counts this attempt. True once an address goes over the hourly limit."""
     if not ip:
         return False
-    key = f"consultation-request:{ip}"
+    key = f"{scope}:{ip}"
     if cache.add(key, 1, RATE_LIMIT_WINDOW):
         return False
     try:
@@ -154,3 +154,11 @@ def assign_request(consultation, *, to):
     consultation.assigned_to = to
     consultation.save(update_fields=["assigned_to", "updated_at"])
     return consultation
+
+
+def requests_visible_to(user):
+    """Admin sees everything; matchmakers only what's assigned to them."""
+    qs = ConsultationRequest.objects.all()
+    if user.has_perm("base.view_all_consultation_requests"):
+        return qs
+    return qs.filter(assigned_to=user)

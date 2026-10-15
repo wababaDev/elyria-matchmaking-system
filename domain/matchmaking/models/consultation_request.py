@@ -9,8 +9,9 @@ MAX_AGE = 90
 
 # TODO: confirm exact wording with Elyria (Open Questions #2)
 NOT_ELIGIBLE_MESSAGE = (
-    "Thank you for your interest. Elyria works only with clients who are not currently "
-    "married or separated, so we're unable to proceed with your request at this time."
+    "We're sorry, but Elyria Matchmaking is a private matchmaking service designed exclusively "
+    "for single individuals seeking a long-term partnership. We're unable to proceed with your "
+    "enquiry at this time."
 )
 
 
@@ -31,11 +32,12 @@ class ConsultationRequest(TimeStampedModel):
         WOMAN = "woman", "A woman"
 
     class RelationshipStatus(models.TextChoices):
-        SINGLE = "single", "Single (never married)"
+        SINGLE = "single", "Single"
         DIVORCED = "divorced", "Divorced"
         WIDOWED = "widowed", "Widowed"
         SEPARATED = "separated", "Separated"
         MARRIED = "married", "Married"
+        OTHER = "other", "Other (please explain)"
 
     class Status(models.TextChoices):
         AWAITING_PAYMENT = "awaiting_payment", "Awaiting payment"
@@ -61,7 +63,7 @@ class ConsultationRequest(TimeStampedModel):
 
     # --- From the public form ---
     full_name = models.CharField(max_length=150)
-    preferred_name = models.CharField(max_length=80)
+    preferred_name = models.CharField(max_length=80, blank=True, help_text="Optional")
     gender = models.CharField(max_length=20, choices=Gender.choices)
     age = models.PositiveSmallIntegerField(
         validators=[
@@ -71,6 +73,9 @@ class ConsultationRequest(TimeStampedModel):
     )
     seeking = models.CharField(max_length=20, choices=Seeking.choices)
     relationship_status = models.CharField(max_length=20, choices=RelationshipStatus.choices)
+    relationship_status_other = models.CharField(
+        "Relationship status (explained)", max_length=200, blank=True
+    )
     location = models.CharField("Location (country / city)", max_length=150)
     nationality = models.CharField(max_length=100)
     occupation = models.CharField("Occupation / profession", max_length=150)
@@ -113,6 +118,11 @@ class ConsultationRequest(TimeStampedModel):
 
     def __str__(self):
         return f"{self.full_name} ({self.email})"
+
+    @property
+    def display_name(self):
+        """What to call them: preferred name if given, else their first name."""
+        return self.preferred_name or self.full_name.split()[0]
 
     @property
     def is_open(self):
