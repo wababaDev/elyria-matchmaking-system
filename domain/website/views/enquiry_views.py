@@ -2,6 +2,7 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.views.generic import FormView, TemplateView
 
+from domain.base.http import client_ip
 from domain.matchmaking.forms import EnquiryForm
 from domain.matchmaking.models import MembershipTier
 from domain.matchmaking.services.consultation_request_service import is_rate_limited
@@ -14,7 +15,7 @@ class EnquiryView(FormView):
     form_class = EnquiryForm
 
     def post(self, request, *args, **kwargs):
-        if is_rate_limited(request.META.get("REMOTE_ADDR"), scope="enquiry"):
+        if is_rate_limited(client_ip(request), scope="enquiry"):
             form = self.get_form()
             form.is_valid()
             form.add_error(None, "Too many requests from your connection. Please try again later.")
