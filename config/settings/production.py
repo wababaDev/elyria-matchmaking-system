@@ -22,8 +22,10 @@ CACHES = {
 # Static files served by WhiteNoise with cache-busting file names
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
 }
+
+WHITENOISE_MAX_AGE = 60 * 60
 
 # ---- Behind Caddy (HTTPS ends at Caddy)
 TRUST_PROXY_HEADERS = True
@@ -36,15 +38,25 @@ SECURE_REFERRER_POLICY = "same-origin"
 SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=0)
 
 # ---- Email: real SMTP; UAT emails get "[UAT]" in the subject
-EMAIL_BACKEND = env("EMAIL_BACKEND", default="notification.backends.EnvironmentTaggedSMTPBackend")
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND", default="notification.backends.EnvironmentTaggedSMTPBackend"
+)
 EMAIL_SUBJECT_TAG = "[UAT]" if ENVIRONMENT == "uat" else ""
 
 # ---- Logs go to `docker compose logs`
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "formatters": {"simple": {"format": "{asctime} {levelname} {name}: {message}", "style": "{"}},
+    "formatters": {
+        "simple": {"format": "{asctime} {levelname} {name}: {message}", "style": "{"}
+    },
     "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "simple"}},
     "root": {"handlers": ["console"], "level": "INFO"},
-    "loggers": {"django.request": {"handlers": ["console"], "level": "WARNING", "propagate": False}},
+    "loggers": {
+        "django.request": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        }
+    },
 }
