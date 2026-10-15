@@ -5,9 +5,23 @@ services:
       dockerfile: docker/Dockerfile
     env_file: .env
     ports:
-      - "127.0.0.1:${APP_PORT}:8000"     # only Caddy on the same machine can reach it
+      - "127.0.0.1:${APP_PORT}:8000" # only Caddy on the same machine can reach it
     volumes:
       - ${MEDIA_DIR}:/app/media
     extra_hosts:
-      - "host.docker.internal:host-gateway"   # reach PostgreSQL on the server
+      - "host.docker.internal:host-gateway" # reach PostgreSQL on the server
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    env_file: .env
+    entrypoint: [ "celery", "-A", "config", "worker", "--loglevel=INFO", "--concurrency=2" ]
+    volumes:
+      - ${MEDIA_DIR}:/app/media
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - web # web runs the migrations first
     restart: unless-stopped

@@ -8,3 +8,5 @@ ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 DATABASES = {"default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")}
 
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="notification.backends.OneLineConsoleBackend")
+
+CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=True)
