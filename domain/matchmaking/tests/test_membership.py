@@ -9,15 +9,20 @@ from django.urls import reverse
 
 from domain.base.models import Groups
 from domain.base.services.groups import create_groups_and_permissions
-from domain.matchmaking.models import Client, ConsultationRequest, Membership, MembershipPayment
+from domain.matchmaking.models import Client, ConsultationRequest, MembershipPayment, MembershipTier
 
 User = get_user_model()
 S = ConsultationRequest.Status
 
-MEMBERSHIP = {
-    "tier": "gold", "start_date": "2026-10-09", "end_date": "2027-10-08",
-    "amount": "15000.00", "currency": "ZMW", "method": "bank_transfer", "reference": "BT-77",
-}
+
+def membership_data(**overrides):
+    data = {
+        "tier": MembershipTier.objects.get(name="Gold").pk,
+        "start_date": "2026-10-09", "end_date": "2027-10-08",
+        "amount": "15000.00", "currency": "ZMW", "method": "bank_transfer", "reference": "BT-77",
+    }
+    data.update(overrides)
+    return data
 
 
 def make_user(email, *groups):
@@ -49,19 +54,19 @@ class ConfirmMembershipTests(TestCase):
     def mine(self, **overrides):
         return make_request(assigned_to=self.matchmaker, **overrides)
 
-    def confirm(self, c, data=MEMBERSHIP, follow=False):
+    def confirm(self, c, data=None, follow=False):
         url = reverse("matchmaking:consultation-request-confirm-membership", args=[c.pk])
         with self.captureOnCommitCallbacks(execute=True):
-            return self.client.post(url, data, follow=follow)
+            return self.client.post(url, data or membership_data(), follow=follow)
 
     def test_requires_consultation_first(self):
-        c = make_request(status=S.FEE_PAID)
+        c = self.mine(status=S.FEE_PAID)
         response = self.confirm(c, follow=True)
         self.assertContains(response, "only be confirmed after the consultation")
         self.assertFalse(Client.objects.exists())
 
     def test_confirm_creates_everything(self):
-        c = make_request(status=S.CONSULTED, assigned_to=self.matchmaker)
+        c = self.mine(status=S.CONSULTED)
         self.confirm(c)
 
         c.refresh_from_db()
@@ -72,7 +77,7 @@ class ConfirmMembershipTests(TestCase):
         self.assertTrue(client.user.groups.filter(name=Groups.MEMBER).exists())
         self.assertFalse(client.user.has_usable_password())
 
-        self.assertEqual(client.membership.tier, Membership.Tier.GOLD)
+        self.assertEqual(client.membership.tier.name, "Gold")
         payment = MembershipPayment.objects.get(membership=client.membership)
         self.assertEqual(str(payment.amount), "15000.00")
         self.assertEqual(payment.kind, MembershipPayment.Kind.NEW)
@@ -81,19 +86,43 @@ class ConfirmMembershipTests(TestCase):
         self.assertIn("/account/set-password/", mail.outbox[0].body)
 
     def test_end_date_must_be_after_start(self):
-        c = make_request(status=S.CONSULTED)
-        response = self.confirm(c, {**MEMBERSHIP, "end_date": "2026-10-01"}, follow=True)
+        c = self.mine(status=S.CONSULTED)
+        response = self.confirm(c, membership_data(end_date="2026-10-01"), follow=True)
         self.assertContains(response, "end date must be after")
         self.assertFalse(Client.objects.exists())
 
     def test_staff_email_is_refused(self):
         make_user("natasha@example.com", Groups.MATCHMAKER)
-        c = make_request(status=S.CONSULTED)
+        c = self.mine(status=S.CONSULTED)
         response = self.confirm(c, follow=True)
         self.assertContains(response, "already belongs to a staff account")
 
+    def test_blank_end_date_and_amount_come_from_tier(self):
+        gold = MembershipTier.objects.get(name="Gold")
+        gold.price, gold.duration_months = 15000, 6
+        gold.save()
+
+        c = self.mine(status=S.CONSULTED)
+        self.confirm(c, membership_data(end_date="", amount=""))
+
+        membership = Client.objects.get(consultation_request=c).membership
+        self.assertEqual(str(membership.end_date), "2027-04-09")
+        self.assertEqual(str(membership.payments.get().amount), "15000.00")
+
+    def test_tier_without_price_needs_amount(self):
+        c = self.mine(status=S.CONSULTED)  # seeded tiers have no price yet
+        response = self.confirm(c, membership_data(amount=""), follow=True)
+        self.assertContains(response, "no standard price")
+
+    def test_retired_tier_cannot_be_chosen(self):
+        MembershipTier.objects.filter(name="Gold").update(is_active=False)
+        c = self.mine(status=S.CONSULTED)
+        response = self.confirm(c, follow=True)
+        self.assertContains(response, "Tier")
+        self.assertFalse(Client.objects.exists())
+
     def test_set_password_link_signs_member_in(self):
-        c = make_request(status=S.CONSULTED)
+        c = self.mine(status=S.CONSULTED)
         self.confirm(c)
         self.client.logout()
 

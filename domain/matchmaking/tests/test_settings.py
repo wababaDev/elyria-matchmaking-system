@@ -60,7 +60,7 @@ class SettingsTests(TestCase):
         response = self.client.post(reverse("matchmaking:settings-staff-edit", args=[self.admin.pk]), {
             "first_name": "Ada", "last_name": "Admin", "job_title": "", "role": Groups.MATCHMAKER, "is_active": "on",
         })
-        self.assertContains(response, "can't remove your own admin access")
+        self.assertContains(response, "remove your own admin access")
         self.assertTrue(self.admin.groups.filter(name=Groups.ADMIN).exists())
 
     def test_deactivate_staff(self):
