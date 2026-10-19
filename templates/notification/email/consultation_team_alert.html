@@ -1,0 +1,25 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}{{ consultation.full_name }} requested a private consultation.{% endblock %}
+{% block heading %}New consultation request{% endblock %}
+{% block content %}
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+           style="font-family:Arial,Helvetica,sans-serif; font-size:14px; line-height:1.5; color:#3A3A3A; border-collapse:collapse;">
+        {% with label_style="padding:7px 12px 7px 0; color:#8A8178; white-space:nowrap; vertical-align:top; border-bottom:1px solid #EFE7DC;" value_style="padding:7px 0; vertical-align:top; border-bottom:1px solid #EFE7DC;" %}
+        <tr><td style="{{ label_style }}">Name</td><td style="{{ value_style }}"><strong>{{ consultation.full_name }}</strong>{% if consultation.preferred_name %} (prefers &ldquo;{{ consultation.preferred_name }}&rdquo;){% endif %}</td></tr>
+        <tr><td style="{{ label_style }}">Gender / seeking</td><td style="{{ value_style }}">{{ consultation.get_gender_display }} / {{ consultation.get_seeking_display }}</td></tr>
+        <tr><td style="{{ label_style }}">Age</td><td style="{{ value_style }}">{{ consultation.age }}</td></tr>
+        <tr><td style="{{ label_style }}">Relationship status</td><td style="{{ value_style }}">{{ consultation.get_relationship_status_display }}</td></tr>
+        <tr><td style="{{ label_style }}">Location</td><td style="{{ value_style }}">{{ consultation.location }}</td></tr>
+        <tr><td style="{{ label_style }}">Nationality</td><td style="{{ value_style }}">{{ consultation.nationality }}</td></tr>
+        <tr><td style="{{ label_style }}">Occupation</td><td style="{{ value_style }}">{{ consultation.occupation }}</td></tr>
+        <tr><td style="{{ label_style }}">Email</td><td style="{{ value_style }}"><a href="mailto:{{ consultation.email }}" style="color:#6E1423;">{{ consultation.email }}</a></td></tr>
+        <tr><td style="{{ label_style }}">Phone</td><td style="{{ value_style }}">{{ consultation.phone }}</td></tr>
+        <tr><td style="{{ label_style }}">Submitted</td><td style="{{ value_style }}">{{ consultation.created_at|date:"j M Y, H:i" }}</td></tr>
+        {% endwith %}
+    </table>
+
+    <p style="margin:20px 0 0;">Payment instructions have been sent to the applicant automatically.</p>
+
+    {% include "notification/email/_button.html" with url=link label="Open the request" %}
+{% endblock %}
+{% block signoff %}{% endblock %}

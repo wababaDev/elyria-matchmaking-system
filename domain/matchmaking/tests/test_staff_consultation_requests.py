@@ -6,6 +6,7 @@ from django.urls import reverse
 from domain.base.models import Groups
 from domain.base.services.groups import create_groups_and_permissions
 from domain.matchmaking.models import ConsultationRequest
+from domain.website.models import SiteSettings
 
 User = get_user_model()
 
@@ -26,7 +27,10 @@ def make_request(**overrides):
     data.update(overrides)
     return ConsultationRequest.objects.create(**data)
 
-PAYMENT = {"amount": "500.00", "currency": "ZMW", "method": "mobile_money", "reference": "MM123"}
+
+# Amount and currency are not posted: they come from Settings → General
+PAYMENT = {"method": "mobile_money", "reference": "MM123"}
+
 
 class StaffConsultationRequestTests(TestCase):
     @classmethod
@@ -78,6 +82,28 @@ class StaffConsultationRequestTests(TestCase):
         self.assertEqual(c.status, ConsultationRequest.Status.FEE_PAID)
         self.assertEqual(c.fee_marked_paid_by, self.admin)
         self.assertIsNotNone(c.fee_paid_at)
+        self.assertEqual(str(c.fee_amount), "1000.00")  # SiteSettings default
+        self.assertEqual(c.fee_currency, "ZMW")
+        self.assertEqual(c.fee_payment_method, "mobile_money")
+
+    def test_fee_amount_comes_from_settings(self):
+        site = SiteSettings.load()
+        site.consultation_fee = 750
+        site.save()
+        c = make_request()
+        self.client.post(reverse("matchmaking:consultation-request-mark-paid", args=[c.pk]), PAYMENT)
+        c.refresh_from_db()
+        self.assertEqual(str(c.fee_amount), "750.00")
+
+    def test_fee_amount_cannot_be_overridden(self):
+        c = make_request()
+        self.client.post(
+            reverse("matchmaking:consultation-request-mark-paid", args=[c.pk]),
+            {**PAYMENT, "amount": "1.00", "currency": "USD"},
+        )
+        c.refresh_from_db()
+        self.assertEqual(str(c.fee_amount), "1000.00")
+        self.assertEqual(c.fee_currency, "ZMW")
 
     def test_mark_fee_paid_twice_shows_error(self):
         c = make_request(status=ConsultationRequest.Status.FEE_PAID)

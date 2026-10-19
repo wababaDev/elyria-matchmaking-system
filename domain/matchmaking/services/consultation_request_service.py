@@ -8,6 +8,7 @@ from domain.matchmaking.models import ConsultationRequest
 from domain.matchmaking.models.consultation_request import NOT_ELIGIBLE_MESSAGE
 from notification.services.consultation_emails import notify_new_consultation_request
 from django.db.models import Q
+from domain.website.models import SiteSettings
 
 RATE_LIMIT_ATTEMPTS = 5          # per address...
 RATE_LIMIT_WINDOW = 60 * 60      # ...per hour
@@ -118,15 +119,16 @@ def _lock(consultation):
 
 
 @transaction.atomic
-def mark_fee_paid(consultation, *, by, amount, currency, method, reference=""):
+def mark_fee_paid(consultation, *, by, method, reference=""):
     consultation = _lock(consultation)
     if consultation.status != ConsultationRequest.Status.AWAITING_PAYMENT:
         raise InvalidTransitionError("Only requests awaiting payment can be marked as paid.")
+    site = SiteSettings.load()
     consultation.status = ConsultationRequest.Status.FEE_PAID
     consultation.fee_paid_at = timezone.now()
     consultation.fee_marked_paid_by = by
-    consultation.fee_amount = amount
-    consultation.fee_currency = currency
+    consultation.fee_amount = site.consultation_fee
+    consultation.fee_currency = site.consultation_fee_currency
     consultation.fee_payment_method = method
     consultation.fee_reference = reference
     consultation.save(update_fields=[

@@ -8,11 +8,12 @@ from django.views.generic.detail import SingleObjectMixin
 
 from domain.base.mixins import StaffRequiredMixin
 from domain.matchmaking.forms import AssignForm, CancelMembershipForm, RenewMembershipForm, staff_members
+from domain.matchmaking.models.membership_tier import MembershipTier
 from domain.matchmaking.services.consultation_request_service import InvalidTransitionError
 from domain.matchmaking.services.member_service import (
     MEMBER_FILTERS,
-    cancel_membership,
     filter_members,
+    cancel_membership,
     members_visible_to,
     reassign_matchmaker,
     renew_membership,
@@ -71,6 +72,7 @@ class MemberDetailView(StaffRequiredMixin, DetailView):
             consultation=self.object.consultation,
             details=self.object.consultation_request,
             renew_form=RenewMembershipForm(initial={"tier": membership.tier_id if membership else None}),
+            active_tiers=MembershipTier.objects.filter(is_active=True),
             cancel_form=CancelMembershipForm(),
             assign_form=AssignForm(initial={"assigned_to": self.object.matchmaker_id}),
         )

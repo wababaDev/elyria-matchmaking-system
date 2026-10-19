@@ -59,31 +59,25 @@ def _lock(membership):
 
 
 @transaction.atomic
-def renew_membership(membership, *, tier, amount, currency, method, reference="", end_date=None, by):
+def renew_membership(membership, *, tier, method, reference="", by):
+    """Price and new end date come from the tier; staff only record how it was paid."""
     membership = _lock(membership)
     if membership.status == Membership.Status.CANCELLED:
         raise InvalidTransitionError("Cancelled memberships can't be renewed.")
-
-    if amount is None:
-        if tier.price is None:
-            raise InvalidTransitionError("Enter the amount paid. This tier has no standard price.")
-        amount, currency = tier.price, tier.currency
+    if tier.price is None:
+        raise InvalidTransitionError(f"{tier.name} has no price yet. Set it in Settings → Membership tiers first.")
 
     # Renewing early extends from the current end date; renewing late starts from today
     base = max(membership.end_date, timezone.localdate())
-    new_end = end_date or add_months(base, tier.duration_months)
-    if new_end <= membership.end_date:
-        raise InvalidTransitionError("The new end date must be after the current one.")
-
     membership.tier = tier
-    membership.end_date = new_end
+    membership.end_date = add_months(base, tier.duration_months)
     membership.save(update_fields=["tier", "end_date", "updated_at"])
 
     MembershipPayment.objects.create(
         membership=membership,
         kind=MembershipPayment.Kind.RENEWAL,
-        amount=amount,
-        currency=currency,
+        amount=tier.price,
+        currency=tier.currency,
         method=method,
         reference=reference,
         recorded_by=by,

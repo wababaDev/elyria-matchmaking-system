@@ -259,13 +259,10 @@
                         </div>
                         <div class="modal-body">
                             <div class="row g-3">
-                                <div class="col-7">
+                                <div class="col-12">
                                     <label class="form-label fs-13">Amount</label>
-                                    {{ fee_form.amount }}
-                                </div>
-                                <div class="col-5">
-                                    <label class="form-label fs-13">Currency</label>
-                                    {{ fee_form.currency }}
+                                    <div class="form-control bg-light">{{ site.fee_display }}</div>
+                                    <div class="form-text fs-12">Set in Settings → General.</div>
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label fs-13">Method</label>
@@ -305,6 +302,7 @@
                                     data-bs-dismiss="modal"
                                     aria-label="Close"></button>
                         </div>
+
                         <div class="modal-body">
                             <div class="row g-3">
                                 <div class="col-12">
@@ -313,10 +311,10 @@
                                         <option value="" selected disabled>Select a tier</option>
                                         {% for tier in active_tiers %}
                                             <option value="{{ tier.pk }}"
-                                                    data-price="{% if tier.price is not None %}{{ tier.price|unlocalize }}{% endif %}"
-                                                    data-currency="{{ tier.currency }}"
-                                                    data-months="{{ tier.duration_months }}">
-                                                {{ tier.name }}{% if tier.price is not None %} ({{ tier.currency }} {{ tier.price|floatformat:2 }}, {{ tier.duration_months }} months){% endif %}
+                                                    data-months="{{ tier.duration_months }}"
+                                                    data-amount="{{ tier.currency }} {{ tier.price|floatformat:'2g' }}"
+                                                    {% if tier.price is None %}disabled{% endif %}>
+                                                {{ tier.name }}{% if tier.price is None %} (set a price in Settings first){% else %} · {{ tier.duration_months }} months{% endif %}
                                             </option>
                                         {% endfor %}
                                     </select>
@@ -327,19 +325,16 @@
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label fs-13">End date</label>
-                                    {{ confirm_form.end_date }}
+                                    <div class="form-control bg-light" data-end-preview>Select a tier</div>
                                 </div>
+
                                 <div class="col-12">
                                     <hr class="my-1">
                                     <span class="fs-13 fw-semibold">Membership payment</span>
                                 </div>
-                                <div class="col-7">
+                                <div class="col-12">
                                     <label class="form-label fs-13">Amount</label>
-                                    {{ confirm_form.amount }}
-                                </div>
-                                <div class="col-5">
-                                    <label class="form-label fs-13">Currency</label>
-                                    {{ confirm_form.currency }}
+                                    <div class="form-control bg-light" data-amount-preview>Select a tier</div>
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label fs-13">Method</label>
@@ -350,10 +345,12 @@
                                     {{ confirm_form.reference }}
                                 </div>
                             </div>
+
                             <p class="text-muted fs-12 mt-3 mb-0">
                                 This creates their client record and member account, and emails them a link to set their password.
                             </p>
                         </div>
+
                         <div class="modal-footer">
                             <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
                             <button type="submit" class="btn btn-primary">Confirm membership</button>
@@ -367,45 +364,37 @@
 {% endblock %}
 {% block scripts %}
     <script>
-        // Fill amount + end date from the chosen tier (staff can still edit them)
+        // Preview the tier's amount and end date (the server calculates both)
         document.addEventListener('DOMContentLoaded', function() {
             var modal = document.getElementById('confirmMembershipModal');
             if (!modal) return;
             var tier = modal.querySelector('[data-tier-select]');
             var start = modal.querySelector('input[name="start_date"]');
-            var end = modal.querySelector('input[name="end_date"]');
-            var amount = modal.querySelector('input[name="amount"]');
-            var currency = modal.querySelector('select[name="currency"]');
+            var endPreview = modal.querySelector('[data-end-preview]');
+            var amountPreview = modal.querySelector('[data-amount-preview]');
 
             function addMonths(iso, months) {
                 var p = iso.split('-').map(Number);
                 var d = new Date(Date.UTC(p[0], p[1] - 1 + months, 1));
                 var lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
                 d.setUTCDate(Math.min(p[2], lastDay));
-                return d.toISOString().slice(0, 10);
+                return d.toLocaleDateString('en-GB', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    timeZone: 'UTC'
+                });
             }
 
-            function selected() {
-                return tier.selectedOptions[0];
+            function update() {
+                var opt = tier.selectedOptions[0];
+                if (!opt || !opt.value) return;
+                amountPreview.textContent = opt.dataset.amount;
+                endPreview.textContent = start.value ? addMonths(start.value, Number(opt.dataset.months)) : 'Pick a start date';
             }
 
-            function updateEndDate() {
-                var opt = selected();
-                if (opt && opt.value && start.value) end.value = addMonths(start.value, Number(opt.dataset.months));
-            }
-
-            tier.addEventListener('change', function() {
-                var opt = selected();
-                if (opt.dataset.price) {
-                    amount.value = opt.dataset.price;
-                    currency.value = opt.dataset.currency;
-                } else {
-                    amount.value = '';
-                    amount.placeholder = 'No standard price: enter amount';
-                }
-                updateEndDate();
-            });
-            start.addEventListener('change', updateEndDate); // only the date follows the start; never overwrites an edited amount
+            tier.addEventListener('change', update);
+            start.addEventListener('change', update);
         });
     </script>
 {% endblock %}

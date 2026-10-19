@@ -1,0 +1,13 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}You've been given access to the Elyria staff dashboard.{% endblock %}
+{% block heading %}Your staff account{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">Hi {{ user.first_name }},</p>
+
+    <p style="margin:0;">You've been given access to the Elyria staff dashboard. Choose your password here (the link expires in 7 days):</p>
+
+    {% include "notification/email/_button.html" with url=link label="Choose your password" %}
+
+    <p style="margin:0 0 16px;">After that, sign in any time at the staff sign-in page with your email and password.</p>
+{% endblock %}
+{% block signoff %}<span style="font-family:Georgia,'Times New Roman',serif; color:#6E1423;">Elyria Matchmaking</span>{% endblock %}

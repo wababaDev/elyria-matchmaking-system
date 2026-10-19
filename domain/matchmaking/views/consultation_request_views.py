@@ -172,8 +172,8 @@ class MarkFeePaidView(ConsultationRequestActionView):
         mark_fee_paid(
             consultation_request,
             by=self.request.user,
-            amount=data["amount"],
-            currency=data["currency"],
+        
+            
             method=data["method"],
             reference=data["reference"],
         )
@@ -252,9 +252,7 @@ class ConfirmMembershipView(ConsultationRequestActionView):
             consultation_request,
             tier=data["tier"],
             start_date=data["start_date"],
-            end_date=data["end_date"],
-            amount=data["amount"],
-            currency=data["currency"],
+            
             method=data["method"],
             reference=data["reference"],
             by=self.request.user,

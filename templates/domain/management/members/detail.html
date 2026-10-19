@@ -153,11 +153,16 @@
             </div>
             <div class="modal-body">
                 <p class="text-muted fs-12">Currently ends {{ membership.end_date|date:"j M Y" }}. Renewing early extends from that date; renewing after it ends starts from today.</p>
-                {% include "partials/management/_field.html" with field=renew_form.tier %}
-                {% include "partials/management/_field.html" with field=renew_form.end_date %}
-                <div class="row">
-                    <div class="col-7">{% include "partials/management/_field.html" with field=renew_form.amount %}</div>
-                    <div class="col-5">{% include "partials/management/_field.html" with field=renew_form.currency %}</div>
+                <div class="mb-3">
+                    <label class="form-label fs-13">Tier</label>
+                    <select name="tier" class="form-select" required>
+                        {% for tier in active_tiers %}
+                            <option value="{{ tier.pk }}" {% if tier.pk == membership.tier_id %}selected{% endif %} {% if tier.price is None %}disabled{% endif %}>
+                                {{ tier.name }}{% if tier.price is None %} (set a price in Settings first){% else %} · {{ tier.currency }} {{ tier.price|floatformat:'2g' }} · {{ tier.duration_months }} months{% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text fs-12">Extends from the current end date ({{ membership.end_date|date:"j M Y" }}), or from today if it has already expired.</div>
                 </div>
                 {% include "partials/management/_field.html" with field=renew_form.method %}
                 {% include "partials/management/_field.html" with field=renew_form.reference %}
