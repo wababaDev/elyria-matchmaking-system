@@ -5,6 +5,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from domain.matchmaking.models import ConsultationRequest
+from domain.matchmaking.models.consultation import Consultation
 from domain.matchmaking.models.consultation_request import NOT_ELIGIBLE_MESSAGE
 from notification.services.consultation_emails import notify_new_consultation_request
 from django.db.models import Q
@@ -13,6 +14,11 @@ from domain.website.models import SiteSettings
 RATE_LIMIT_ATTEMPTS = 5          # per address...
 RATE_LIMIT_WINDOW = 60 * 60      # ...per hour
 
+EDITABLE_FIELDS = [
+    "full_name", "preferred_name", "email", "phone", "gender", "seeking", "age",
+    "relationship_status", "relationship_status_other",
+    "location", "nationality", "occupation",
+]
 
 class NotEligibleError(Exception):
     pass
@@ -164,3 +170,40 @@ def requests_visible_to(user):
     if user.has_perm("base.view_all_consultation_requests"):
         return qs
     return qs.filter(assigned_to=user)
+
+
+@transaction.atomic
+def update_request_details(consultation_request, *, data, by):
+    consultation_request = _lock(consultation_request)
+    if consultation_request.status not in ConsultationRequest.OPEN_STATUSES:
+        raise InvalidTransitionError("Details can only be edited while the request is in progress.")
+
+    for field in EDITABLE_FIELDS:
+        setattr(consultation_request, field, data[field])
+    consultation_request.details_edited_by = by
+    consultation_request.details_edited_at = timezone.now()
+    consultation_request.save()
+    return consultation_request
+
+
+@transaction.atomic
+def undo_fee_paid(consultation_request, *, reason, by):
+    consultation_request = _lock(consultation_request)
+    if consultation_request.status != ConsultationRequest.Status.FEE_PAID:
+        raise InvalidTransitionError("Only requests marked as paid can be undone.")
+    if Consultation.objects.filter(request=consultation_request).exists():
+        raise InvalidTransitionError(
+            "A consultation has already been booked or started for this request, so the payment can't be undone."
+        )
+
+    consultation_request.status = ConsultationRequest.Status.AWAITING_PAYMENT
+    consultation_request.fee_paid_at = None
+    consultation_request.fee_marked_paid_by = None
+    consultation_request.fee_amount = None
+    consultation_request.fee_payment_method = ""
+    consultation_request.fee_reference = ""
+    consultation_request.fee_undone_at = timezone.now()
+    consultation_request.fee_undone_by = by
+    consultation_request.fee_undo_reason = reason.strip()
+    consultation_request.save()
+    return consultation_request

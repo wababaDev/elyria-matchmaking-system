@@ -50,4 +50,8 @@ urlpatterns = [
     path("enquiries/", enquiry_views.EnquiryListView.as_view(), name="enquiries"),
     path("enquiries/<int:pk>/", enquiry_views.EnquiryDetailView.as_view(), name="enquiry-detail"),
     path("enquiries/<int:pk>/answered/", enquiry_views.MarkEnquiryAnsweredView.as_view(), name="enquiry-answered"),
+
+    path("requests/<int:pk>/edit/", requests.ConsultationRequestEditView.as_view(), name="consultation-request-edit"),
+    path("requests/<int:pk>/resend-payment/", requests.ResendPaymentInstructionsView.as_view(), name="consultation-request-resend-payment"),
+    path("requests/<int:pk>/undo-paid/", requests.UndoFeePaidView.as_view(), name="consultation-request-undo-paid"),
 ]

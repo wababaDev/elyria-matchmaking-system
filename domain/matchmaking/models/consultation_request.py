@@ -111,6 +111,17 @@ class ConsultationRequest(TimeStampedModel):
     fee_payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices, blank=True)
     fee_reference = models.CharField(max_length=100, blank=True, help_text="Bank or mobile money reference.")
 
+     # --- Corrections ---
+    details_edited_at = models.DateTimeField(null=True, blank=True)
+    details_edited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    fee_undone_at = models.DateTimeField(null=True, blank=True)
+    fee_undone_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    fee_undo_reason = models.CharField(max_length=200, blank=True)
+
     objects = ConsultationRequestQuerySet.as_manager()
 
     class Meta:

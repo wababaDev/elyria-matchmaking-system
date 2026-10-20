@@ -7,6 +7,7 @@ from domain.matchmaking.models import ConsultationRequest, Membership
 from domain.matchmaking.models import ConsultationRequest, MembershipTier
 from domain.matchmaking.utils import add_months
 from domain.base.forms.base_forms import BootstrapFormMixin
+from domain.matchmaking.forms.consultation_request_form import ConsultationRequestForm
 
 def staff_members():
     return (
@@ -104,3 +105,22 @@ class RenewMembershipForm(BootstrapFormMixin, PricedTierMixin, FeePaymentForm):
 
 class CancelMembershipForm(BootstrapFormMixin, forms.Form):
     reason = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}), label="Reason for cancelling")
+
+
+class ConsultationRequestDetailsForm(BootstrapFormMixin, ConsultationRequestForm):
+    """Staff correcting what the applicant submitted: same rules as the public form."""
+    website = None  # drop the public form's honeypot field
+
+    class Meta(ConsultationRequestForm.Meta):
+        fields = [
+            "full_name", "preferred_name", "email", "phone", "gender", "seeking", "age",
+            "relationship_status", "relationship_status_other",
+            "location", "nationality", "occupation",
+        ]
+
+
+class UndoFeePaidForm(forms.Form):
+    reason = forms.CharField(
+        max_length=200,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. Marked paid by mistake"}),
+    )

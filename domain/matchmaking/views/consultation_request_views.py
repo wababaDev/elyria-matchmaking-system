@@ -14,7 +14,7 @@ from domain.matchmaking.forms import (
     FeePaymentForm,
     staff_members,
 )
-from domain.matchmaking.forms.staff_forms import ConfirmMembershipForm
+from domain.matchmaking.forms.staff_forms import ConfirmMembershipForm, ConsultationRequestDetailsForm, UndoFeePaidForm
 from domain.matchmaking.services.membership_service import confirm_membership
 from django.utils import timezone
 from domain.matchmaking.models import ConsultationRequest, MembershipTier
@@ -26,6 +26,8 @@ from domain.matchmaking.services.consultation_request_service import (
     filter_consultation_requests,
     mark_fee_paid,
     requests_visible_to,
+    undo_fee_paid,
+    update_request_details,
 )
 from domain.matchmaking.services.consultation_service import (
     book_consultation,
@@ -33,6 +35,9 @@ from domain.matchmaking.services.consultation_service import (
     save_consultation_notes,
 )
 from domain.website.models import SiteSettings
+from django.utils.decorators import method_decorator  # not needed, ignore if your linter complains
+from django.views.generic import UpdateView
+from notification.services.consultation_emails import resend_payment_instructions
 
 class ConsultationRequestListView(StaffRequiredMixin, ListView):
     permission_required = "base.view_all_consultation_requests"
@@ -105,6 +110,8 @@ class ConsultationRequestDetailView(StaffRequiredMixin, DetailView):
                 initial={"notes": consultation.notes if consultation else ""}
             ),
             assign_form=AssignForm(initial={"assigned_to": self.object.assigned_to_id}),
+            undo_form=UndoFeePaidForm(),
+            can_edit_details=self.object.status in ConsultationRequest.OPEN_STATUSES,
             confirm_form=ConfirmMembershipForm(
                 initial={
                     "start_date": timezone.localdate(),
@@ -257,3 +264,47 @@ class ConfirmMembershipView(ConsultationRequestActionView):
             reference=data["reference"],
             by=self.request.user,
         )
+
+
+class ConsultationRequestEditView(StaffRequiredMixin, UpdateView):
+    """Correct the applicant's submitted details while the request is in progress."""
+    permission_required = "base.manage_consultation_request"
+    form_class = ConsultationRequestDetailsForm
+    template_name = "domain/management/consultation_requests/edit.html"
+    context_object_name = "cr"
+
+    def get_queryset(self):
+        # Scoped like the detail page, and only open requests can be edited
+        return requests_visible_to(self.request.user).filter(status__in=ConsultationRequest.OPEN_STATUSES)
+
+    def form_valid(self, form):
+        email_changed = "email" in form.changed_data
+        try:
+            request_obj = update_request_details(self.object, data=form.cleaned_data, by=self.request.user)
+        except InvalidTransitionError as error:
+            messages.error(self.request, str(error))
+        else:
+            message = "Details updated."
+            if email_changed and request_obj.status == ConsultationRequest.Status.AWAITING_PAYMENT:
+                message += " The email changed: use Resend payment instructions so they receive them."
+            messages.success(self.request, message)
+        return redirect("matchmaking:consultation-request-detail", pk=self.object.pk)
+
+
+class ResendPaymentInstructionsView(ConsultationRequestActionView):
+    success_message = "Payment instructions sent again to {name}."
+
+    def perform(self, consultation_request, data):
+        if consultation_request.status != ConsultationRequest.Status.AWAITING_PAYMENT:
+            raise InvalidTransitionError("Payment instructions can only be resent while awaiting payment.")
+        resend_payment_instructions(consultation_request)
+
+
+class UndoFeePaidView(ConsultationRequestActionView):
+    # Admin only: reversing a payment record is an owner-level decision
+    permission_required = "base.view_all_consultation_requests"
+    form_class = UndoFeePaidForm
+    success_message = "Payment undone for {name}. The request is back to awaiting payment."
+
+    def perform(self, consultation_request, data):
+        undo_fee_paid(consultation_request, reason=data["reason"], by=self.request.user)

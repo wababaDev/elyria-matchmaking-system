@@ -30,6 +30,10 @@
                 <div class="card custom-card">
                     <div class="card-header">
                         <div class="card-title">Applicant</div>
+                        {% if can_edit_details and perms.base.manage_consultation_request %}
+                            <a href="{% url 'matchmaking:consultation-request-edit' cr.pk %}"
+                               class="btn btn-sm btn-light ms-auto"><i class="fe fe-edit-2 me-1"></i>Edit details</a>
+                        {% endif %}
                     </div>
                     <div class="card-body">
                         <dl class="row mb-0">
@@ -52,6 +56,7 @@
                             <dt class="col-sm-4 text-muted fw-normal">Relationship status</dt>
                             <dd class="col-sm-8">
                                 {{ cr.get_relationship_status_display }}
+                                {% if cr.relationship_status_other %}<br><span class="text-muted fs-12">{{ cr.relationship_status_other }}</span>{% endif %}
                             </dd>
                             <dt class="col-sm-4 text-muted fw-normal">Location</dt>
                             <dd class="col-sm-8">
@@ -74,6 +79,12 @@
                                 <a href="tel:{{ cr.phone }}">{{ cr.phone }}</a>
                             </dd>
                         </dl>
+                        {% if cr.details_edited_at %}
+                            <p class="text-muted fs-12 mb-0 mt-3">
+                                Details edited by {{ cr.details_edited_by.full_name|default:"staff" }}
+                                on {{ cr.details_edited_at|date:"j M Y, H:i" }}
+                            </p>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -186,6 +197,12 @@
                                     {% if cr.fee_marked_paid_by %}<br><span class="text-muted">Recorded by</span> {{ cr.fee_marked_paid_by.full_name }}{% endif %}
                                 </li>
                             {% endif %}
+                            {% if cr.fee_undone_at %}
+                                <li class="mb-2 text-muted fs-12">
+                                    A payment was undone by {{ cr.fee_undone_by.full_name|default:"staff" }}
+                                    on {{ cr.fee_undone_at|date:"j M Y, H:i" }}: {{ cr.fee_undo_reason }}
+                                </li>
+                            {% endif %}
                             {% if cr.client %}
                                 <li class="mb-2">
                                     <span class="text-muted">Member:</span>
@@ -208,6 +225,21 @@
                                             class="btn btn-primary"
                                             data-bs-toggle="modal"
                                             data-bs-target="#feePaidModal">Mark fee as paid</button>
+                                    <form method="post"
+                                          action="{% url 'matchmaking:consultation-request-resend-payment' cr.pk %}">
+                                        {% csrf_token %}
+                                        <button type="submit"
+                                                class="btn btn-light w-100"
+                                                data-confirm-title="Resend payment instructions"
+                                                data-confirm="Send the payment instructions to {{ cr.email }} again?"
+                                                data-confirm-button="Send">Resend payment instructions</button>
+                                    </form>
+                                {% endif %}
+                                {% if cr.status == "fee_paid" and not consultation and perms.base.view_all_consultation_requests %}
+                                    <button type="button"
+                                            class="btn btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#undoFeeModal">Undo payment</button>
                                 {% endif %}
 
                                 {% if perms.base.manage_staff %}
@@ -277,6 +309,43 @@
                         <div class="modal-footer">
                             <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
                             <button type="submit" class="btn btn-primary">Confirm payment</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+
+
+        <!-- Undo payment -->
+        {% if cr.status == "fee_paid" and not consultation and perms.base.view_all_consultation_requests %}
+            <div class="modal fade"
+                 id="undoFeeModal"
+                 tabindex="-1"
+                 aria-labelledby="undoFeeModalTitle"
+                 aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered" style="max-width: 460px;">
+                    <form method="post"
+                          action="{% url 'matchmaking:consultation-request-undo-paid' cr.pk %}"
+                          class="modal-content">
+                        {% csrf_token %}
+                        <div class="modal-header">
+                            <h6 class="modal-title" id="undoFeeModalTitle">Undo payment: {{ cr.display_name }}</h6>
+                            <button type="button"
+                                    class="btn-close"
+                                    data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="fs-13">
+                                This sets the request back to <strong>awaiting payment</strong> and clears the payment details.
+                                It's recorded with your name and the reason.
+                            </p>
+                            <label class="form-label fs-13">Reason</label>
+                            {{ undo_form.reason }}
+                        </div>
+                        <div class="modal-footer d-flex flex-nowrap gap-2">
+                            <button type="button" class="btn btn-light flex-fill m-0" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-danger flex-fill m-0">Undo payment</button>
                         </div>
                     </form>
                 </div>

@@ -51,3 +51,9 @@ def notify_consultation_booked(consultation, *, rebooked=False):
     from notification import tasks
 
     enqueue(tasks.send_consultation_booked_email, consultation.pk, rebooked)
+
+
+def resend_payment_instructions(consultation):
+    from notification import tasks
+
+    enqueue(tasks.send_payment_instructions_email, consultation.pk)
