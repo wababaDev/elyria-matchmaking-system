@@ -17,6 +17,7 @@
             <div class="card-body">
                 <dl class="row mb-0">
                     <dt class="col-sm-4 text-muted fw-normal">Preferred name</dt><dd class="col-sm-8">{{ member.preferred_name }}</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Payment reference</dt><dd class="col-sm-8"><strong>{{ details.payment_reference|default:"—" }}</strong></dd>
                     <dt class="col-sm-4 text-muted fw-normal">Gender / seeking</dt><dd class="col-sm-8">{{ details.get_gender_display }} / {{ details.get_seeking_display }}</dd>
                     <dt class="col-sm-4 text-muted fw-normal">Age (at request)</dt><dd class="col-sm-8">{{ details.age }}</dd>
                     <dt class="col-sm-4 text-muted fw-normal">Location</dt><dd class="col-sm-8">{{ details.location }}</dd>
@@ -25,10 +26,12 @@
                     <dt class="col-sm-4 text-muted fw-normal">Email</dt><dd class="col-sm-8"><a href="mailto:{{ member.user.email }}">{{ member.user.email }}</a></dd>
                     <dt class="col-sm-4 text-muted fw-normal">Phone</dt><dd class="col-sm-8 mb-0"><a href="tel:{{ details.phone }}">{{ details.phone }}</a></dd>
                 </dl>
+                <a href="{% url 'matchmaking:consultation-request-detail' member.consultation_request_id %}" class="fs-12 d-inline-block mt-3">View original request</a>
             </div>
         </div>
 
-        <!-- Consultation notes (read-only here) -->
+        <!-- Consultation notes: only for people who work on consultations (not Finance) -->
+        {% if perms.base.manage_consultation_request %}
         <div class="card custom-card">
             <div class="card-header">
                 <div class="card-title">Consultation notes</div>
@@ -43,31 +46,33 @@
                 {% else %}
                     <p class="text-muted mb-0">No consultation recorded.</p>
                 {% endif %}
-                <a href="{% url 'matchmaking:consultation-request-detail' member.consultation_request_id %}" class="fs-12 d-inline-block mt-3">View original request</a>
             </div>
         </div>
+        {% endif %}
 
         <!-- Payments -->
         <div class="card custom-card">
             <div class="card-header"><div class="card-title">Membership payments</div></div>
             <div class="card-body p-0">
-                <table class="table mb-0 align-middle fs-13">
-                    <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Method</th><th>Reference</th><th>Recorded by</th></tr></thead>
-                    <tbody>
-                        {% for p in payments %}
-                            <tr>
-                                <td>{{ p.paid_on|date:"j M Y" }}</td>
-                                <td>{{ p.get_kind_display }}</td>
-                                <td class="fw-semibold">{{ p.currency }} {{ p.amount|floatformat:2 }}</td>
-                                <td>{{ p.get_method_display }}</td>
-                                <td>{{ p.reference|default:"—" }}</td>
-                                <td>{{ p.recorded_by.full_name|default:"—" }}</td>
-                            </tr>
-                        {% empty %}
-                            <tr><td colspan="6" class="text-center text-muted py-4">No payments recorded.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="table mb-0 align-middle fs-13">
+                        <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Method</th><th>Transaction ID</th><th>Recorded by</th></tr></thead>
+                        <tbody>
+                            {% for p in payments %}
+                                <tr>
+                                    <td>{{ p.paid_on|date:"j M Y" }}</td>
+                                    <td>{{ p.get_kind_display }}</td>
+                                    <td class="fw-semibold">{{ p.currency }} {{ p.amount|floatformat:2 }}</td>
+                                    <td>{{ p.get_method_display }}</td>
+                                    <td>{{ p.reference|default:"—" }}</td>
+                                    <td>{{ p.recorded_by.full_name|default:"—" }}</td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="6" class="text-center text-muted py-4">No payments recorded.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -90,9 +95,9 @@
                 </p>
                 {% if status == "cancelled" %}
                     <p class="fs-13 text-muted mb-0">
-                        Cancelled {{ membership.cancelled_at|date:"j M Y" }}.<br>{{ membership.cancellation_reason }}
+                        Cancelled {{ membership.cancelled_at|date:"j M Y" }}{% if membership.cancelled_by %} by {{ membership.cancelled_by.full_name }}{% endif %}.<br>{{ membership.cancellation_reason }}
                     </p>
-                {% else %}
+                {% elif perms.base.manage_client %}
                     <div class="d-grid gap-2">
                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#renewModal">Record renewal</button>
                         <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelModal">Cancel membership</button>
@@ -112,7 +117,7 @@
                 {% else %}
                     <p class="mb-3"><span class="text-muted">Last sign-in:</span> {{ member.user.last_login|date:"j M Y, H:i"|default:"Never" }}</p>
                 {% endif %}
-                {% if member.user.is_active %}
+                {% if member.user.is_active and perms.base.manage_client %}
                     <form method="post" action="{% url 'matchmaking:member-resend-link' member.pk %}">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-light w-100"
@@ -141,7 +146,7 @@
     </div>
 </div>
 
-{% if status != "cancelled" %}
+{% if status != "cancelled" and perms.base.manage_client %}
 <!-- Renew -->
 <div class="modal fade" id="renewModal" tabindex="-1" aria-labelledby="renewTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -152,12 +157,20 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p class="text-muted fs-12">Currently ends {{ membership.end_date|date:"j M Y" }}. Renewing early extends from that date; renewing after it ends starts from today.</p>
-                {% include "partials/management/_field.html" with field=renew_form.tier %}
-                {% include "partials/management/_field.html" with field=renew_form.end_date %}
-                <div class="row">
-                    <div class="col-7">{% include "partials/management/_field.html" with field=renew_form.amount %}</div>
-                    <div class="col-5">{% include "partials/management/_field.html" with field=renew_form.currency %}</div>
+                <div class="mb-3">
+                    <label class="form-label fs-13">Tier</label>
+                    <select name="tier" class="form-select" required>
+                        {% for tier in active_tiers %}
+                            <option value="{{ tier.pk }}" {% if tier.pk == membership.tier_id %}selected{% endif %} {% if tier.price is None %}disabled{% endif %}>
+                                {{ tier.name }}{% if tier.price is None %} (set a price in Settings first){% else %} · {{ tier.currency }} {{ tier.price|floatformat:'2g' }} · {{ tier.duration_months }} months{% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text fs-12">Extends from the current end date ({{ membership.end_date|date:"j M Y" }}), or from today if it has already expired.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fs-13">Payment reference</label>
+                    <div class="form-control bg-light"><strong>{{ details.payment_reference|default:"—" }}</strong></div>
                 </div>
                 {% include "partials/management/_field.html" with field=renew_form.method %}
                 {% include "partials/management/_field.html" with field=renew_form.reference %}

@@ -1,0 +1,22 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}{% if rebooked %}Your consultation has a new time.{% else %}Your private consultation is confirmed.{% endif %}{% endblock %}
+{% block heading %}{% if rebooked %}Your consultation has been rescheduled{% else %}Your consultation is booked{% endif %}{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">Dear {{ applicant.preferred_name|default:applicant.full_name }},</p>
+
+    <p style="margin:0 0 16px;">{% if rebooked %}Your private consultation with Elyria Matchmaking has been moved to a new time.{% else %}Thank you, we've received your consultation fee and your private consultation is now booked.{% endif %}</p>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+           style="background:#FAF7F2; border-left:3px solid #C9A227; margin:12px 0 20px;">
+        <tr>
+            <td style="padding:16px 20px; font-family:Arial,Helvetica,sans-serif; font-size:15px; line-height:1.8; color:#3A3A3A;">
+                <strong style="color:#6E1423;">Date:</strong> {{ consultation.scheduled_for|date:"l j F Y" }}<br>
+                <strong style="color:#6E1423;">Time:</strong> {{ consultation.scheduled_for|date:"H:i" }} (Lusaka time)<br>
+                {% if applicant.assigned_to %}<strong style="color:#6E1423;">With:</strong> {{ applicant.assigned_to.full_name }}<br>{% endif %}
+                <strong style="color:#6E1423;">Where:</strong> {{ consultation.location|default:"We'll confirm the venue with you directly." }}
+            </td>
+        </tr>
+    </table>
+
+    <p style="margin:0 0 16px;">If this time no longer suits you, simply reply to this email and we'll arrange another.</p>
+{% endblock %}

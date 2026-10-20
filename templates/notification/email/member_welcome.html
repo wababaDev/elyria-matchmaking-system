@@ -1,0 +1,16 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}Your private member account is ready. Set your password to get started.{% endblock %}
+{% block heading %}Welcome to Elyria{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">Dear {{ client.preferred_name }},</p>
+
+    <p style="margin:0 0 16px;">Welcome to Elyria Matchmaking. We're delighted to confirm your <strong>{{ membership.tier.name }} Membership</strong>.</p>
+
+    <p style="margin:0;">Your private member account is ready. Please use the button below to choose your password:</p>
+
+    {% include "notification/email/_button.html" with url=link label="Set your password" %}
+
+    <p style="margin:0 0 16px;">This link is personal to you and expires in 7 days. Once you're signed in, you can complete your profile at your own pace. You can save and return to it at any time.</p>
+
+    <p style="margin:0 0 16px;">If the link has expired, simply reply to this email and we'll send you a new one.</p>
+{% endblock %}

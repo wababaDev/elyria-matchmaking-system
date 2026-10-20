@@ -49,6 +49,7 @@ class MemberTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         create_groups_and_permissions()
+        MembershipTier.objects.update(price=15000, currency="ZMW")
         cls.admin = make_user("admin@x.com", Groups.ADMIN)
         cls.anisha = make_user("anisha@x.com", Groups.MATCHMAKER)
         cls.tonde = make_user("tonde@x.com", Groups.MATCHMAKER)

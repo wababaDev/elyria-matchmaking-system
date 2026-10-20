@@ -1,23 +1,17 @@
 from django.conf import settings
-from django.core.mail import send_mail
-from django.template.loader import render_to_string
 from django.urls import reverse
 
-from domain.website.models import SiteSettings
+from notification.services.mailer import send_templated_email
 from notification.services.queue import enqueue
 
 # ---------- Delivery (run by the worker; errors bubble up so the task retries)
 
 def deliver_payment_instructions(consultation):
-    body = render_to_string(
-        "notification/email/consultation_payment_instructions.txt",
-        {"consultation": consultation, "site": SiteSettings.load()},
-    )
-    send_mail(
+    send_templated_email(
         subject="Your private consultation with Elyria Matchmaking",
-        message=body,
-        from_email=None,
-        recipient_list=[consultation.email],
+        template="notification/email/consultation_payment_instructions",
+        context={"consultation": consultation},
+        to=[consultation.email],
     )
 
 
@@ -25,30 +19,22 @@ def deliver_team_alert(consultation):
     link = settings.SITE_URL.rstrip("/") + reverse(
         "matchmaking:consultation-request-detail", args=[consultation.pk]
     )
-    body = render_to_string(
-        "notification/email/consultation_team_alert.txt",
-        {"consultation": consultation, "link": link},
-    )
-    send_mail(
+    send_templated_email(
         subject=f"New consultation request: {consultation.full_name}",
-        message=body,
-        from_email=None,
-        recipient_list=[settings.TEAM_INBOX_EMAIL],
+        template="notification/email/consultation_team_alert",
+        context={"consultation": consultation, "link": link},
+        to=[settings.TEAM_INBOX_EMAIL],
     )
 
 
 def deliver_consultation_booked(consultation, rebooked=False):
     applicant = consultation.request
-    body = render_to_string(
-        "notification/email/consultation_booked.txt",
-        {"consultation": consultation, "applicant": applicant, "rebooked": rebooked},
-    )
     subject = "Your consultation has been rescheduled" if rebooked else "Your private consultation is booked"
-    send_mail(
+    send_templated_email(
         subject=f"{subject} | Elyria Matchmaking",
-        message=body,
-        from_email=None,
-        recipient_list=[applicant.email],
+        template="notification/email/consultation_booked",
+        context={"consultation": consultation, "applicant": applicant, "rebooked": rebooked},
+        to=[applicant.email],
     )
 
 
@@ -65,3 +51,9 @@ def notify_consultation_booked(consultation, *, rebooked=False):
     from notification import tasks
 
     enqueue(tasks.send_consultation_booked_email, consultation.pk, rebooked)
+
+
+def resend_payment_instructions(consultation):
+    from notification import tasks
+
+    enqueue(tasks.send_payment_instructions_email, consultation.pk)

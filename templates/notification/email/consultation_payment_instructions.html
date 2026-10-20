@@ -1,0 +1,27 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}How to pay your consultation fee and secure your consultation slot.{% endblock %}
+{% block heading %}Your private consultation{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">Dear {{ consultation.display_name }},</p>
+
+    <p style="margin:0 0 16px;">Thank you for your interest in Elyria Matchmaking. Before we can schedule your private consultation, a consultation fee of <strong>{{ site.fee_display }}</strong> applies. This is separate from, and not the same as, any future Membership fee &mdash; it secures your consultation slot only.</p>
+
+    <p style="margin:0 0 16px;">This fee reflects the depth of our process: a professional assessment of fit conducted by an experienced matchmaker, not a sales call. Our vetting and matchmaking process is thorough by design, and this fee reflects the genuine time, discretion, and diligence involved from this very first step.</p>
+
+    <p style="margin:0 0 8px;">To proceed, please send <strong>{{ site.fee_display }}</strong> via:</p>
+
+    <div style="background:#FAF7F2;
+                border-left:3px solid #C9A227;
+                padding:16px 20px;
+                margin:12px 0 20px">
+        <p style="margin:0 0 4px; font-weight:bold; color:#6E1423;">Bank transfer</p>
+        <p style="margin:0 0 14px;">{% if site.bank_details %}{{ site.bank_details|linebreaksbr }}{% else %}[Bank details &mdash; to be supplied]{% endif %}</p>
+        <p style="margin:0 0 4px; font-weight:bold; color:#6E1423;">Mobile money</p>
+        <p style="margin:0 0 14px;">{% if site.mobile_money_details %}{{ site.mobile_money_details|linebreaksbr }}{% else %}[Mobile money details &mdash; to be supplied]{% endif %}</p>
+        <p style="margin:0 0 4px; font-weight:bold; color:#6E1423;">Payment reference</p>
+        <p style="margin:0; font-size:18px; letter-spacing:1px;"><strong>{{ consultation.payment_reference }}</strong></p>
+        <p style="margin:4px 0 0; font-size:13px; color:#8A8178;">Please use this as the reference when you pay, so we can match your payment to you.</p>
+    </div>
+
+    <p style="margin:0 0 16px;">Once paid, please contact us by phone, email, or WhatsApp with proof of payment, and a member of our team will be in touch within three working days.</p>
+{% endblock %}

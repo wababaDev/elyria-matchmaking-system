@@ -63,7 +63,7 @@ class GroupSetupTests(BaseTestCase):
 
     def test_setup_is_repeatable(self):
         create_groups_and_permissions()
-        self.assertEqual(Group.objects.count(), 3)
+        self.assertEqual(Group.objects.count(), 4)
 
 
 class ProfileTests(BaseTestCase):

@@ -2,9 +2,8 @@ from django.urls import path
 from django.views.generic import RedirectView
 
 from domain.matchmaking.views import consultation_request_views as requests
-from domain.matchmaking.views import dashboard_views, enquiry_views,member_views as members, queue_views
 from domain.matchmaking.views import settings_views as settings_
-
+from domain.matchmaking.views import dashboard_views, enquiry_views, member_views as members, payment_views, queue_views
 app_name = "matchmaking"
 
 urlpatterns = [
@@ -50,4 +49,10 @@ urlpatterns = [
     path("enquiries/", enquiry_views.EnquiryListView.as_view(), name="enquiries"),
     path("enquiries/<int:pk>/", enquiry_views.EnquiryDetailView.as_view(), name="enquiry-detail"),
     path("enquiries/<int:pk>/answered/", enquiry_views.MarkEnquiryAnsweredView.as_view(), name="enquiry-answered"),
+
+    path("requests/<int:pk>/edit/", requests.ConsultationRequestEditView.as_view(), name="consultation-request-edit"),
+    path("requests/<int:pk>/resend-payment/", requests.ResendPaymentInstructionsView.as_view(), name="consultation-request-resend-payment"),
+    path("requests/<int:pk>/undo-paid/", requests.UndoFeePaidView.as_view(), name="consultation-request-undo-paid"),
+
+    path("payments/", payment_views.PaymentListView.as_view(), name="payments"),
 ]

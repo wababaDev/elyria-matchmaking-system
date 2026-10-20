@@ -5,6 +5,7 @@ from domain.matchmaking.services.queue_service import queue_for
 
 
 class MyQueueView(StaffRequiredMixin, TemplateView):
+    permission_required = "base.manage_consultation_request"
     template_name = "domain/management/queue.html"
 
     def get_context_data(self, **kwargs):

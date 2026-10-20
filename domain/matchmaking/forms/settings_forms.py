@@ -6,7 +6,7 @@ from domain.matchmaking.models import MembershipTier
 from domain.website.models import SiteDocument, SiteSettings
 from domain.website.models.site_document import validate_pdf
 
-ROLE_CHOICES = [(Groups.MATCHMAKER, "Matchmaker"), (Groups.ADMIN, "Admin")]
+ROLE_CHOICES = [(Groups.MATCHMAKER, "Matchmaker"), (Groups.ADMIN, "Admin"), (Groups.FINANCE, "Finance")]
 
 
 class SiteSettingsForm(BootstrapFormMixin, forms.ModelForm):
