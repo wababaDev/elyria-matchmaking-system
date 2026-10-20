@@ -1,0 +1,12 @@
+<div class="col-xl-3 col-sm-6">
+    <div class="card custom-card">
+        <div class="card-body">
+            <p class="text-muted fs-13 mb-1">{{ label }}</p>
+            {% for currency, amount in totals %}
+                <h4 class="fw-semibold mb-0">{{ currency }} {{ amount|floatformat:"2g" }}</h4>
+            {% empty %}
+                <h4 class="fw-semibold mb-0 text-muted">—</h4>
+            {% endfor %}
+        </div>
+    </div>
+</div>

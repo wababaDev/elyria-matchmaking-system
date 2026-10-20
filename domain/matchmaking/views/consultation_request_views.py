@@ -302,7 +302,7 @@ class ResendPaymentInstructionsView(ConsultationRequestActionView):
 
 class UndoFeePaidView(ConsultationRequestActionView):
     # Admin only: reversing a payment record is an owner-level decision
-    permission_required = "base.view_all_consultation_requests"
+    permission_required = "base.undo_payment"
     form_class = UndoFeePaidForm
     success_message = "Payment undone for {name}. The request is back to awaiting payment."
 

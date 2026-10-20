@@ -88,7 +88,6 @@
                     </div>
                 </div>
 
-                <!-- Consultation -->
                 <!-- Booking -->
                 <div class="card custom-card">
                     <div class="card-header">
@@ -126,6 +125,13 @@
                             </form>
                             <p class="text-muted fs-12 mt-2 mb-0">The applicant is emailed the date and time automatically.</p>
 
+                        {% elif consultation.scheduled_for and not consultation.held_at %}
+                            {# Read-only view, e.g. for Finance #}
+                            <p class="fs-13 mb-0">
+                                <span class="text-muted">Booked for:</span>
+                                {{ consultation.scheduled_for|date:"l j F Y, H:i" }}
+                            </p>
+
                         {% elif consultation.held_at %}
                             <p class="fs-13 mb-0">
                                 <span class="text-muted">Held:</span> {{ consultation.held_at|date:"j M Y, H:i" }}
@@ -133,13 +139,13 @@
                             </p>
 
                         {% else %}
-                            <p class="text-muted mb-0">No consultation was held.</p>
+                            <p class="text-muted mb-0">No consultation booked yet.</p>
                         {% endif %}
                     </div>
                 </div>
 
-                <!-- Notes -->
-                {% if cr.status != "awaiting_payment" %}
+                <!-- Notes: only for people who work on consultations (not Finance) -->
+                {% if cr.status != "awaiting_payment" and perms.base.manage_consultation_request %}
                     <div class="card custom-card">
                         <div class="card-header">
                             <div class="card-title">Consultation notes</div>
@@ -147,26 +153,24 @@
                         </div>
                         <div class="card-body">
                             {% if cr.status == "fee_paid" or cr.status == "consulted" %}
-                                {% if perms.base.manage_consultation_request %}
-                                    <form method="post"
-                                          action="{% url 'matchmaking:consultation-request-notes' cr.pk %}">
-                                        {% csrf_token %}
-                                        {{ notes_form.notes }}
-                                        <div class="d-flex gap-2 mt-3">
-                                            <button type="submit" class="btn btn-light">Save notes</button>
-                                            {% if cr.status == "fee_paid" %}
-                                                <button type="submit"
-                                                        class="btn btn-primary"
-                                                        formaction="{% url 'matchmaking:consultation-request-mark-consulted' cr.pk %}"
-                                                        data-confirm-title="Mark as consulted"
-                                                        data-confirm="Save the notes and mark {{ cr.preferred_name }}'s consultation as held? It will move to 'To decide' in the queue."
-                                                        data-confirm-button="Save & mark as consulted">
-                                                    Save &amp; mark as consulted
-                                                </button>
-                                            {% endif %}
-                                        </div>
-                                    </form>
-                                {% endif %}
+                                <form method="post"
+                                      action="{% url 'matchmaking:consultation-request-notes' cr.pk %}">
+                                    {% csrf_token %}
+                                    {{ notes_form.notes }}
+                                    <div class="d-flex gap-2 mt-3">
+                                        <button type="submit" class="btn btn-light">Save notes</button>
+                                        {% if cr.status == "fee_paid" %}
+                                            <button type="submit"
+                                                    class="btn btn-primary"
+                                                    formaction="{% url 'matchmaking:consultation-request-mark-consulted' cr.pk %}"
+                                                    data-confirm-title="Mark as consulted"
+                                                    data-confirm="Save the notes and mark {{ cr.display_name }}'s consultation as held? It will move to 'To decide' in the queue."
+                                                    data-confirm-button="Save & mark as consulted">
+                                                Save &amp; mark as consulted
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </form>
                             {% else %}
                                 <div class="fs-14">{{ consultation.notes|linebreaksbr|default:"No notes recorded." }}</div>
                             {% endif %}
@@ -187,13 +191,14 @@
                         </p>
                         <ul class="list-unstyled fs-13 mb-4">
                             <li class="mb-2"><span class="text-muted">Submitted:</span> {{ cr.created_at|date:"j M Y, H:i" }}</li>
+                            <li class="mb-2"><span class="text-muted">Payment reference:</span> <strong>{{ cr.payment_reference }}</strong></li>
                             <li class="mb-2"><span class="text-muted">Assigned to:</span> {{ cr.assigned_to.full_name|default:"Unassigned" }}</li>
                             {% if cr.fee_paid_at %}
                                 <li class="mb-2">
                                     <span class="text-muted">Fee paid:</span>
                                     {{ cr.fee_currency }} {{ cr.fee_amount|floatformat:2 }}
                                     by {{ cr.get_fee_payment_method_display|lower }}, {{ cr.fee_paid_at|date:"j M Y" }}
-                                    {% if cr.fee_reference %}<br><span class="text-muted">Ref:</span> {{ cr.fee_reference }}{% endif %}
+                                    {% if cr.fee_reference %}<br><span class="text-muted">Transaction ID:</span> {{ cr.fee_reference }}{% endif %}
                                     {% if cr.fee_marked_paid_by %}<br><span class="text-muted">Recorded by</span> {{ cr.fee_marked_paid_by.full_name }}{% endif %}
                                 </li>
                             {% endif %}
@@ -235,7 +240,7 @@
                                                 data-confirm-button="Send">Resend payment instructions</button>
                                     </form>
                                 {% endif %}
-                                {% if cr.status == "fee_paid" and not consultation and perms.base.view_all_consultation_requests %}
+                                {% if cr.status == "fee_paid" and not consultation and perms.base.undo_payment %}
                                     <button type="button"
                                             class="btn btn-outline-danger"
                                             data-bs-toggle="modal"
@@ -250,7 +255,6 @@
                                         {{ assign_form.assigned_to }}
                                         <button type="submit" class="btn btn-sm btn-light text-nowrap">Assign</button>
                                     </form>
-
                                 {% endif %}
 
                                 <form method="post"
@@ -259,7 +263,7 @@
                                     <button type="submit"
                                             class="btn btn-outline-danger w-100"
                                             data-confirm-title="Decline request"
-                                            data-confirm="Decline {{ cr.preferred_name }}'s request? This closes it and removes it from the queue."
+                                            data-confirm="Decline {{ cr.display_name }}'s request? This closes it and removes it from the queue."
                                             data-confirm-button="Decline"
                                             data-confirm-variant="danger">Decline request</button>
                                 </form>
@@ -271,7 +275,7 @@
         </div>
 
         <!-- Mark fee as paid -->
-        {% if cr.status == "awaiting_payment" %}
+        {% if cr.status == "awaiting_payment" and perms.base.manage_consultation_request %}
             <div class="modal fade"
                  id="feePaidModal"
                  tabindex="-1"
@@ -283,7 +287,7 @@
                           class="modal-content">
                         {% csrf_token %}
                         <div class="modal-header">
-                            <h6 class="modal-title" id="feePaidModalTitle">Mark fee as paid: {{ cr.preferred_name }}</h6>
+                            <h6 class="modal-title" id="feePaidModalTitle">Mark fee as paid: {{ cr.display_name }}</h6>
                             <button type="button"
                                     class="btn-close"
                                     data-bs-dismiss="modal"
@@ -297,12 +301,18 @@
                                     <div class="form-text fs-12">Set in Settings → General.</div>
                                 </div>
                                 <div class="col-12">
+                                    <label class="form-label fs-13">Payment reference</label>
+                                    <div class="form-control bg-light"><strong>{{ cr.payment_reference }}</strong></div>
+                                    <div class="form-text fs-12">Check the payment was made with this reference.</div>
+                                </div>
+                                <div class="col-12">
                                     <label class="form-label fs-13">Method</label>
                                     {{ fee_form.method }}
                                 </div>
                                 <div class="col-12">
-                                    <label class="form-label fs-13">Payment reference</label>
+                                    <label class="form-label fs-13">Transaction ID</label>
                                     {{ fee_form.reference }}
+                                    <div class="form-text fs-12">The receipt number from the bank or mobile money message.</div>
                                 </div>
                             </div>
                         </div>
@@ -315,9 +325,8 @@
             </div>
         {% endif %}
 
-
         <!-- Undo payment -->
-        {% if cr.status == "fee_paid" and not consultation and perms.base.view_all_consultation_requests %}
+        {% if cr.status == "fee_paid" and not consultation and perms.base.undo_payment %}
             <div class="modal fade"
                  id="undoFeeModal"
                  tabindex="-1"
@@ -353,7 +362,7 @@
         {% endif %}
 
         <!-- Confirm membership -->
-        {% if cr.status == "consulted" %}
+        {% if cr.status == "consulted" and perms.base.manage_consultation_request %}
             <div class="modal fade"
                  id="confirmMembershipModal"
                  tabindex="-1"
@@ -365,7 +374,7 @@
                           class="modal-content">
                         {% csrf_token %}
                         <div class="modal-header">
-                            <h6 class="modal-title" id="confirmMembershipTitle">Confirm membership: {{ cr.preferred_name }}</h6>
+                            <h6 class="modal-title" id="confirmMembershipTitle">Confirm membership: {{ cr.display_name }}</h6>
                             <button type="button"
                                     class="btn-close"
                                     data-bs-dismiss="modal"
@@ -401,16 +410,20 @@
                                     <hr class="my-1">
                                     <span class="fs-13 fw-semibold">Membership payment</span>
                                 </div>
-                                <div class="col-12">
+                                <div class="col-6">
                                     <label class="form-label fs-13">Amount</label>
                                     <div class="form-control bg-light" data-amount-preview>Select a tier</div>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fs-13">Payment reference</label>
+                                    <div class="form-control bg-light"><strong>{{ cr.payment_reference }}</strong></div>
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label fs-13">Method</label>
                                     {{ confirm_form.method }}
                                 </div>
                                 <div class="col-12">
-                                    <label class="form-label fs-13">Payment reference</label>
+                                    <label class="form-label fs-13">Transaction ID</label>
                                     {{ confirm_form.reference }}
                                 </div>
                             </div>

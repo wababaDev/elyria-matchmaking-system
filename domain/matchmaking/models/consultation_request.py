@@ -3,6 +3,8 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from domain.base.models import TimeStampedModel
+import secrets
+
 
 MIN_AGE = 20
 MAX_AGE = 90
@@ -14,6 +16,11 @@ NOT_ELIGIBLE_MESSAGE = (
     "enquiry at this time."
 )
 
+# No 0/O or 1/I, so it can't be misread on a bank slip or phone screen
+REFERENCE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+def generate_payment_reference():
+    return "EL-" + "".join(secrets.choice(REFERENCE_ALPHABET) for _ in range(6))
 
 class ConsultationRequestQuerySet(models.QuerySet):
     def open(self):
@@ -82,6 +89,12 @@ class ConsultationRequest(TimeStampedModel):
     email = models.EmailField(db_index=True)
     phone = models.CharField(max_length=30)
 
+     # --- Payments ---
+    payment_reference = models.CharField(
+        max_length=12, unique=True, null=True, blank=True, editable=False,
+        help_text="Quoted by the applicant when paying. One per person, used for every payment.",
+    )
+
     # --- Staff tracking ---
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.AWAITING_PAYMENT, db_index=True
@@ -138,3 +151,11 @@ class ConsultationRequest(TimeStampedModel):
     @property
     def is_open(self):
         return self.status in self.OPEN_STATUSES
+
+    def save(self, *args, **kwargs):
+        if not self.payment_reference:
+            reference = generate_payment_reference()
+            while ConsultationRequest.objects.filter(payment_reference=reference).exists():
+                reference = generate_payment_reference()
+            self.payment_reference = reference
+        super().save(*args, **kwargs)

@@ -115,7 +115,7 @@ def filter_consultation_requests(status: str = "open", query: str = "", assigned
             Q(full_name__icontains=query)
             | Q(preferred_name__icontains=query)
             | Q(email__icontains=query)
-            | Q(phone__icontains=query)
+            | Q(payment_reference__icontains=query)
         )
     return qs
 

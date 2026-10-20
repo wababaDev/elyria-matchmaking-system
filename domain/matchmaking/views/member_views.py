@@ -23,7 +23,7 @@ from notification.services.member_emails import send_sign_in_link
 
 
 class MemberListView(StaffRequiredMixin, ListView):
-    permission_required = "base.manage_client"
+    permission_required = "base.view_members"
     template_name = "domain/management/members/list.html"
     context_object_name = "members"
     paginate_by = 20
@@ -52,7 +52,7 @@ class MemberListView(StaffRequiredMixin, ListView):
 
 
 class MemberDetailView(StaffRequiredMixin, DetailView):
-    permission_required = "base.manage_client"
+    permission_required = "base.view_members"
     template_name = "domain/management/members/detail.html"
     context_object_name = "member"
 

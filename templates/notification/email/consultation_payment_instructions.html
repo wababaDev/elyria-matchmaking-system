@@ -10,11 +10,17 @@
 
     <p style="margin:0 0 8px;">To proceed, please send <strong>{{ site.fee_display }}</strong> via:</p>
 
-    <div style="background:#FAF7F2; border-left:3px solid #C9A227; padding:16px 20px; margin:12px 0 20px;">
+    <div style="background:#FAF7F2;
+                border-left:3px solid #C9A227;
+                padding:16px 20px;
+                margin:12px 0 20px">
         <p style="margin:0 0 4px; font-weight:bold; color:#6E1423;">Bank transfer</p>
         <p style="margin:0 0 14px;">{% if site.bank_details %}{{ site.bank_details|linebreaksbr }}{% else %}[Bank details &mdash; to be supplied]{% endif %}</p>
         <p style="margin:0 0 4px; font-weight:bold; color:#6E1423;">Mobile money</p>
-        <p style="margin:0;">{% if site.mobile_money_details %}{{ site.mobile_money_details|linebreaksbr }}{% else %}[Mobile money details &mdash; to be supplied]{% endif %}</p>
+        <p style="margin:0 0 14px;">{% if site.mobile_money_details %}{{ site.mobile_money_details|linebreaksbr }}{% else %}[Mobile money details &mdash; to be supplied]{% endif %}</p>
+        <p style="margin:0 0 4px; font-weight:bold; color:#6E1423;">Payment reference</p>
+        <p style="margin:0; font-size:18px; letter-spacing:1px;"><strong>{{ consultation.payment_reference }}</strong></p>
+        <p style="margin:4px 0 0; font-size:13px; color:#8A8178;">Please use this as the reference when you pay, so we can match your payment to you.</p>
     </div>
 
     <p style="margin:0 0 16px;">Once paid, please contact us by phone, email, or WhatsApp with proof of payment, and a member of our team will be in touch within three working days.</p>

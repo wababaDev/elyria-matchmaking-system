@@ -40,14 +40,16 @@
                         <span class="side-menu__label">Overview</span>
                     </a>
                 </li>
-                <li class="slide">
-                    <a href="{% url 'matchmaking:my-queue' %}"
-                       class="side-menu__item {% if request.resolver_match.url_name == 'my-queue' %}active{% endif %}">
-                        <i class="fe fe-check-square side-menu__icon"></i>
-                        <span class="side-menu__label">My Queue</span>
-                        {% if staff_queue_count %}<span class="badge bg-elyria-gold ms-auto">{{ staff_queue_count }}</span>{% endif %}
-                    </a>
-                </li>
+                {% if perms.base.manage_consultation_request %}
+                    <li class="slide">
+                        <a href="{% url 'matchmaking:my-queue' %}"
+                           class="side-menu__item {% if request.resolver_match.url_name == 'my-queue' %}active{% endif %}">
+                            <i class="fe fe-check-square side-menu__icon"></i>
+                            <span class="side-menu__label">My Queue</span>
+                            {% if staff_queue_count %}<span class="badge bg-elyria-gold ms-auto">{{ staff_queue_count }}</span>{% endif %}
+                        </a>
+                    </li>
+                {% endif %}
 
                 <li class="slide__category"><span class="category-name">Pipeline</span></li>
                 {% if perms.base.view_all_consultation_requests %}
@@ -59,20 +61,34 @@
                         </a>
                     </li>
                 {% endif %}
-                <li class="slide">
-                    <a href="{% url 'matchmaking:enquiries' %}" class="side-menu__item {% if 'enquir' in request.resolver_match.url_name %}active{% endif %}">
-                        <i class="fe fe-help-circle side-menu__icon"></i>
-                        <span class="side-menu__label">Enquiries</span>
-                        {% if open_enquiries_count %}<span class="badge bg-elyria-gold ms-auto">{{ open_enquiries_count }}</span>{% endif %}
-                    </a>
-                </li>
-                <li class="slide">
-                    <a href="{% url 'matchmaking:members' %}" class="side-menu__item {% if 'member' in request.resolver_match.url_name %}active{% endif %}">
-                        <i class="fe fe-users side-menu__icon"></i>
-                        <span class="side-menu__label">{% if perms.base.view_all_members %}Members{% else %}My Members{% endif %}</span>
-                    </a>
-                </li>
-
+                {% if perms.base.handle_enquiry %}
+                    <li class="slide">
+                        <a href="{% url 'matchmaking:enquiries' %}"
+                           class="side-menu__item {% if 'enquir' in request.resolver_match.url_name %}active{% endif %}">
+                            <i class="fe fe-help-circle side-menu__icon"></i>
+                            <span class="side-menu__label">Enquiries</span>
+                            {% if open_enquiries_count %}<span class="badge bg-elyria-gold ms-auto">{{ open_enquiries_count }}</span>{% endif %}
+                        </a>
+                    </li>
+                {% endif %}
+                {% if perms.base.view_members %}
+                    <li class="slide">
+                        <a href="{% url 'matchmaking:members' %}"
+                           class="side-menu__item {% if 'member' in request.resolver_match.url_name %}active{% endif %}">
+                            <i class="fe fe-users side-menu__icon"></i>
+                            <span class="side-menu__label">{% if perms.base.view_all_members %}Members{% else %}My Members{% endif %}</span>
+                        </a>
+                    </li>
+                {% endif %}
+                {% if perms.base.view_payments %}
+                    <li class="slide">
+                        <a href="{% url 'matchmaking:payments' %}"
+                           class="side-menu__item {% if request.resolver_match.url_name == 'payments' %}active{% endif %}">
+                            <i class="fe fe-credit-card side-menu__icon"></i>
+                            <span class="side-menu__label">Payments</span>
+                        </a>
+                    </li>
+                {% endif %}
                 {% if perms.base.view_all_consultation_requests %}
 
                     {% if perms.base.manage_staff %}

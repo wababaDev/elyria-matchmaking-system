@@ -93,8 +93,9 @@ def cancel_membership(membership, *, reason, by):
 
     membership.status = Membership.Status.CANCELLED
     membership.cancelled_at = timezone.now()
+    membership.cancelled_by = by
     membership.cancellation_reason = reason.strip()
-    membership.save(update_fields=["status", "cancelled_at", "cancellation_reason", "updated_at"])
+    membership.save(update_fields=["status", "cancelled_at", "cancelled_by", "cancellation_reason", "updated_at"])
 
     # A cancelled member can no longer sign in to the portal
     user = membership.client.user

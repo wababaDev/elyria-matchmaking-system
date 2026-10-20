@@ -69,6 +69,7 @@ def confirm_membership(consultation_request, *, tier, start_date, method, refere
 
     consultation_request.status = Status.BECAME_MEMBER
     consultation_request.save(update_fields=["status", "updated_at"])
+    
 
     transaction.on_commit(lambda: send_member_welcome(client))
     return client
