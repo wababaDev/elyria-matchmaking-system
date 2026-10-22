@@ -10,6 +10,25 @@
     form.addEventListener('input', markDirty);
     form.addEventListener('change', markDirty);
 
+    // Side nav: highlight the section currently on screen
+    var navLinks = document.querySelectorAll('.section-nav a[href^="#"]');
+    var targets = Array.prototype.map.call(navLinks, function (a) {
+        return document.querySelector(a.getAttribute('href'));
+    });
+    function spy() {
+        var current = 0;
+        targets.forEach(function (section, i) {
+            if (section && section.getBoundingClientRect().top <= 130) current = i;
+        });
+        // Scrolled to the very bottom: the last section wins, even if it's short
+        if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) {
+            current = targets.length - 1;
+        }
+        navLinks.forEach(function (a, i) { a.classList.toggle('active', i === current); });
+    }
+    window.addEventListener('scroll', spy, { passive: true });
+    spy();
+
     // Children: the detail fields only show when "Yes"
     form.addEventListener('change', function (e) {
         if (e.target.name !== 'has_children') return;
