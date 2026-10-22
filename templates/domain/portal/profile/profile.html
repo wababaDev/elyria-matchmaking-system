@@ -1,0 +1,155 @@
+{% extends "layouts/portal.html" %}
+{% load static %}
+{% block title %}My Profile{% endblock %}
+
+{% block content %}
+<!-- ===== WELCOME ===== -->
+<section class="portal-welcome">
+    <div class="container">
+        {% if profile.is_complete %}
+            <h1>Your profile</h1>
+            <p>Your profile is complete and with your matchmaker. You can update your answers at any time.</p>
+        {% else %}
+            <h1>Welcome to Elyria.</h1>
+            <p>Before we begin matching you, we'd like to know more about you — and what you're looking for. Take your time; you can save your progress and return at any point.</p>
+        {% endif %}
+        <div class="portal-progress">
+            <div class="bar"><div class="fill" style="width: {{ progress_percent }}%"></div></div>
+            <small>{{ progress_done }} of {{ progress_total }} sections complete</small>
+        </div>
+    </div>
+</section>
+
+<div class="container portal-layout">
+    <div class="row g-4">
+
+        <!-- Section navigation -->
+        <aside class="col-lg-3 d-none d-lg-block">
+            <nav class="section-nav" aria-label="Profile sections">
+                {% for group in groups %}
+                    <div class="group-label">{{ group.label }}</div>
+                    {% for entry in group.sections %}
+                        <a href="#{{ entry.section.id }}">{{ entry.section.nav }}</a>
+                    {% endfor %}
+                {% endfor %}
+            </nav>
+        </aside>
+
+        <!-- The form -->
+        <div class="col-lg-9">
+
+            {% if missing %}
+                <div class="missing-box" role="alert">
+                    <strong>Still needed:</strong>
+                    <ul>
+                        {% for section, labels in missing %}
+                            <li><a href="#{{ section.id }}">{{ section.title }}</a>: {{ labels|join:", " }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+            {% if form.non_field_errors %}
+                <div class="missing-box" role="alert">{{ form.non_field_errors.0 }}</div>
+            {% endif %}
+
+            <form class="portal-form" id="profileForm" method="post" enctype="multipart/form-data" novalidate>
+                {% csrf_token %}
+
+                {% for group in groups %}
+                    {% if group.zone %}
+                        <div class="profile-banner banner-{{ group.zone }}">{{ group.label }}<small>{{ group.banner_note }}</small></div>
+                        <div class="zone-{{ group.zone }}">
+                    {% endif %}
+
+                    {% for entry in group.sections %}
+                        {% with section=entry.section %}
+                        <section class="form-section" id="{{ section.id }}">
+                            <h2>{{ section.title }}</h2>
+                            {% if section.hint %}<p class="hint">{{ section.hint }}</p>{% endif %}
+
+                            {% if section.id == "s-details" %}
+                                <div class="prefilled"><i class="fa-solid fa-circle-info me-2"></i>Pre-filled from your consultation request.</div>
+                            {% endif %}
+
+                            {% if section.has_non_negotiables %}
+                                <div class="nn-head">
+                                    <span class="field-label">Non-negotiables</span>
+                                    <span class="nn-counter" id="nnCounter">{{ non_negotiables|length }} of {{ max_non_negotiables }} used</span>
+                                </div>
+                                <p class="hint">Firm exclusions only. Keeping this list short helps us find better matches.</p>
+                                <div id="nnList" data-max="{{ max_non_negotiables }}">
+                                    {% for value in non_negotiables %}
+                                        <div class="nn-item"><input type="text" name="non_negotiables" value="{{ value }}" maxlength="200" placeholder="e.g. Must not smoke"><button type="button" aria-label="Remove">&times;</button></div>
+                                    {% endfor %}
+                                </div>
+                                <button type="button" class="link-btn" id="nnAdd"><i class="fa-solid fa-plus me-1"></i>Add a non-negotiable</button>
+                                <div class="mt-4"></div>
+                            {% endif %}
+
+                            <div class="row g-3">
+                                {% for item in entry.fields %}
+                                    {% include "domain/portal/profile/_field.html" %}
+                                {% endfor %}
+
+                                {% if section.id == "s-details" %}
+                                    <div class="col-md-6">
+                                        <label for="d-email">Email address</label>
+                                        <input type="email" id="d-email" value="{{ request.user.email }}" disabled>
+                                        <p class="hint mt-1 mb-0">This is how you sign in. Change it on your <a href="{% url 'portal:account' %}">Account</a> page.</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            {% if section.has_photos %}
+                                <div class="mt-4">
+                                    <span class="field-label">Profile photos <span class="optional">(at least one: a recent full-length and a close-up)</span></span>
+                                    <div class="photo-grid">
+                                        {% for slot in photo_slots %}
+                                            <label class="photo-tile{% if slot.photo %} filled{% endif %}"{% if slot.photo %} style="background-image: url('{% url 'portal:photo' slot.photo.pk %}')"{% endif %}>
+                                                {{ slot.field }}
+                                                <i class="fa-solid {% if slot.kind == 'other' %}fa-plus{% else %}fa-camera{% endif %}"></i>{{ slot.label }}
+                                            </label>
+                                        {% endfor %}
+                                    </div>
+                                    {% for slot in photo_slots %}{% for error in slot.field.errors %}<div class="field-error">{{ slot.label }}: {{ error }}</div>{% endfor %}{% endfor %}
+                                    <p class="hint mt-2 mb-0">Your photos are seen only by the Elyria team. Potential matches only ever see a face-blurred version. Choosing a new photo replaces the one in that slot.</p>
+                                </div>
+                            {% endif %}
+                        </section>
+                        {% endwith %}
+                    {% endfor %}
+
+                    {% if group.zone %}</div>{% endif %}
+                {% endfor %}
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ===== STICKY SAVE BAR ===== -->
+<div class="save-bar">
+    <div class="container inner">
+        <span class="save-status" id="saveStatus">
+            {% if profile.is_complete %}
+                <i class="fa-solid fa-circle-check me-1"></i>Profile complete · last saved {{ profile.updated_at|date:"j M Y, H:i" }}
+            {% elif ever_saved %}
+                <i class="fa-regular fa-circle-check me-1"></i>Last saved {{ profile.updated_at|date:"j M Y, H:i" }}
+            {% else %}
+                <i class="fa-regular fa-circle-check me-1"></i>Not saved yet
+            {% endif %}
+        </span>
+        <div class="d-flex gap-2">
+            {% if profile.is_complete %}
+                <button type="submit" form="profileForm" name="action" value="save" class="register-submit-btn mt-0">Save changes</button>
+            {% else %}
+                <button type="submit" form="profileForm" name="action" value="save" class="btn-outline-elyria">Save progress</button>
+                <button type="submit" form="profileForm" name="action" value="complete" class="register-submit-btn mt-0">Mark profile complete</button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'front/js/portal-profile.js' %}"></script>
+{% endblock %}

@@ -20,6 +20,11 @@ from domain.matchmaking.services.member_service import (
 )
 from domain.matchmaking.views.consultation_request_views import _first_error
 from notification.services.member_emails import send_sign_in_link
+from django.http import FileResponse, Http404
+from django.shortcuts import get_object_or_404
+from domain.matchmaking.models import ProfilePhoto
+from domain.matchmaking.profile_sections import answers
+from domain.matchmaking.services.profile_service import progress
 
 
 class MemberListView(StaffRequiredMixin, ListView):
@@ -66,6 +71,8 @@ class MemberDetailView(StaffRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         membership = getattr(self.object, "membership", None)
+        profile = getattr(self.object, "profile", None)
+      
         context.update(
             membership=membership,
             payments=membership.payments.select_related("recorded_by") if membership else [],
@@ -75,6 +82,10 @@ class MemberDetailView(StaffRequiredMixin, DetailView):
             active_tiers=MembershipTier.objects.filter(is_active=True),
             cancel_form=CancelMembershipForm(),
             assign_form=AssignForm(initial={"assigned_to": self.object.matchmaker_id}),
+             profile=profile,
+                           profile_answers=answers(profile) if profile else [],
+                           profile_photos=profile.photos.all() if profile else [],
+                           profile_progress=progress(profile) if profile else (0, 0),
         )
         return context
 
@@ -142,3 +153,17 @@ class ReassignMatchmakerView(MemberActionView):
         user = data["assigned_to"]
         reassign_matchmaker(member, to=user, by=self.request.user)
         self.success_message = f"Matchmaker changed to {user.full_name}." if user else "Matchmaker removed."
+
+class MemberPhotoView(StaffRequiredMixin, View):
+    """A member's private photo, for staff who can see that member (not Finance)."""
+    permission_required = "base.manage_client"
+
+    def get(self, request, pk, photo_pk):
+        member = get_object_or_404(members_visible_to(request.user), pk=pk)
+        photo = get_object_or_404(ProfilePhoto, pk=photo_pk, profile__client=member)
+        try:
+            response = FileResponse(photo.image.open("rb"))
+        except FileNotFoundError:
+            raise Http404
+        response["Cache-Control"] = "private, no-store"
+        return response

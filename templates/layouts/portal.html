@@ -1,0 +1,47 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{% block title %}Member area{% endblock %} — Elyria Matchmaking</title>
+    <link rel="icon" type="image/png" href="{% static 'front/assets/logo-head.png' %}">
+    <link rel="stylesheet" href="{% static 'front/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'front/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'front/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'front/css/ext-style.css' %}">
+    <link rel="stylesheet" href="{% static 'front/css/elyria.css' %}">
+    <link rel="stylesheet" href="{% static 'front/css/portal.css' %}">
+</head>
+<body class="portal-body">
+
+<!-- ===== PORTAL HEADER (same on every member page) ===== -->
+<header class="portal-header">
+    <div class="container inner">
+        <a href="{% url 'portal:home' %}"><img src="{% static 'front/assets/logo-hz.png' %}" alt="Elyria Matchmaking"></a>
+        <nav class="portal-nav" aria-label="Member">
+            <a href="{% url 'portal:profile' %}"{% if portal_nav == "profile" %} class="active"{% endif %}>My Profile</a>
+            <a href="{% url 'portal:matches' %}"{% if portal_nav == "matches" %} class="active"{% endif %}>My Matches</a>
+            <a href="{% url 'portal:account' %}" class="hide-sm{% if portal_nav == "account" %} active{% endif %}">Account</a>
+            <form method="post" action="{% url 'base:sign-out' %}">
+                {% csrf_token %}
+                <button type="submit" class="signout">Sign out</button>
+            </form>
+        </nav>
+    </div>
+</header>
+
+{% if messages %}
+<div class="container portal-messages">
+    {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} mb-2" role="alert">{{ message }}</div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% block content %}{% endblock %}
+
+{% block scripts %}{% endblock %}
+{% include "partials/_password_toggle.html" %}
+</body>
+</html>

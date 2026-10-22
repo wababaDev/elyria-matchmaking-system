@@ -1,0 +1,57 @@
+{# Self-Service Profile, read-only for staff. Included in members/detail.html #}
+<div class="card custom-card">
+    <div class="card-header justify-content-between">
+        <div class="card-title">Self-Service Profile</div>
+        {% if profile.is_complete %}
+            <span class="badge bg-success-transparent">Complete · {{ profile.completed_at|date:"j M Y" }}</span>
+        {% elif profile %}
+            <span class="badge bg-warning-transparent">In progress · {{ profile_progress.0 }} of {{ profile_progress.1 }} sections</span>
+        {% else %}
+            <span class="badge bg-light text-muted">Not started</span>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        {% if not profile %}
+            <p class="text-muted mb-0">{{ member.preferred_name }} hasn't opened their profile yet.</p>
+        {% else %}
+            {% if profile_photos %}
+                <div class="d-flex flex-wrap gap-2 mb-4">
+                    {% for photo in profile_photos %}
+                        <a href="{% url 'matchmaking:member-photo' member.pk photo.pk %}" target="_blank" rel="noopener" class="text-center fs-12 text-muted">
+                            <img src="{% url 'matchmaking:member-photo' member.pk photo.pk %}" alt="{{ photo.get_kind_display }} photo"
+                                 style="width: 110px; height: 140px; object-fit: cover;" class="rounded d-block mb-1">
+                            {{ photo.get_kind_display }}
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted fs-13">No photos uploaded yet.</p>
+            {% endif %}
+
+            <p class="text-muted fs-12 mb-3">Last updated {{ profile.updated_at|date:"j M Y, H:i" }}</p>
+
+            <div class="accordion" id="profileAnswers">
+                {% for section, rows in profile_answers %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="h-{{ section.id }}">
+                            <button class="accordion-button collapsed fs-14" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#c-{{ section.id }}" aria-expanded="false" aria-controls="c-{{ section.id }}">
+                                {% if section.zone == "partner" %}<span class="text-muted me-1">Ideal partner ·</span>{% endif %}{{ section.title }}
+                            </button>
+                        </h2>
+                        <div id="c-{{ section.id }}" class="accordion-collapse collapse" aria-labelledby="h-{{ section.id }}">
+                            <div class="accordion-body">
+                                <dl class="row mb-0 fs-13">
+                                    {% for label, answer in rows %}
+                                        <dt class="col-sm-5 text-muted fw-normal">{{ label }}</dt>
+                                        <dd class="col-sm-7">{{ answer|default:"—"|linebreaksbr }}</dd>
+                                    {% endfor %}
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>

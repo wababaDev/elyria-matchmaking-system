@@ -76,7 +76,10 @@
             </div>
         </div>
 
-        <p class="text-muted fs-12">Profile, cross-check log, shortlist, post-date feedback and observations will appear here as they're built.</p>
+       {% if perms.base.manage_client %}
+            {% include "domain/management/members/_profile.html" %}
+        {% endif %}
+        <p class="text-muted fs-12">Cross-check log, shortlist, post-date feedback and observations will appear here as they're built.</p>
     </div>
 
     <div class="col-xl-4">

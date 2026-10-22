@@ -1,0 +1,20 @@
+{% extends "layouts/portal.html" %}
+{% block title %}My Matches{% endblock %}
+
+{% block content %}
+<div class="container pb-5">
+    <div class="portal-page-head">
+        <h1>My Matches</h1>
+        <p>Introductions your matchmaker has selected for you. Take your time with each one. Nothing happens without your consent.</p>
+    </div>
+
+    {# TODO (matching): redacted match cards with "I'm interested" / "Not for me", as in the approved design #}
+    {% if not matches %}
+        <div class="portal-empty mt-4">
+            <i class="fa-regular fa-heart d-block"></i>
+            <h2 class="h4">No new introductions right now</h2>
+            <p class="mb-0">Your matchmaker is carefully considering potential matches. You'll be notified when someone is ready for you to review.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

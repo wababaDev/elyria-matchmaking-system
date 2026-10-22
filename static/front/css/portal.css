@@ -342,3 +342,15 @@
 .info-list span:first-child { color: #857a72; }
 .info-list span:last-child { font-weight: 600; text-align: right; }
 .form-note { font-size: 0.85rem; margin-top: 0.75rem; }
+
+
+/* ---------- Django additions ---------- */
+.portal-nav form { margin: 0; }
+.portal-nav button.signout { background: transparent; border: 0; padding: 0.25rem 0; font: inherit; font-weight: 500; font-size: 0.95rem; color: var(--elyria-maroon); opacity: 0.75; cursor: pointer; }
+.portal-nav button.signout:hover { opacity: 1; }
+.portal-messages { padding-top: 1rem; }
+.field-error { color: #b42318; font-size: 0.8rem; margin-top: 0.3rem; }
+.missing-box { background: #fff; border-left: 3px solid #b42318; padding: 1rem 1.25rem; margin-bottom: 1.25rem; font-size: 0.9rem; }
+.missing-box ul { margin: 0.5rem 0 0; padding-left: 1.1rem; }
+.missing-box a { color: var(--elyria-maroon); font-weight: 600; }
+.portal-form input:disabled { opacity: 0.7; cursor: not-allowed; }

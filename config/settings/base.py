@@ -90,6 +90,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+PRIVATE_MEDIA_ROOT = BASE_DIR / "private_media"   # member photos, never served publicly
 
 # ---------------------------------------------------------------- Email
 EMAIL_HOST = env("EMAIL_HOST", default="smtppro.zoho.com")

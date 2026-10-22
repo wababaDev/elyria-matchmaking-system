@@ -5,7 +5,7 @@ from celery import shared_task
 from django.contrib.auth import get_user_model
 
 from domain.matchmaking.models import Client, Consultation, ConsultationRequest, Enquiry
-from notification.services import consultation_emails, enquiry_emails, member_emails, staff_emails
+from notification.services import consultation_emails, enquiry_emails, member_emails, profile_emails ,staff_emails
 
 logger = logging.getLogger(__name__)
 
@@ -66,3 +66,8 @@ def send_staff_invite_email(user_id):
 def send_enquiry_alert_email(enquiry_id):
     if obj := _get(Enquiry, enquiry_id):
         enquiry_emails.deliver_enquiry_alert(obj)
+
+@shared_task(**EMAIL_RETRY)
+def send_profile_completed_email(client_id):
+    if obj := _get(Client, client_id):
+        profile_emails.deliver_profile_completed(obj)
