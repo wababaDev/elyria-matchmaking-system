@@ -1,0 +1,26 @@
+{% with f=item.field spec=item.spec %}
+<div class="{{ spec.col }}{% if item.missing %} is-missing{% endif %}"{% if item.children_detail %} data-children-detail{% endif %}{% if item.hidden %} hidden{% endif %}>
+    {% if spec.kind == "slider" %}
+        <div class="slider-row">
+            <div class="ends"><span>{{ spec.ends.0 }}</span><span>{{ spec.ends.1 }}</span></div>
+            {{ f }}
+        </div>
+    {% elif spec.kind == "chips" or spec.kind == "checks" %}
+        {% if not spec.hide_label %}<span class="field-label">{{ f.label }}</span>{% endif %}
+        <div class="chips">
+            {% for choice in f %}<label class="chip">{{ choice.tag }}<span>{{ choice.choice_label }}</span></label>{% endfor %}
+        </div>
+    {% elif spec.kind == "scale" %}
+        <span class="field-label">{{ f.label }}</span>
+        <div class="scale chips">
+            {% for choice in f %}<label class="chip">{{ choice.tag }}<span>{{ choice.choice_label }}</span></label>{% endfor %}
+        </div>
+        <div class="scale-labels"><span>Not important</span><span>Essential</span></div>
+    {% else %}
+        <label for="{{ f.id_for_label }}">{{ f.label }}{% if item.optional %} <span class="optional">{% if spec.name == "partner_preferences" %}(things that matter, but aren't deal-breakers){% else %}(optional){% endif %}</span>{% endif %}</label>
+        {{ f }}
+    {% endif %}
+    {% for error in f.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+    {% if item.missing %}<div class="field-error missing-note">Please answer this.</div>{% endif %}
+</div>
+{% endwith %}

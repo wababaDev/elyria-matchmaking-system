@@ -55,4 +55,7 @@ urlpatterns = [
     path("requests/<int:pk>/undo-paid/", requests.UndoFeePaidView.as_view(), name="consultation-request-undo-paid"),
 
     path("payments/", payment_views.PaymentListView.as_view(), name="payments"),
+    path("members/<int:pk>/photos/<int:photo_pk>/", members.MemberPhotoView.as_view(), name="member-photo"),
+
+    path("members/<int:pk>/change-email/", members.ChangeSignInEmailView.as_view(), name="member-change-email"),
 ]

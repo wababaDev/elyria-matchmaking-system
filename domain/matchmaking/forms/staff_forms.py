@@ -94,6 +94,14 @@ class ConfirmMembershipForm(PricedTierMixin, FeePaymentForm):
 
     field_order = ["tier", "start_date", "method", "reference"]
 
+
+class ChangeSignInEmailForm(forms.Form):
+    email = forms.EmailField(
+        label="New sign-in email",
+        widget=forms.EmailInput(attrs={"class": "form-control", "autocomplete": "off"}),
+    )
+
+    
 def one_year_from(day):
     try:
         return day.replace(year=day.year + 1)

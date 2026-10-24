@@ -36,6 +36,14 @@ def deliver_sign_in_link(client):
     )
 
 
+def deliver_sign_in_email_changed(client, old_email):
+    send_templated_email(
+        subject="Your Elyria sign-in email has changed",
+        template="notification/email/sign_in_email_changed",
+        context={"client": client, "old_email": old_email, "new_email": client.user.email},
+        to=[client.user.email, old_email],
+    )
+
 # ---------- Called by services and views (queue only)
 
 def send_member_welcome(client):
@@ -48,3 +56,8 @@ def send_sign_in_link(client):
     from notification import tasks
 
     enqueue(tasks.send_sign_in_link_email, client.pk)
+
+def send_sign_in_email_changed(client, old_email):
+    from notification import tasks
+
+    enqueue(tasks.send_sign_in_email_changed_email, client.pk, old_email)

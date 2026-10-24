@@ -9,7 +9,6 @@ import secrets
 MIN_AGE = 20
 MAX_AGE = 90
 
-# TODO: confirm exact wording with Elyria (Open Questions #2)
 NOT_ELIGIBLE_MESSAGE = (
     "We're sorry, but Elyria Matchmaking is a private matchmaking service designed exclusively "
     "for single individuals seeking a long-term partnership. We're unable to proceed with your "
@@ -29,12 +28,10 @@ class ConsultationRequestQuerySet(models.QuerySet):
 
 class ConsultationRequest(TimeStampedModel):
     class Gender(models.TextChoices):
-        # TODO: confirm options with Elyria (Open Questions #1)
         FEMALE = "female", "Female"
         MALE = "male", "Male"
 
     class Seeking(models.TextChoices):
-        # TODO: confirm options with Elyria (Open Questions #1)
         MAN = "man", "A man"
         WOMAN = "woman", "A woman"
 

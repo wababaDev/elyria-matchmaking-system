@@ -1,0 +1,73 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{% block title %}Member area{% endblock %} — Elyria Matchmaking</title>
+    <link rel="icon" type="image/png" href="{% static 'front/assets/logo-head.png' %}">
+    <link rel="stylesheet" href="{% static 'front/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'front/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'front/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'front/css/ext-style.css' %}">
+    <link rel="stylesheet" href="{% static 'front/css/elyria.css' %}">
+    <link rel="stylesheet" href="{% static 'front/css/portal.css' %}">
+</head>
+<body class="portal-body">
+
+<!-- ===== PORTAL HEADER (same on every member page) ===== -->
+<header class="portal-header">
+    <div class="container inner">
+        <a href="{% url 'portal:home' %}"><img src="{% static 'front/assets/logo-hz.png' %}" alt="Elyria Matchmaking"></a>
+        <nav class="portal-nav" aria-label="Member">
+            <a href="{% url 'portal:profile' %}"{% if portal_nav == "profile" %} class="active"{% endif %}>My Profile</a>
+            <a href="{% url 'portal:matches' %}"{% if portal_nav == "matches" %} class="active"{% endif %}>My Matches</a>
+            <a href="{% url 'portal:account' %}" class="hide-sm{% if portal_nav == "account" %} active{% endif %}">Account</a>
+            <form method="post" action="{% url 'base:sign-out' %}">
+                {% csrf_token %}
+                <button type="submit" class="signout">Sign out</button>
+            </form>
+        </nav>
+    </div>
+</header>
+
+{% if messages %}
+<!-- Messages: themed toasts that close by themselves (or with ×) -->
+<div class="portal-toasts" aria-live="polite">
+    {% for message in messages %}
+        <div class="portal-toast toast-{{ message.level_tag|default:'info' }}" role="{% if message.level_tag == 'error' %}alert{% else %}status{% endif %}">
+            <i class="toast-icon fa-solid {% if message.level_tag == 'success' %}fa-circle-check{% elif message.level_tag == 'error' %}fa-circle-exclamation{% elif message.level_tag == 'warning' %}fa-triangle-exclamation{% else %}fa-circle-info{% endif %}" aria-hidden="true"></i>
+            <span class="toast-text">{{ message }}</span>
+            <button type="button" class="toast-close" aria-label="Close">&times;</button>
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% block content %}{% endblock %}
+
+{% include "partials/_password_toggle.html" %}
+<script>
+(function () {
+    // Toasts sit just below the sticky header, whatever its height
+    var header = document.querySelector('.portal-header');
+    if (header) document.documentElement.style.setProperty('--portal-header-h', header.offsetHeight + 'px');
+
+    // Success closes after 5s, everything else after 9s; hovering pauses it
+    document.querySelectorAll('.portal-toast').forEach(function (toast) {
+        var wait = toast.classList.contains('toast-success') ? 5000 : 9000, timer;
+        function close() {
+            toast.classList.add('is-leaving');
+            setTimeout(function () { toast.remove(); }, 250);
+        }
+        function start() { timer = setTimeout(close, wait); }
+        toast.querySelector('.toast-close').addEventListener('click', close);
+        toast.addEventListener('mouseenter', function () { clearTimeout(timer); });
+        toast.addEventListener('mouseleave', start);
+        start();
+    });
+})();
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

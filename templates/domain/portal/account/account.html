@@ -1,0 +1,89 @@
+{% extends "layouts/portal.html" %}
+{% block title %}Account{% endblock %}
+
+{% block content %}
+<div class="container pb-5">
+    <div class="portal-page-head">
+        <h1>Account</h1>
+        <p>Your membership details and sign-in settings.</p>
+    </div>
+
+    <div class="row g-4">
+        <!-- Membership summary -->
+        <div class="col-lg-5">
+            <section class="form-section h-100" style="border-left: 3px solid var(--elyria-gold);">
+                <h2>Your membership</h2>
+                <ul class="info-list mt-3">
+                    <li><span>Membership</span><span>{{ membership.tier.name|default:"—" }}</span></li>
+                    <li><span>Member since</span><span>{{ membership.start_date|date:"j F Y"|default:"—" }}</span></li>
+                    <li><span>Renewal date</span><span>{{ membership.end_date|date:"j F Y"|default:"—" }}</span></li>
+                    <li><span>Your matchmaker</span><span>{{ client.matchmaker.full_name|default:"Being assigned" }}</span></li>
+                    <li><span>Payment reference</span><span>{{ client.consultation_request.payment_reference|default:"—" }}</span></li>
+                    <li><span>Profile</span><span>{% if profile.is_complete %}Complete{% else %}In progress{% endif %}</span></li>
+                </ul>
+                <p class="hint mt-4 mb-1">Need to change something about your membership?</p>
+                <ul class="contact-links">
+                    {% if site.contact_phone %}
+                        <li><a href="tel:{{ site.contact_phone|cut:' ' }}"><i class="fa-solid fa-phone"></i>{{ site.contact_phone }}</a></li>
+                    {% endif %}
+                    {% if site.contact_email %}
+                        <li><a href="mailto:{{ site.contact_email }}"><i class="fa-regular fa-envelope"></i>{{ site.contact_email }}</a></li>
+                    {% endif %}
+                </ul>
+            </section>
+        </div>
+
+        <div class="col-lg-7">
+            <!-- Contact details -->
+            <section class="form-section">
+                <h2>Contact details</h2>
+                <p class="hint">Where we reach you about introductions.</p>
+                <form class="portal-form" method="post" novalidate>
+                    {% csrf_token %}
+                    <input type="hidden" name="form" value="contact">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="a-email">Email address</label>
+                            <input type="email" id="a-email" value="{{ request.user.email }}" disabled>
+                            <p class="hint mt-1 mb-0">This is how you sign in. To change it, please contact us and we'll update it for you.</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ contact_form.phone.id_for_label }}">Phone number</label>
+                            {{ contact_form.phone }}
+                            {% for e in contact_form.phone.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
+                        </div>
+                    </div>
+                    <button type="submit" class="register-submit-btn">Save phone number</button>
+                </form>
+            </section>
+
+            <!-- Change password -->
+            <section class="form-section">
+                <h2>Change password</h2>
+                <form class="portal-form" method="post" novalidate>
+                    {% csrf_token %}
+                    <input type="hidden" name="form" value="password">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="{{ password_form.old_password.id_for_label }}">Current password</label>
+                            {{ password_form.old_password }}
+                            {% for e in password_form.old_password.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ password_form.new_password1.id_for_label }}">New password</label>
+                            {{ password_form.new_password1 }}
+                            {% for e in password_form.new_password1.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ password_form.new_password2.id_for_label }}">Confirm new password</label>
+                            {{ password_form.new_password2 }}
+                            {% for e in password_form.new_password2.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
+                        </div>
+                    </div>
+                    <button type="submit" class="register-submit-btn">Update password</button>
+                </form>
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %}

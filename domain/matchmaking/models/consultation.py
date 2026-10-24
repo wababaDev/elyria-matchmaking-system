@@ -26,7 +26,6 @@ class Consultation(TimeStampedModel):
         blank=True,
         related_name="consultations_conducted",
     )
-    # TODO: add structured fields once Elyria shares the Screening Guide
     notes = models.TextField(blank=True)
 
     def __str__(self):

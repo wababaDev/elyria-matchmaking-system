@@ -13,8 +13,8 @@
     <link rel="stylesheet" href="{% static 'front/css/elyria.css' %}">
 </head>
 <body class="signin-page">
-{% include "partials/_env_banner.html" %}
     <main class="signin-wrap">
+        {% include "partials/public/_env_banner.html" %}
         <a href="{% url 'website:home' %}" class="signin-logo">
             <img src="{% static 'front/assets/logo.png' %}" alt="Elyria Matchmaking">
         </a>
@@ -46,6 +46,6 @@
 
         <a href="{% url 'website:home' %}" class="signin-back">&larr; Back to site</a>
     </main>
-
+{% include "partials/_password_toggle.html" %}
 </body>
 </html>

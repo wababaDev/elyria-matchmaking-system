@@ -1,0 +1,10 @@
+{% autoescape off %}{{ client.full_name }}{% if client.preferred_name %} ("{{ client.preferred_name }}"){% endif %} has changed answers in their completed profile.
+
+Sections changed:
+{% for section in sections %}- {{ section }}
+{% endfor %}
+You may want to cross-check these against the consultation notes again.
+
+Open the member:
+{{ link }}
+{% endautoescape %}

@@ -8,10 +8,12 @@ from django.views.generic.detail import SingleObjectMixin
 
 from domain.base.mixins import StaffRequiredMixin
 from domain.matchmaking.forms import AssignForm, CancelMembershipForm, RenewMembershipForm, staff_members
+from domain.matchmaking.forms.staff_forms import ChangeSignInEmailForm
 from domain.matchmaking.models.membership_tier import MembershipTier
 from domain.matchmaking.services.consultation_request_service import InvalidTransitionError
 from domain.matchmaking.services.member_service import (
     MEMBER_FILTERS,
+    change_sign_in_email,
     filter_members,
     cancel_membership,
     members_visible_to,
@@ -20,6 +22,11 @@ from domain.matchmaking.services.member_service import (
 )
 from domain.matchmaking.views.consultation_request_views import _first_error
 from notification.services.member_emails import send_sign_in_link
+from django.http import FileResponse, Http404
+from django.shortcuts import get_object_or_404
+from domain.matchmaking.models import ProfilePhoto
+from domain.matchmaking.profile_sections import answers_by_group
+from domain.matchmaking.services.profile_service import progress
 
 
 class MemberListView(StaffRequiredMixin, ListView):
@@ -66,6 +73,9 @@ class MemberDetailView(StaffRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         membership = getattr(self.object, "membership", None)
+        profile = getattr(self.object, "profile", None)
+        photos = list(profile.photos.all()) if profile else []
+      
         context.update(
             membership=membership,
             payments=membership.payments.select_related("recorded_by") if membership else [],
@@ -75,6 +85,10 @@ class MemberDetailView(StaffRequiredMixin, DetailView):
             active_tiers=MembershipTier.objects.filter(is_active=True),
             cancel_form=CancelMembershipForm(),
             assign_form=AssignForm(initial={"assigned_to": self.object.matchmaker_id}),
+             profile=profile,
+                          profile_groups=answers_by_group(profile, has_photos=bool(photos)) if profile else [],
+            profile_photos=photos,
+                           profile_progress=progress(profile) if profile else (0, 0),
         )
         return context
 
@@ -142,3 +156,41 @@ class ReassignMatchmakerView(MemberActionView):
         user = data["assigned_to"]
         reassign_matchmaker(member, to=user, by=self.request.user)
         self.success_message = f"Matchmaker changed to {user.full_name}." if user else "Matchmaker removed."
+
+class MemberPhotoView(StaffRequiredMixin, View):
+    """A member's private photo, for staff who can see that member (not Finance)."""
+    permission_required = "base.manage_client"
+
+    def get(self, request, pk, photo_pk):
+        member = get_object_or_404(members_visible_to(request.user), pk=pk)
+        photo = get_object_or_404(ProfilePhoto, pk=photo_pk, profile__client=member)
+        try:
+            response = FileResponse(photo.image.open("rb"))
+        except FileNotFoundError:
+            raise Http404
+        response["Cache-Control"] = "private, no-store"
+        return response
+
+
+class ChangeSignInEmailView(StaffRequiredMixin, SingleObjectMixin, View):
+    permission_required = "base.manage_client"
+    http_method_names = ["post"]
+
+    def get_queryset(self):
+        return members_visible_to(self.request.user).select_related("user")
+
+    def post(self, request, *args, **kwargs):
+        member = self.get_object()
+        form = ChangeSignInEmailForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, "Enter a valid email address.")
+        else:
+            try:
+                change_sign_in_email(member, email=form.cleaned_data["email"], by=request.user)
+                messages.success(
+                    request,
+                    f"Sign-in email changed to {member.user.email}. A notice was sent to the old and new addresses.",
+                )
+            except InvalidTransitionError as e:
+                messages.error(request, str(e))
+        return redirect("matchmaking:member-detail", member.pk)

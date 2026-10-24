@@ -8,6 +8,7 @@ urlpatterns = [
     path("", include("domain.website.urls")),
     path("management/", include("domain.matchmaking.urls")),
     path("", include("domain.base.urls")),
+     path("portal/", include("domain.portal.urls")),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
