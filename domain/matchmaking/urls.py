@@ -58,4 +58,5 @@ urlpatterns = [
     path("members/<int:pk>/photos/<int:photo_pk>/", members.MemberPhotoView.as_view(), name="member-photo"),
 
     path("members/<int:pk>/change-email/", members.ChangeSignInEmailView.as_view(), name="member-change-email"),
+    path("members/<int:pk>/profile.pdf", members.MemberProfilePdfView.as_view(), name="member-profile-pdf"),
 ]

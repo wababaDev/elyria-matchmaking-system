@@ -12,6 +12,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# PDF generation (WeasyPrint) needs Pango, plus fonts
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN pip install "poetry==${POETRY_VERSION}"
 
 # Dependencies first, so code changes don't reinstall everything
