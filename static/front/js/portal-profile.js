@@ -12,7 +12,21 @@
     }
     form.addEventListener('input', markDirty);
     form.addEventListener('change', markDirty);
-    form.addEventListener('submit', function () { dirty = false; });  // Save / Mark complete
+    form.addEventListener('submit', function () {
+        dirty = false;
+        // Show progress while the page saves, especially when photos are going up
+        var uploading = form.querySelectorAll('.photo-tile input[type="file"]');
+        var withPhotos = Array.prototype.some.call(uploading, function (i) { return i.files.length; });
+        status.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>' +
+            (withPhotos ? 'Saving your photos… please keep this page open' : 'Saving…');
+        Array.prototype.forEach.call(uploading, function (i) {
+            if (i.files.length) i.closest('.photo-tile').classList.add('is-uploading');
+        });
+        // Disable after the browser has taken the clicked button's value
+        setTimeout(function () {
+            document.querySelectorAll('button[form="profileForm"]').forEach(function (b) { b.disabled = true; });
+        }, 0);
+    });
     window.addEventListener('beforeunload', function (e) {
         if (!dirty) return;
         e.preventDefault();
@@ -91,14 +105,56 @@
         form.querySelectorAll('[data-children-detail]').forEach(function (el) { el.hidden = !show; });
     });
 
-    // Photo tiles: preview the chosen file before it's saved
+    // ---------- Photos: shrink on the phone before uploading, then preview
+    // A 10 MB phone photo becomes ~200–400 KB, so uploads take seconds on mobile data.
+    // The server still resizes and cleans every photo, so this is only about speed.
+    var PHOTO_MAX_EDGE = 1600, PHOTO_QUALITY = 0.8;
+    var saveButtons = document.querySelectorAll('button[form="profileForm"]');
+    var pending = 0;
+
+    function setBusy(busy) {
+        pending += busy ? 1 : -1;
+        saveButtons.forEach(function (b) { b.disabled = pending > 0; });
+        if (pending > 0) status.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Preparing photo…';
+        else markDirty();
+    }
+
+    function shrink(file) {
+        // Resolves with a smaller JPEG File, or the original if the browser can't read it (e.g. HEIC)
+        if (!window.createImageBitmap || !window.DataTransfer) return Promise.resolve(file);
+        return createImageBitmap(file, { imageOrientation: 'from-image' }).then(function (bitmap) {
+            var scale = Math.min(1, PHOTO_MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+            var canvas = document.createElement('canvas');
+            canvas.width = Math.round(bitmap.width * scale);
+            canvas.height = Math.round(bitmap.height * scale);
+            canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            if (bitmap.close) bitmap.close();
+            return new Promise(function (resolve) {
+                canvas.toBlob(function (blob) {
+                    if (!blob || blob.size >= file.size) return resolve(file);  // never make it bigger
+                    var name = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+                    resolve(new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() }));
+                }, 'image/jpeg', PHOTO_QUALITY);
+            });
+        }).catch(function () { return file; });
+    }
+
     form.querySelectorAll('.photo-tile input[type="file"]').forEach(function (input) {
         input.addEventListener('change', function () {
             var file = input.files[0];
             if (!file) return;
             var tile = input.closest('.photo-tile');
-            tile.style.backgroundImage = 'url(' + URL.createObjectURL(file) + ')';
-            tile.classList.add('filled');
+            setBusy(true);
+            shrink(file).then(function (smaller) {
+                if (smaller !== file) {
+                    var dt = new DataTransfer();
+                    dt.items.add(smaller);
+                    input.files = dt.files;  // the form now uploads the small version
+                }
+                tile.style.backgroundImage = 'url(' + URL.createObjectURL(smaller) + ')';
+                tile.classList.add('filled');
+                setBusy(false);
+            });
         });
     });
 

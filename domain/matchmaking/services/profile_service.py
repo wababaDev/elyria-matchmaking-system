@@ -11,8 +11,8 @@ from django.core.files.base import ContentFile
 from PIL import Image, ImageOps
 MAX_NON_NEGOTIABLES = 5
 
-PHOTO_MAX_EDGE = 2000  # pixels, longest side
-PHOTO_QUALITY = 85
+PHOTO_MAX_EDGE = 1600  # pixels, longest side
+PHOTO_QUALITY = 80
 
 
 def _shrink_photo(upload):
