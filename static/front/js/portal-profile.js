@@ -98,12 +98,17 @@
         if (note) note.remove();
     }
 
-    // Children: the detail fields only show when "Yes"
-    form.addEventListener('change', function (e) {
-        if (e.target.name !== 'has_children') return;
-        var show = e.target.value === 'yes';
-        form.querySelectorAll('[data-children-detail]').forEach(function (el) { el.hidden = !show; });
-    });
+    // ---------- Follow-up questions: show only after the answer they depend on
+    // e.g. children details after "Yes", "Please specify" after "Other"
+    function refreshFollowUps() {
+        form.querySelectorAll('[data-show-when]').forEach(function (box) {
+            var rule = box.dataset.showWhen.split(':');
+            var picked = form.querySelector('[name="' + rule[0] + '"][value="' + rule[1] + '"]:checked');
+            var select = form.querySelector('select[name="' + rule[0] + '"]');
+            box.hidden = !(picked || (select && select.value === rule[1]));
+        });
+    }
+    form.addEventListener('change', refreshFollowUps);
 
     // ---------- Photos: shrink on the phone before uploading, then preview
     // A 10 MB phone photo becomes ~200–400 KB, so uploads take seconds on mobile data.

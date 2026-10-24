@@ -57,6 +57,7 @@ class ClientProfile(TimeStampedModel):
         BACHELORS = "bachelors", "Bachelor's degree"
         MASTERS = "masters", "Master's degree"
         DOCTORATE = "doctorate", "Doctorate"
+        OTHER = "other", "Other"
 
     class LookingFor(models.TextChoices):
         FRIENDSHIP = "friendship", "Friendship"
@@ -107,8 +108,10 @@ class ClientProfile(TimeStampedModel):
         INDEPENDENCE = "independence", "Independence"
         COMMUNITY = "community", "Community Involvement"
         GROWTH = "personal_growth", "Personal Growth"
+        OTHER = "other", "Other"
 
     class Religion(models.TextChoices):
+        # Confirmed by Elyria (Open Questions #7). Optional: not needed to mark the profile complete.
         CATHOLIC = "catholic", "Christian – Catholic"
         PROTESTANT = "protestant", "Christian – Protestant"
         PENTECOSTAL = "pentecostal", "Christian – Pentecostal / Charismatic"
@@ -147,7 +150,7 @@ class ClientProfile(TimeStampedModel):
         OUTDOORS = "outdoors", "Outdoor activities"
         EXPLORING = "exploring", "Exploring somewhere new"
         PROJECTS = "projects", "Working on personal projects"
-        MIXTURE = "mixture", "A mixture"
+        OTHER = "other", "Other"
 
     class YesNoMaybe(models.TextChoices):
         YES = "yes", "Yes"
@@ -194,6 +197,7 @@ class ClientProfile(TimeStampedModel):
     build = choice("General build", Build.choices)
     languages = models.CharField("Languages spoken", max_length=200, blank=True)
     education = choice("Education level", Education.choices)
+    education_other = models.CharField("Education (other)", max_length=150, blank=True)
 
     # ---------- Your personality (1 = left word, 5 = right word)
     trait_introvert_extrovert = trait("Introverted – Extroverted")
@@ -230,6 +234,7 @@ class ClientProfile(TimeStampedModel):
 
     # ---------- Your core values
     core_values = models.JSONField("Your core values", default=list, blank=True)
+    core_values_other = models.CharField("Core values (other)", max_length=200, blank=True)
 
     # ---------- Your faith
     religion = choice("Religious affiliation", Religion.choices)
@@ -239,7 +244,6 @@ class ClientProfile(TimeStampedModel):
     # ---------- Your family background
     parents_relationship = text("Relationship with parents")
     siblings = text("Number of siblings")
-    family_structure = text("Family structure")
     family_closeness = text("Closeness to family")
     caring_for_parents = text("Expectations around caring for parents")
     extended_family_involvement = text("Desired extended-family involvement")
@@ -256,9 +260,8 @@ class ClientProfile(TimeStampedModel):
     sleep_schedule = text("Sleep schedule")
     homebody_or_out = text("Homebody or going out?")
     cooking_or_eating_out = text("Cooking or eating out?")
-    household_habits = text("Household habits")
-    exercise_attitude = text("Attitude toward exercise")
     ideal_saturday = choice("My ideal Saturday is…", Saturday.choices)
+    ideal_saturday_other = models.CharField("Ideal Saturday (other)", max_length=200, blank=True)
 
     # ---------- Your finances (attitudes only, never income)
     employment_status = text("Employment status")
@@ -293,6 +296,7 @@ class ClientProfile(TimeStampedModel):
 
     # ---------- Partner values
     partner_values = models.JSONField("Partner values", default=list, blank=True)
+    partner_values_other = models.CharField("Partner values (other)", max_length=200, blank=True)
 
     # ---------- Partner personality
     partner_trait_introvert_extrovert = trait("Introverted – Extroverted")

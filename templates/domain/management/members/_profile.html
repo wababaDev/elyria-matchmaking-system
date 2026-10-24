@@ -13,6 +13,11 @@
             {% if profile %}
                 <button type="button" class="btn btn-sm btn-light" data-profile-toggle>Expand all</button>
             {% endif %}
+            {% if profile.is_complete %}
+                <a href="{% url 'matchmaking:member-profile-pdf' member.pk %}" class="btn btn-sm btn-primary">
+                    <i class="fe fe-download me-1"></i>Download PDF
+                </a>
+            {% endif %}
         </div>
     </div>
     <div class="card-body">

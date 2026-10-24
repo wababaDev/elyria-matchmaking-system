@@ -27,7 +27,8 @@ from django.shortcuts import get_object_or_404
 from domain.matchmaking.models import ProfilePhoto
 from domain.matchmaking.profile_sections import answers_by_group
 from domain.matchmaking.services.profile_service import progress
-
+from django.http import HttpResponse
+from domain.matchmaking.services.profile_pdf import ProfileNotCompleteError, profile_filename, profile_pdf
 
 class MemberListView(StaffRequiredMixin, ListView):
     permission_required = "base.view_members"
@@ -194,3 +195,23 @@ class ChangeSignInEmailView(StaffRequiredMixin, SingleObjectMixin, View):
             except InvalidTransitionError as e:
                 messages.error(request, str(e))
         return redirect("matchmaking:member-detail", member.pk)
+
+class MemberProfilePdfView(StaffRequiredMixin, View):
+    """The member's completed profile as a PDF (matchmaker and Admin, not Finance)."""
+    permission_required = "base.manage_client"
+
+    def get(self, request, pk):
+        member = get_object_or_404(
+            members_visible_to(request.user).select_related("consultation_request", "matchmaker", "membership__tier"),
+            pk=pk,
+        )
+        try:
+            pdf = profile_pdf(member, by=request.user)
+        except ProfileNotCompleteError:
+            messages.error(request, "The PDF is available once the member has completed their profile.")
+            return redirect("matchmaking:member-detail", member.pk)
+
+        response = HttpResponse(pdf, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{profile_filename(member)}"'
+        response["Cache-Control"] = "private, no-store"
+        return response

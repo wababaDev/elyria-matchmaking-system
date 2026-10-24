@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.views.generic import RedirectView, TemplateView
 
 from domain.matchmaking.models import ClientProfile
-from domain.matchmaking.profile_sections import CHILDREN_DETAIL, OPTIONAL, SECTIONS, missing_field_names
+from domain.matchmaking.profile_sections import OPTIONAL, SECTIONS, SHOW_WHEN, missing_field_names
 from domain.matchmaking.services.profile_service import (
     MAX_NON_NEGOTIABLES,
     ProfileLockedError,
@@ -14,13 +14,22 @@ from domain.matchmaking.services.profile_service import (
 from domain.portal.forms.portal_forms import ProfileForm
 from domain.portal.views.base import PortalMixin
 
-# Fields that show "(optional)"
-SHOW_OPTIONAL = OPTIONAL
+# Fields that show "(optional)". Religion isn't required yet only because its list is missing.
+SHOW_OPTIONAL = OPTIONAL - {"religion"}
+
 GROUPS = [
     ("", "Your Details", None),
     ("you", "About You", "Everything in this part describes you."),
     ("partner", "About Your Ideal Partner", "Everything in this part describes the person you'd like to meet, not you."),
 ]
+
+
+def _answered(form, field, value):
+    """Has the member picked `value` for `field` (in what's on screen right now)?"""
+    current = form[field].value()
+    if isinstance(current, (list, tuple)):
+        return value in current
+    return current == value
 
 
 class PortalHomeView(PortalMixin, RedirectView):
@@ -72,7 +81,6 @@ class ProfileView(PortalMixin, TemplateView):
     @staticmethod
     def _groups(form, incomplete_ids, missing_names=frozenset()):
         """Sections grouped under Your Details / About You / About Your Ideal Partner, numbered 1..n."""
-        has_children = form["has_children"].value() == "yes"
         groups = []
         number = 0
         for zone, label, banner_note in GROUPS:
@@ -83,8 +91,8 @@ class ProfileView(PortalMixin, TemplateView):
                         "spec": f,
                         "field": form[f.name],
                         "optional": f.name in SHOW_OPTIONAL,
-                        "children_detail": f.name in CHILDREN_DETAIL,
-                        "hidden": f.name in CHILDREN_DETAIL and not has_children,
+                        "show_when": "{}:{}".format(*SHOW_WHEN[f.name]) if f.name in SHOW_WHEN else "",
+                        "hidden": f.name in SHOW_WHEN and not _answered(form, *SHOW_WHEN[f.name]),
                         "missing": f.name in missing_names,
                     }
                     for f in section.fields

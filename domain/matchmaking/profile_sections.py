@@ -24,8 +24,17 @@ TRAITS = [
     ("traditional_progressive", "Traditional", "Progressive"),
 ]
 
-# Only needed when "Do you have children?" is Yes
-CHILDREN_DETAIL = {"children_count", "children_ages", "children_living"}
+# Fields that only apply after a particular answer: {field: (depends on, value)}.
+# They're hidden until then, and only required when they apply.
+SHOW_WHEN = {
+    "children_count": ("has_children", "yes"),
+    "children_ages": ("has_children", "yes"),
+    "children_living": ("has_children", "yes"),
+    "education_other": ("education", "other"),
+    "core_values_other": ("core_values", "other"),
+    "ideal_saturday_other": ("ideal_saturday", "other"),
+    "partner_values_other": ("partner_values", "other"),
+}
 
 # The prototype's "(optional)" fields, plus fields that can't be required yet
 OPTIONAL = {
@@ -34,7 +43,7 @@ OPTIONAL = {
     "partner_height",
     "partner_build",
     "partner_preferences",
-    "religion",  # TODO: make required once Elyria supplies the full list (Open Questions #7)
+    "religion",  # Elyria's decision: always optional
 }
 
 # Placeholder text shown on a select before anything is chosen
@@ -99,6 +108,7 @@ SECTIONS = [
             Field("build", SELECT, col="col-md-4"),
             Field("languages", col="col-md-4", placeholder="e.g. English, Bemba"),
             Field("education", SELECT, col="col-md-4"),
+            Field("education_other", col="col-md-4 offset-md-8", placeholder="Please specify"),
         ],
     ),
     Section(
@@ -134,7 +144,10 @@ SECTIONS = [
     ),
     Section(
         "s-values", "Your core values", "Your core values", "Select all that apply.", zone="you",
-        fields=[Field("core_values", CHECKS, col="col-12", hide_label=True)],
+        fields=[
+            Field("core_values", CHECKS, col="col-12", hide_label=True),
+            Field("core_values_other", placeholder="Please specify"),
+        ],
     ),
     Section(
         "s-faith", "Your faith", "Your faith", zone="you",
@@ -147,7 +160,7 @@ SECTIONS = [
     Section(
         "s-background", "Family background", "Your family background", zone="you",
         fields=_texts([
-            "parents_relationship", "siblings", "family_structure", "family_closeness",
+            "parents_relationship", "siblings", "family_closeness",
             "caring_for_parents", "extended_family_involvement", "cultural_traditions",
         ]),
     ),
@@ -156,8 +169,11 @@ SECTIONS = [
         fields=_texts([
             "typical_weekday", "typical_weekend", "work_schedule", "social_frequency",
             "hobbies", "interests", "travel_habits", "sleep_schedule",
-            "homebody_or_out", "cooking_or_eating_out", "household_habits", "exercise_attitude",
-        ]) + [Field("ideal_saturday", CHIPS, col="col-12")],
+            "homebody_or_out", "cooking_or_eating_out",
+        ]) + [
+            Field("ideal_saturday", CHIPS, col="col-12"),
+            Field("ideal_saturday_other", placeholder="Please specify"),
+        ],
     ),
     Section(
         "s-finances", "Your finances", "Your finances",
@@ -193,7 +209,10 @@ SECTIONS = [
     ),
     Section(
         "p-values", "Partner values", "Partner values", "Select all that matter in a partner.", zone="partner",
-        fields=[Field("partner_values", CHECKS, col="col-12", hide_label=True)],
+        fields=[
+            Field("partner_values", CHECKS, col="col-12", hide_label=True),
+            Field("partner_values_other", placeholder="Please specify"),
+        ],
     ),
     Section(
         "p-personality", "Partner personality", "Partner personality", "Where would your ideal partner sit?",
@@ -223,9 +242,18 @@ def is_filled(value):
 def is_required(name, profile):
     if name in OPTIONAL:
         return False
-    if name in CHILDREN_DETAIL:
-        return profile.has_children == "yes"
+    if name in SHOW_WHEN:
+        return applies(name, profile)
     return True
+
+
+def applies(name, profile):
+    """True unless the field depends on an answer the member didn't give."""
+    if name not in SHOW_WHEN:
+        return True
+    depends_on, value = SHOW_WHEN[name]
+    answer = getattr(profile, depends_on)
+    return value in answer if isinstance(answer, list) else answer == value
 
 
 def missing_in_section(section, profile, *, has_photos):
@@ -266,7 +294,11 @@ def answers(profile):
     model = type(profile)
     result = []
     for section in SECTIONS:
-        rows = [(str(model._meta.get_field(f.name).verbose_name), _display(profile, f)) for f in section.fields]
+        rows = [
+            (str(model._meta.get_field(f.name).verbose_name), _display(profile, f))
+            for f in section.fields
+            if applies(f.name, profile)  # e.g. no "Education (other)" row unless they chose Other
+        ]
         if section.has_non_negotiables:
             rows.insert(0, ("Non-negotiables", "; ".join(profile.non_negotiables)))
         result.append((section, rows))

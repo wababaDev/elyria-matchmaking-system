@@ -1,5 +1,5 @@
 {% with f=item.field spec=item.spec %}
-<div class="{{ spec.col }}{% if item.missing %} is-missing{% endif %}"{% if item.children_detail %} data-children-detail{% endif %}{% if item.hidden %} hidden{% endif %}>
+<div class="{{ spec.col }}{% if item.missing %} is-missing{% endif %}"{% if item.show_when %} data-show-when="{{ item.show_when }}"{% endif %}{% if item.hidden %} hidden{% endif %}>
     {% if spec.kind == "slider" %}
         <div class="slider-row">
             <div class="ends"><span>{{ spec.ends.0 }}</span><span>{{ spec.ends.1 }}</span></div>

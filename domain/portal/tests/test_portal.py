@@ -203,6 +203,18 @@ class ProfileTests(PortalCase):
         self.assertContains(response, "How many?")
         self.assertFalse(self.profile().is_complete)
 
+    def test_other_needs_specifying(self):
+        data = {**full_answers(), "education": "other", "education_other": "", "photo_close_up": image_file()}
+        response = self.post_profile(data, action="complete")
+        self.assertContains(response, "Education (other)")
+        self.assertFalse(self.profile().is_complete)
+
+        data["education_other"] = "Professional certification"
+        data["photo_close_up"] = image_file()
+        with self.captureOnCommitCallbacks(execute=True):
+            self.post_profile(data, action="complete")
+        self.assertTrue(self.profile().is_complete)
+
     def test_non_negotiables_capped_at_five(self):
         data = {"non_negotiables": [f"Rule {n}" for n in range(6)]}
         response = self.post_profile(data)
