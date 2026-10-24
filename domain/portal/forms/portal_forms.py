@@ -1,5 +1,4 @@
 from django import forms
-from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import PasswordChangeForm
 
 from domain.matchmaking.models import ClientProfile, ProfilePhoto
@@ -115,38 +114,11 @@ class ProfileForm(forms.ModelForm):
 
 
 class ContactDetailsForm(forms.Form):
-    """Email (their sign-in) and phone. Changing the email needs the current password."""
-    email = forms.EmailField(label="Email address")
+    """
+    Phone only. The email address is the sign-in, so members can't change it here:
+    staff change it from the member page after checking the request is genuine.
+    """
     phone = forms.CharField(label="Phone number", max_length=30)
-    current_password = forms.CharField(
-        label="Current password",
-        required=False,
-        widget=forms.PasswordInput(attrs={"autocomplete": "current-password"}),
-        help_text="Only needed if you change your email address.",
-    )
-
-    def __init__(self, *args, user, **kwargs):
-        self.user = user
-        super().__init__(*args, **kwargs)
-
-    def clean_email(self):
-        email = self.cleaned_data["email"].strip().lower()
-        if email != self.user.email.lower():
-            if get_user_model().objects.filter(email__iexact=email).exclude(pk=self.user.pk).exists():
-                raise forms.ValidationError("This email address can't be used. Please choose another.")
-        return email
-
-    def clean(self):
-        cleaned = super().clean()
-        email = cleaned.get("email")
-        if email and email != self.user.email.lower():
-            if not self.user.check_password(cleaned.get("current_password") or ""):
-                self.add_error("current_password", "Enter your current password to change your email address.")
-        return cleaned
-
-    @property
-    def email_changed(self):
-        return self.cleaned_data["email"] != self.user.email.lower()
 
 
 class MemberPasswordChangeForm(PasswordChangeForm):

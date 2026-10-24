@@ -8,6 +8,7 @@ from domain.matchmaking.models import Client, Membership, MembershipPayment
 from domain.matchmaking.models.membership import EXPIRING_SOON_DAYS
 from domain.matchmaking.services.consultation_request_service import InvalidTransitionError
 from domain.matchmaking.utils import add_months
+from django.contrib.auth import get_user_model
 
 MEMBER_FILTERS = [
     ("active", "Active"),
@@ -109,3 +110,27 @@ def reassign_matchmaker(client, *, to, by):
     client.matchmaker = to
     client.save(update_fields=["matchmaker", "updated_at"])
     return client
+
+
+def change_sign_in_email(client, *, email, by):
+    """
+    Staff change a member's sign-in email (members can't do it themselves).
+    Old and new addresses both get a notice. If they never set a password, the old
+    sign-in link stops working (Django ties it to the email), so a fresh one is sent.
+    """
+    from notification.services.member_emails import send_sign_in_email_changed, send_sign_in_link
+
+    user = client.user
+    old_email = user.email
+    email = email.strip().lower()
+    if email == old_email.lower():
+        return
+    if get_user_model().objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
+        raise InvalidTransitionError("That email address is already used by another account.")
+
+    with transaction.atomic():
+        user.email = email
+        user.save(update_fields=["email"])
+        transaction.on_commit(lambda: send_sign_in_email_changed(client, old_email))
+        if not user.has_usable_password():
+            transaction.on_commit(lambda: send_sign_in_link(client))

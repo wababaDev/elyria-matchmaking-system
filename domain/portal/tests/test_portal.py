@@ -256,24 +256,11 @@ class AccountTests(PortalCase):
         return self.client.post(reverse("portal:account"), data)
 
     def test_change_phone(self):
-        self.post({"form": "contact", "email": "natasha@example.com", "phone": "+260966111111"})
+        self.post({"form": "contact", "phone": "+260966111111"})
         self.assertEqual(self.profile().phone, "+260966111111")
 
-    def test_email_change_needs_password(self):
-        response = self.post({"form": "contact", "email": "new@example.com", "phone": "1"})
-        self.assertEqual(response.status_code, 200)
-        self.member.user.refresh_from_db()
-        self.assertEqual(self.member.user.email, "natasha@example.com")
-
-        self.post({"form": "contact", "email": "new@example.com", "phone": "1", "current_password": "pass12345"})
-        self.member.user.refresh_from_db()
-        self.assertEqual(self.member.user.email, "new@example.com")
-
-    def test_email_already_used_is_refused(self):
-        response = self.post({
-            "form": "contact", "email": "grace@example.com", "phone": "1", "current_password": "pass12345",
-        })
-        self.assertEqual(response.status_code, 200)
+    def test_member_cannot_change_sign_in_email(self):
+        self.post({"form": "contact", "email": "new@example.com", "phone": "1"})
         self.member.user.refresh_from_db()
         self.assertEqual(self.member.user.email, "natasha@example.com")
 

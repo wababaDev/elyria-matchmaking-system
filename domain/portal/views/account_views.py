@@ -1,6 +1,5 @@
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
-from django.db import transaction
 from django.shortcuts import redirect
 from django.views.generic import TemplateView
 
@@ -21,9 +20,7 @@ class AccountView(PortalMixin, TemplateView):
             membership=getattr(self.client, "membership", None),
             profile=self.profile,
             site=SiteSettings.load(),
-            contact_form=contact_form or ContactDetailsForm(
-                user=user, initial={"email": user.email, "phone": self.profile.phone}
-            ),
+            contact_form=contact_form or ContactDetailsForm(initial={"phone": self.profile.phone}),
             password_form=password_form or MemberPasswordChangeForm(user=user),
         )
         return context
@@ -34,18 +31,13 @@ class AccountView(PortalMixin, TemplateView):
         return self._save_contact(request)
 
     def _save_contact(self, request):
-        form = ContactDetailsForm(request.POST, user=request.user)
+        form = ContactDetailsForm(request.POST)
         if not form.is_valid():
             return self.render_to_response(self.get_context_data(contact_form=form))
 
-        with transaction.atomic():
-            if form.email_changed:
-                request.user.email = form.cleaned_data["email"]
-                request.user.save(update_fields=["email"])
-            self.profile.phone = form.cleaned_data["phone"].strip()
-            self.profile.save(update_fields=["phone", "updated_at"])
-
-        messages.success(request, "Contact details updated.")
+        self.profile.phone = form.cleaned_data["phone"].strip()
+        self.profile.save(update_fields=["phone", "updated_at"])
+        messages.success(request, "Phone number updated.")
         return redirect("portal:account")
 
     def _change_password(self, request):

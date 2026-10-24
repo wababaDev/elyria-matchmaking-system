@@ -9,9 +9,15 @@ from domain.matchmaking.models.client_profile import ClientProfile
 
 
 def photo_path(instance, filename):
-    """Random file names, so nothing about the member is in the path."""
+    """
+    profile_photos/<payment reference>/<kind>-<short random>.<ext>
+    Staff can find the member by searching the reference; the name itself is never in the path.
+    """
+    client = instance.profile.client
+    folder = client.consultation_request.payment_reference or f"client-{client.pk}"
+    kind = instance.kind.replace("_", "-")
     ext = Path(filename).suffix.lower() or ".jpg"
-    return f"profile_photos/{instance.profile.client_id}/{uuid.uuid4().hex}{ext}"
+    return f"profile_photos/{folder}/{kind}-{uuid.uuid4().hex[:6]}{ext}"
 
 
 class ProfilePhoto(TimeStampedModel):

@@ -1,0 +1,14 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}Your Elyria sign-in email address has been changed.{% endblock %}
+{% block heading %}Your sign-in email has changed{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">Dear {{ client.preferred_name }},</p>
+    <p style="margin:0 0 16px;">
+        At your request, the email address you use to sign in to Elyria has been changed
+        from <strong>{{ old_email }}</strong> to <strong>{{ new_email }}</strong>.
+    </p>
+    <p style="margin:0 0 16px;">From now on, please sign in with <strong>{{ new_email }}</strong>. Your password stays the same.</p>
+    <p style="margin:0 0 16px;">
+        If you didn't ask for this, please contact us straight away{% if site.contact_phone %} on {{ site.contact_phone }}{% endif %}{% if site.contact_email %} or at <a href="mailto:{{ site.contact_email }}" style="color:#6E1423;">{{ site.contact_email }}</a>{% endif %}.
+    </p>
+{% endblock %}

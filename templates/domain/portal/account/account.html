@@ -22,7 +22,7 @@
                     <li><span>Profile</span><span>{% if profile.is_complete %}Complete{% else %}In progress{% endif %}</span></li>
                 </ul>
                 <p class="hint mt-4 mb-1">Need to change something about your membership?</p>
-                 <ul class="contact-links">
+                <ul class="contact-links">
                     {% if site.contact_phone %}
                         <li><a href="tel:{{ site.contact_phone|cut:' ' }}"><i class="fa-solid fa-phone"></i>{{ site.contact_phone }}</a></li>
                     {% endif %}
@@ -37,28 +37,23 @@
             <!-- Contact details -->
             <section class="form-section">
                 <h2>Contact details</h2>
-                <p class="hint">Where we reach you about introductions. Your email address is also how you sign in.</p>
+                <p class="hint">Where we reach you about introductions.</p>
                 <form class="portal-form" method="post" novalidate>
                     {% csrf_token %}
                     <input type="hidden" name="form" value="contact">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label for="{{ contact_form.email.id_for_label }}">Email address</label>
-                            {{ contact_form.email }}
-                            {% for e in contact_form.email.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
+                            <label for="a-email">Email address</label>
+                            <input type="email" id="a-email" value="{{ request.user.email }}" disabled>
+                            <p class="hint mt-1 mb-0">This is how you sign in. To change it, please contact us and we'll update it for you.</p>
                         </div>
                         <div class="col-md-6">
                             <label for="{{ contact_form.phone.id_for_label }}">Phone number</label>
                             {{ contact_form.phone }}
                             {% for e in contact_form.phone.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
                         </div>
-                        <div class="col-12">
-                            <label for="{{ contact_form.current_password.id_for_label }}">Current password <span class="optional">(only if you change your email address)</span></label>
-                            {{ contact_form.current_password }}
-                            {% for e in contact_form.current_password.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
-                        </div>
                     </div>
-                    <button type="submit" class="register-submit-btn">Save contact details</button>
+                    <button type="submit" class="register-submit-btn">Save phone number</button>
                 </form>
             </section>
 

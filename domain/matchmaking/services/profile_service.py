@@ -6,8 +6,28 @@ from django.utils import timezone
 
 from domain.matchmaking.models import ClientProfile, ConsultationRequest, ProfilePhoto
 from domain.matchmaking.profile_sections import SECTIONS, section_status
-
+from io import BytesIO
+from django.core.files.base import ContentFile
+from PIL import Image, ImageOps
 MAX_NON_NEGOTIABLES = 5
+
+PHOTO_MAX_EDGE = 2000  # pixels, longest side
+PHOTO_QUALITY = 85
+
+
+def _shrink_photo(upload):
+    """
+    Resize to at most 2000px on the long side, turn it the right way up, and save as JPEG.
+    Saving without EXIF also removes hidden data such as the GPS location the photo was taken at.
+    """
+    upload.seek(0)
+    with Image.open(upload) as original:
+        image = ImageOps.exif_transpose(original)  # phones store rotation in EXIF
+        image = image.convert("RGB")               # JPEG needs RGB (also flattens PNG transparency)
+        image.thumbnail((PHOTO_MAX_EDGE, PHOTO_MAX_EDGE))  # keeps proportions, never enlarges
+        out = BytesIO()
+        image.save(out, "JPEG", quality=PHOTO_QUALITY, optimize=True)
+    return ContentFile(out.getvalue(), name="photo.jpg")
 
 # What the person is seeking → the partner's gender
 _SEEKING_TO_GENDER = {
@@ -71,8 +91,7 @@ def _save_photo(profile, kind, upload):
     if old:
         old.image.delete(save=False)
         old.delete()
-    ProfilePhoto.objects.create(profile=profile, kind=kind, image=upload)
-
+    ProfilePhoto.objects.create(profile=profile, kind=kind, image=_shrink_photo(upload))
 
 @transaction.atomic
 def save_profile(profile, *, photos=None, complete=False):

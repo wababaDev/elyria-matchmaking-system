@@ -126,6 +126,7 @@
                                 data-confirm="Have you checked this request came from {{ member.preferred_name }}? A new link will be emailed to {{ member.user.email }}."
                                 data-confirm-button="Send link">Resend sign-in link</button>
                     </form>
+                    <button type="button" class="btn btn-light w-100 mt-2" data-bs-toggle="modal" data-bs-target="#emailModal">Change sign-in email</button>
                 {% endif %}
             </div>
         </div>
@@ -212,6 +213,33 @@
         </form>
     </div>
 </div>
+
+<!-- Change sign-in email -->
+<div class="modal fade" id="emailModal" tabindex="-1" aria-labelledby="emailTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" action="{% url 'matchmaking:member-change-email' member.pk %}" class="modal-content">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h6 class="modal-title" id="emailTitle">Change sign-in email: {{ member.preferred_name }}</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="fs-13 mb-3">Current: <strong>{{ member.user.email }}</strong></p>
+                <label class="form-label fs-13" for="new-email">New sign-in email</label>
+                <input type="email" name="email" id="new-email" class="form-control" required autocomplete="off">
+                <p class="text-muted fs-12 mt-3 mb-0">
+                    Only do this after checking the request really came from {{ member.preferred_name }}.
+                    Both addresses get a notice. Their password stays the same.
+                </p>
+            </div>
+            <div class="modal-footer d-flex flex-nowrap gap-2">
+                <button type="button" class="btn btn-light flex-fill m-0" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary flex-fill m-0">Change email</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% endif %}
 {% endwith %}
 {% endblock %}

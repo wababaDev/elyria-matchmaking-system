@@ -8,10 +8,12 @@ from django.views.generic.detail import SingleObjectMixin
 
 from domain.base.mixins import StaffRequiredMixin
 from domain.matchmaking.forms import AssignForm, CancelMembershipForm, RenewMembershipForm, staff_members
+from domain.matchmaking.forms.staff_forms import ChangeSignInEmailForm
 from domain.matchmaking.models.membership_tier import MembershipTier
 from domain.matchmaking.services.consultation_request_service import InvalidTransitionError
 from domain.matchmaking.services.member_service import (
     MEMBER_FILTERS,
+    change_sign_in_email,
     filter_members,
     cancel_membership,
     members_visible_to,
@@ -168,3 +170,27 @@ class MemberPhotoView(StaffRequiredMixin, View):
             raise Http404
         response["Cache-Control"] = "private, no-store"
         return response
+
+
+class ChangeSignInEmailView(StaffRequiredMixin, SingleObjectMixin, View):
+    permission_required = "base.manage_client"
+    http_method_names = ["post"]
+
+    def get_queryset(self):
+        return members_visible_to(self.request.user).select_related("user")
+
+    def post(self, request, *args, **kwargs):
+        member = self.get_object()
+        form = ChangeSignInEmailForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, "Enter a valid email address.")
+        else:
+            try:
+                change_sign_in_email(member, email=form.cleaned_data["email"], by=request.user)
+                messages.success(
+                    request,
+                    f"Sign-in email changed to {member.user.email}. A notice was sent to the old and new addresses.",
+                )
+            except InvalidTransitionError as e:
+                messages.error(request, str(e))
+        return redirect("matchmaking:member-detail", member.pk)
