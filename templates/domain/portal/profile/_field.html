@@ -1,5 +1,5 @@
 {% with f=item.field spec=item.spec %}
-<div class="{{ spec.col }}"{% if item.children_detail %} data-children-detail{% endif %}{% if item.hidden %} hidden{% endif %}>
+<div class="{{ spec.col }}{% if item.missing %} is-missing{% endif %}"{% if item.children_detail %} data-children-detail{% endif %}{% if item.hidden %} hidden{% endif %}>
     {% if spec.kind == "slider" %}
         <div class="slider-row">
             <div class="ends"><span>{{ spec.ends.0 }}</span><span>{{ spec.ends.1 }}</span></div>
@@ -21,5 +21,6 @@
         {{ f }}
     {% endif %}
     {% for error in f.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+    {% if item.missing %}<div class="field-error missing-note">Please answer this.</div>{% endif %}
 </div>
 {% endwith %}

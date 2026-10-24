@@ -3,7 +3,7 @@ from .base import BASE_DIR, env
 
 DEBUG = True
 SECRET_KEY = env("SECRET_KEY", default="local-dev-only-not-secret")
-ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", "192.168.3.6"]
 
 DATABASES = {"default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")}
 

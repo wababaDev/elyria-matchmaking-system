@@ -6,13 +6,15 @@
 <!-- ===== WELCOME ===== -->
 <section class="portal-welcome">
     <div class="container">
+        {% with name=profile.preferred_name|default:client.preferred_name %}
         {% if profile.is_complete %}
-            <h1>Your profile</h1>
+            <h1>Welcome back{% if name %}, {{ name }}{% endif %}.</h1>
             <p>Your profile is complete and with your matchmaker. You can update your answers at any time.</p>
         {% else %}
-            <h1>Welcome to Elyria.</h1>
+            <h1>Welcome to Elyria{% if name %}, {{ name }}{% endif %}.</h1>
             <p>Before we begin matching you, we'd like to know more about you — and what you're looking for. Take your time; you can save your progress and return at any point.</p>
         {% endif %}
+        {% endwith %}
         <div class="portal-progress">
             <div class="bar"><div class="fill" style="width: {{ progress_percent }}%"></div></div>
             <small>{{ progress_done }} of {{ progress_total }} sections complete</small>
@@ -29,7 +31,10 @@
                 {% for group in groups %}
                     <div class="group-label">{{ group.label }}</div>
                     {% for entry in group.sections %}
-                        <a href="#{{ entry.section.id }}">{{ entry.section.nav }}</a>
+                        <a href="#{{ entry.section.id }}">
+                            <span>{{ entry.number }}. {{ entry.section.nav }}</span>
+                            {% if entry.complete %}<i class="fa-solid fa-check done" title="Complete"></i>{% endif %}
+                        </a>
                     {% endfor %}
                 {% endfor %}
             </nav>
@@ -37,6 +42,20 @@
 
         <!-- The form -->
         <div class="col-lg-9">
+
+            <!-- Phones: the side nav is hidden, so offer a sticky "jump to" list instead -->
+            <div class="section-jump d-lg-none">
+                <label for="sectionJump" class="visually-hidden">Jump to section</label>
+                <select id="sectionJump">
+                    {% for group in groups %}
+                        <optgroup label="{{ group.label }}">
+                            {% for entry in group.sections %}
+                                <option value="{{ entry.section.id }}">{{ entry.number }}. {{ entry.section.nav }}{% if entry.complete %} ✓{% endif %}</option>
+                            {% endfor %}
+                        </optgroup>
+                    {% endfor %}
+                </select>
+            </div>
 
             {% if missing %}
                 <div class="missing-box" role="alert">
@@ -64,7 +83,7 @@
                     {% for entry in group.sections %}
                         {% with section=entry.section %}
                         <section class="form-section" id="{{ section.id }}">
-                            <h2>{{ section.title }}</h2>
+                            <h2><span class="section-num">{{ entry.number }}.</span> {{ section.title }}</h2>
                             {% if section.hint %}<p class="hint">{{ section.hint }}</p>{% endif %}
 
                             {% if section.id == "s-details" %}
@@ -101,7 +120,7 @@
                             </div>
 
                             {% if section.has_photos %}
-                                <div class="mt-4">
+                                <div class="mt-4{% if photos_missing %} is-missing{% endif %}">
                                     <span class="field-label">Profile photos <span class="optional">(at least one: a recent full-length and a close-up)</span></span>
                                     <div class="photo-grid">
                                         {% for slot in photo_slots %}
@@ -111,6 +130,7 @@
                                             </label>
                                         {% endfor %}
                                     </div>
+                                    {% if photos_missing %}<div class="field-error missing-note">Please add at least one photo.</div>{% endif %}
                                     {% for slot in photo_slots %}{% for error in slot.field.errors %}<div class="field-error">{{ slot.label }}: {{ error }}</div>{% endfor %}{% endfor %}
                                     <p class="hint mt-2 mb-0">Your photos are seen only by the Elyria team. Potential matches only ever see a face-blurred version. Choosing a new photo replaces the one in that slot.</p>
                                 </div>

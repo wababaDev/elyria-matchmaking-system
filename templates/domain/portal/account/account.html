@@ -22,10 +22,14 @@
                     <li><span>Profile</span><span>{% if profile.is_complete %}Complete{% else %}In progress{% endif %}</span></li>
                 </ul>
                 <p class="hint mt-4 mb-1">Need to change something about your membership?</p>
-                <p class="mb-0 fs-6">
-                    {% if site.contact_phone %}<a href="tel:{{ site.contact_phone|cut:' ' }}">{{ site.contact_phone }}</a><br>{% endif %}
-                    {% if site.contact_email %}<a href="mailto:{{ site.contact_email }}">{{ site.contact_email }}</a>{% endif %}
-                </p>
+                 <ul class="contact-links">
+                    {% if site.contact_phone %}
+                        <li><a href="tel:{{ site.contact_phone|cut:' ' }}"><i class="fa-solid fa-phone"></i>{{ site.contact_phone }}</a></li>
+                    {% endif %}
+                    {% if site.contact_email %}
+                        <li><a href="mailto:{{ site.contact_email }}"><i class="fa-regular fa-envelope"></i>{{ site.contact_email }}</a></li>
+                    {% endif %}
+                </ul>
             </section>
         </div>
 

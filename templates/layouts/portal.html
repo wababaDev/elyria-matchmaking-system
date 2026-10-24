@@ -32,16 +32,42 @@
 </header>
 
 {% if messages %}
-<div class="container portal-messages">
+<!-- Messages: themed toasts that close by themselves (or with ×) -->
+<div class="portal-toasts" aria-live="polite">
     {% for message in messages %}
-        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} mb-2" role="alert">{{ message }}</div>
+        <div class="portal-toast toast-{{ message.level_tag|default:'info' }}" role="{% if message.level_tag == 'error' %}alert{% else %}status{% endif %}">
+            <i class="toast-icon fa-solid {% if message.level_tag == 'success' %}fa-circle-check{% elif message.level_tag == 'error' %}fa-circle-exclamation{% elif message.level_tag == 'warning' %}fa-triangle-exclamation{% else %}fa-circle-info{% endif %}" aria-hidden="true"></i>
+            <span class="toast-text">{{ message }}</span>
+            <button type="button" class="toast-close" aria-label="Close">&times;</button>
+        </div>
     {% endfor %}
 </div>
 {% endif %}
 
 {% block content %}{% endblock %}
 
-{% block scripts %}{% endblock %}
 {% include "partials/_password_toggle.html" %}
+<script>
+(function () {
+    // Toasts sit just below the sticky header, whatever its height
+    var header = document.querySelector('.portal-header');
+    if (header) document.documentElement.style.setProperty('--portal-header-h', header.offsetHeight + 'px');
+
+    // Success closes after 5s, everything else after 9s; hovering pauses it
+    document.querySelectorAll('.portal-toast').forEach(function (toast) {
+        var wait = toast.classList.contains('toast-success') ? 5000 : 9000, timer;
+        function close() {
+            toast.classList.add('is-leaving');
+            setTimeout(function () { toast.remove(); }, 250);
+        }
+        function start() { timer = setTimeout(close, wait); }
+        toast.querySelector('.toast-close').addEventListener('click', close);
+        toast.addEventListener('mouseenter', function () { clearTimeout(timer); });
+        toast.addEventListener('mouseleave', start);
+        start();
+    });
+})();
+</script>
+{% block scripts %}{% endblock %}
 </body>
 </html>

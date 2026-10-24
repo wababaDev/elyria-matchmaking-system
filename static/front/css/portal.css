@@ -54,22 +54,37 @@
 }
 
 @media (max-width: 767px) {
-    .portal-nav {
-        gap: 1rem;
-        font-size: 0.85rem;
+    .portal-header .inner {
+        flex-wrap: wrap;
+        row-gap: 0.4rem;
+        padding: 0.6rem 0;
     }
 
-    .portal-nav .hide-sm {
-        display: none;
+    .portal-header img {
+        height: 36px;
     }
+
+    .portal-nav {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0;
+        border-top: 1px solid rgba(110, 20, 35, 0.08);
+        padding-top: 0.35rem;
+    }
+    .portal-nav > a,
+    .portal-nav > form { text-align: center; margin: 0; }
+    .portal-nav a,
+    .portal-nav button.signout { font-size: 0.85rem; margin: 0; white-space: nowrap; }
+    .portal-nav button.signout { width: 100%; }
 }
 
 /* ---------- Welcome ---------- */
-.portal-welcome {
+ .portal-welcome {
     background: var(--elyria-maroon);
     color: #fff;
     padding: 3rem 0 2.5rem;
-}
+} 
 
 .portal-welcome h1 {
     color: #fff;
@@ -89,6 +104,7 @@
 }
 
 .portal-progress .bar {
+    
     height: 6px;
     background: rgba(255, 255, 255, 0.2);
     border-radius: 3px;
@@ -646,10 +662,6 @@
     opacity: 1;
 }
 
-.portal-messages {
-    padding-top: 1rem;
-}
-
 .field-error {
     color: #b42318;
     font-size: 0.8rem;
@@ -677,4 +689,130 @@
 .portal-form input:disabled {
     opacity: 0.7;
     cursor: not-allowed;
+}
+
+
+/* ---------- Section numbers, ticks and the phone "jump to" bar ---------- */
+.section-nav a { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.section-nav a .done { color: var(--elyria-gold); font-size: 0.75rem; flex-shrink: 0; }
+.section-num { color: var(--elyria-gold); margin-right: 0.15rem; }
+
+.section-jump {
+    position: sticky;
+    top: var(--portal-header-h, 72px);
+    z-index: 30;
+    background: var(--elyria-offwhite);
+    padding: 0.75rem 0;
+    margin-bottom: 0.5rem;
+}
+.section-jump select {
+    width: 100%;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid rgba(110, 20, 35, 0.25);
+    border-radius: 3px;
+    background: #fff;
+    font-size: 0.95rem;
+    color: var(--color-primary);
+}
+
+
+/* ---------- Account: contact links ---------- */
+.contact-links { list-style: none; padding: 0; margin: 0; }
+.contact-links li + li { margin-top: 0.4rem; }
+.contact-links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--elyria-maroon);
+    font-weight: 600;
+    text-decoration: none;
+    word-break: break-all;  /* long email addresses wrap on phones */
+}
+.contact-links a:hover { color: var(--elyria-gold); }
+.contact-links i { width: 1rem; color: var(--elyria-gold); font-size: 0.9rem; }
+.contact-links a:hover i { color: var(--elyria-maroon); }
+
+
+/* ---------- Links inside hints and forms ---------- */
+.hint a,
+.portal-form a {
+    color: var(--elyria-maroon);
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(201, 162, 39, 0.6);  /* thin gold underline */
+}
+.hint a:hover,
+.portal-form a:hover {
+    color: var(--elyria-gold);
+    border-bottom-color: var(--elyria-gold);
+}
+
+
+/* ---------- Required answers still empty after "Mark complete" ---------- */
+.is-missing input:not([type="radio"]):not([type="checkbox"]):not([type="range"]),
+.is-missing select,
+.is-missing textarea {
+    border-color: #b42318 !important;
+    background: #fff;
+}
+.is-missing .chip span,
+.is-missing .photo-tile { border-color: #b42318; }
+.is-missing .field-label,
+.is-missing > label { color: #b42318; }
+
+/* ---------- Messages (toasts) ---------- */
+.portal-toasts {
+    position: fixed;
+    top: calc(var(--portal-header-h, 72px) + 12px);
+    right: 1rem;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    width: min(380px, calc(100vw - 2rem));
+}
+.portal-toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    background: #fff;
+    color: var(--color-primary);
+    border-left: 4px solid var(--elyria-maroon);
+    box-shadow: 0 10px 30px rgba(43, 10, 16, 0.14);
+    padding: 0.9rem 0.9rem 0.9rem 1rem;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    animation: toast-in 0.25s ease-out;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.portal-toast.is-leaving { opacity: 0; transform: translateX(16px); }
+.toast-icon { margin-top: 0.15rem; font-size: 1rem; color: var(--elyria-maroon); }
+.toast-text { flex: 1; }
+.toast-close {
+    background: none;
+    border: 0;
+    padding: 0 0.25rem;
+    font-size: 1.3rem;
+    line-height: 1;
+    color: #857a72;
+    cursor: pointer;
+}
+.toast-close:hover { color: var(--elyria-maroon); }
+
+/* Types: gold for good news, maroon for problems */
+.toast-success { border-left-color: var(--elyria-gold); }
+.toast-success .toast-icon { color: var(--elyria-gold); }
+.toast-warning { border-left-color: #c9822a; }
+.toast-warning .toast-icon { color: #c9822a; }
+.toast-error { border-left-color: #b42318; }
+.toast-error .toast-icon { color: #b42318; }
+
+@keyframes toast-in {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: none; }
+}
+
+/* Phones: full width under the header */
+@media (max-width: 767px) {
+    .portal-toasts { left: 1rem; right: 1rem; width: auto; }
 }

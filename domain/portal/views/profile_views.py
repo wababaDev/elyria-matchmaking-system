@@ -4,11 +4,11 @@ from django.urls import reverse
 from django.views.generic import RedirectView, TemplateView
 
 from domain.matchmaking.models import ClientProfile
-from domain.matchmaking.profile_sections import CHILDREN_DETAIL, OPTIONAL, SECTIONS
+from domain.matchmaking.profile_sections import CHILDREN_DETAIL, OPTIONAL, SECTIONS, missing_field_names
 from domain.matchmaking.services.profile_service import (
     MAX_NON_NEGOTIABLES,
     ProfileLockedError,
-    progress,
+    incomplete_sections,
     save_profile,
 )
 from domain.portal.forms.portal_forms import ProfileForm
@@ -40,13 +40,22 @@ class ProfileView(PortalMixin, TemplateView):
     def get_context_data(self, form=None, missing=None, **kwargs):
         context = super().get_context_data(**kwargs)
         form = form or ProfileForm(instance=self.profile)
-        done, total = progress(self.profile)
+        incomplete_ids = {s.id for s, _ in incomplete_sections(self.profile)}
+
+        # After a failed "Mark complete", highlight each empty required field
+        missing_names, photos_missing = set(), False
+        if missing:
+            missing_names = missing_field_names(form.instance if form.is_bound else self.profile)
+            photos_missing = not self.profile.photos.exists()
+        total = len(SECTIONS)
+        done = total - len(incomplete_ids)
         photos = {p.kind: p for p in self.profile.photos.all()}
 
         context.update(
             form=form,
             profile=self.profile,
-            groups=self._groups(form),
+            groups=self._groups(form, incomplete_ids, missing_names),
+            photos_missing=photos_missing,
             photo_slots=[
                 {"field": form[name], "kind": kind, "label": kind.label, "photo": photos.get(kind)}
                 for name, kind in ProfileForm.PHOTO_FIELDS.items()
@@ -62,10 +71,11 @@ class ProfileView(PortalMixin, TemplateView):
         return context
 
     @staticmethod
-    def _groups(form):
-        """Sections grouped under Your Details / About You / About Your Ideal Partner."""
+    def _groups(form, incomplete_ids, missing_names=frozenset()):
+        """Sections grouped under Your Details / About You / About Your Ideal Partner, numbered 1..n."""
         has_children = form["has_children"].value() == "yes"
         groups = []
+        number = 0
         for zone, label, banner_note in GROUPS:
             sections = []
             for section in (s for s in SECTIONS if s.zone == zone):
@@ -76,10 +86,17 @@ class ProfileView(PortalMixin, TemplateView):
                         "optional": f.name in SHOW_OPTIONAL,
                         "children_detail": f.name in CHILDREN_DETAIL,
                         "hidden": f.name in CHILDREN_DETAIL and not has_children,
+                        "missing": f.name in missing_names,
                     }
                     for f in section.fields
                 ]
-                sections.append({"section": section, "fields": fields})
+                number += 1
+                sections.append({
+                    "section": section,
+                    "fields": fields,
+                    "number": number,
+                    "complete": section.id not in incomplete_ids,  # as last saved
+                })
             groups.append({"zone": zone, "label": label, "banner_note": banner_note, "sections": sections})
         return groups
 

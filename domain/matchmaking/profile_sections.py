@@ -271,3 +271,13 @@ def answers(profile):
             rows.insert(0, ("Non-negotiables", "; ".join(profile.non_negotiables)))
         result.append((section, rows))
     return result
+
+
+def missing_field_names(profile):
+    """Names of required fields that are still empty (for highlighting them on the page)."""
+    return {
+        f.name
+        for s in SECTIONS
+        for f in s.fields
+        if is_required(f.name, profile) and not is_filled(getattr(profile, f.name))
+    }
