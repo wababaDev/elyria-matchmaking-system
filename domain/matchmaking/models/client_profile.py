@@ -109,8 +109,17 @@ class ClientProfile(TimeStampedModel):
         GROWTH = "personal_growth", "Personal Growth"
 
     class Religion(models.TextChoices):
-        # TODO: full Religious Affiliation list from Elyria (Open Questions #7).
-        # Until it arrives this field is not required to mark the profile complete.
+        CATHOLIC = "catholic", "Christian – Catholic"
+        PROTESTANT = "protestant", "Christian – Protestant"
+        PENTECOSTAL = "pentecostal", "Christian – Pentecostal / Charismatic"
+        ADVENTIST = "adventist", "Seventh-day Adventist"
+        JEHOVAHS_WITNESS = "jehovahs_witness", "Jehovah's Witness"
+        MUSLIM = "muslim", "Muslim"
+        HINDU = "hindu", "Hindu"
+        BAHAI = "bahai", "Bahá'í"
+        JEWISH = "jewish", "Jewish"
+        AFRICAN_TRADITIONAL = "african_traditional", "African Traditional Religion"
+        OTHER = "other", "Other"
         SPIRITUAL = "spiritual", "Spiritual but not religious"
         NONE = "none", "No religious affiliation"
         PREFER_NOT = "prefer_not", "Prefer not to say"

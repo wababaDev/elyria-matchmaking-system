@@ -98,8 +98,8 @@ EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Elyria Matchmaking <info@example.com>")  # TODO: real Zoho address
-TEAM_INBOX_EMAIL = env("TEAM_INBOX_EMAIL", default="info@example.com")  # TODO: real team inbox
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Elyria Matchmaking <info@example.com>") 
+TEAM_INBOX_EMAIL = env("TEAM_INBOX_EMAIL", default="info@example.com") 
 EMAIL_SUBJECT_TAG = ""  # "[UAT]" on UAT, see production.py
 
 # ---------------------------------------------------------------- Site

@@ -176,6 +176,27 @@ class ProfileTests(PortalCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.profile().hobbies, "An answer")
 
+    def test_editing_completed_profile_alerts_matchmaker_with_sections(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            self.post_profile({**full_answers(), "photo_close_up": image_file()}, action="complete")
+        mail.outbox.clear()
+
+        with self.captureOnCommitCallbacks(execute=True):
+            self.post_profile({**full_answers(), "hobbies": "Hiking"})
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Profile updated", mail.outbox[0].subject)
+        self.assertIn("Your daily life", mail.outbox[0].body)
+        self.assertNotIn("Your finances", mail.outbox[0].body)
+
+    def test_saving_without_changes_sends_nothing(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            self.post_profile({**full_answers(), "photo_close_up": image_file()}, action="complete")
+        mail.outbox.clear()
+
+        with self.captureOnCommitCallbacks(execute=True):
+            self.post_profile(full_answers())
+        self.assertEqual(len(mail.outbox), 0)
+
     def test_children_details_only_needed_with_children(self):
         data = {**full_answers(), "has_children": "yes", "children_count": "", "photo_close_up": image_file()}
         response = self.post_profile(data, action="complete")

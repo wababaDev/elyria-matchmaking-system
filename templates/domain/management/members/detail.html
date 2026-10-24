@@ -76,9 +76,7 @@
             </div>
         </div>
 
-       {% if perms.base.manage_client %}
-            {% include "domain/management/members/_profile.html" %}
-        {% endif %}
+    
         <p class="text-muted fs-12">Cross-check log, shortlist, post-date feedback and observations will appear here as they're built.</p>
     </div>
 
@@ -148,6 +146,14 @@
         </div>
     </div>
 </div>
+
+{% if perms.base.manage_client %}
+<div class="row">
+    <div class="col-12">
+        {% include "domain/management/members/_profile.html" %}
+    </div>
+</div>
+{% endif %}
 
 {% if status != "cancelled" and perms.base.manage_client %}
 <!-- Renew -->

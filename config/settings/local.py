@@ -10,3 +10,4 @@ DATABASES = {"default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / '
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="notification.backends.OneLineConsoleBackend")
 
 CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=True)
+CELERY_TASK_EAGER_PROPAGATES = True

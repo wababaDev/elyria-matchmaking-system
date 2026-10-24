@@ -1,0 +1,17 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}{{ client.full_name }} changed answers in their completed profile.{% endblock %}
+{% block heading %}Profile updated{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">
+        <strong>{{ client.full_name }}</strong>{% if client.preferred_name %} (&ldquo;{{ client.preferred_name }}&rdquo;){% endif %}
+        has changed answers in their completed profile.
+    </p>
+    <p style="margin:0 0 8px;">Sections changed:</p>
+    <ul style="margin:0 0 16px; padding-left:20px;">
+        {% for section in sections %}<li style="margin-bottom:4px;">{{ section }}</li>{% endfor %}
+    </ul>
+    <p style="margin:0 0 16px;">You may want to cross-check these against the consultation notes again.</p>
+
+    {% include "notification/email/_button.html" with url=link label="Open the member" %}
+{% endblock %}
+{% block signoff %}{% endblock %}

@@ -14,9 +14,8 @@ from domain.matchmaking.services.profile_service import (
 from domain.portal.forms.portal_forms import ProfileForm
 from domain.portal.views.base import PortalMixin
 
-# Fields that show "(optional)". Religion isn't required yet only because its list is missing.
-SHOW_OPTIONAL = OPTIONAL - {"religion"}
-
+# Fields that show "(optional)"
+SHOW_OPTIONAL = OPTIONAL
 GROUPS = [
     ("", "Your Details", None),
     ("you", "About You", "Everything in this part describes you."),

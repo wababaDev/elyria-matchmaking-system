@@ -89,10 +89,12 @@ def save_profile(profile, *, photos=None, complete=False):
     photos = {kind: f for kind, f in (photos or {}).items() if f}
     has_photos = bool(photos) or profile.photos.exists()
 
+    edited_sections = []
     if profile.is_complete:
         missing = incomplete_sections(profile, has_photos=has_photos)
         if missing:
             raise ProfileLockedError(missing)
+        edited_sections = changed_sections(profile, new_photos=bool(photos))
 
     profile.save()
     for kind, upload in photos.items():
@@ -106,5 +108,24 @@ def save_profile(profile, *, photos=None, complete=False):
         from notification.services.profile_emails import notify_profile_completed
 
         transaction.on_commit(lambda: notify_profile_completed(profile.client))
-    # TODO: should the matchmaker be told when a completed profile is edited? (ask Elyria)
+    elif edited_sections:
+        # A completed profile was changed: tell the matchmaker what to look at again
+        from notification.services.profile_emails import notify_profile_updated
+
+        transaction.on_commit(lambda: notify_profile_updated(profile.client, edited_sections))
     return missing
+
+
+def changed_sections(profile, *, new_photos=False):
+    """Titles of the sections whose answers differ from what is saved (call before saving)."""
+    saved = ClientProfile.objects.get(pk=profile.pk)
+    titles = []
+    for section in SECTIONS:
+        changed = any(getattr(saved, f.name) != getattr(profile, f.name) for f in section.fields)
+        if section.has_non_negotiables and saved.non_negotiables != profile.non_negotiables:
+            changed = True
+        if section.has_photos and new_photos:
+            changed = True
+        if changed:
+            titles.append(section.title)
+    return titles

@@ -281,3 +281,32 @@ def missing_field_names(profile):
         for f in s.fields
         if is_required(f.name, profile) and not is_filled(getattr(profile, f.name))
     }
+
+
+STAFF_GROUPS = [
+    ("", "Their details"),
+    ("you", "About them"),
+    ("partner", "Their ideal partner"),
+]
+
+
+def answers_by_group(profile, *, has_photos):
+    """
+    For the staff member page: sections numbered 1..n like the member sees them,
+    grouped into details / about them / ideal partner, with a count of missing answers.
+    """
+    rows_by_id = {s.id: rows for s, rows in answers(profile)}
+    missing_by_id = {s.id: missing for s, missing in section_status(profile, has_photos=has_photos)}
+    groups, number = [], 0
+    for zone, label in STAFF_GROUPS:
+        sections = []
+        for section in (s for s in SECTIONS if s.zone == zone):
+            number += 1
+            sections.append({
+                "section": section,
+                "number": number,
+                "rows": rows_by_id[section.id],
+                "missing": len(missing_by_id[section.id]),
+            })
+        groups.append({"zone": zone, "label": label, "sections": sections})
+    return groups

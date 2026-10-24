@@ -23,7 +23,7 @@ from notification.services.member_emails import send_sign_in_link
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from domain.matchmaking.models import ProfilePhoto
-from domain.matchmaking.profile_sections import answers
+from domain.matchmaking.profile_sections import answers_by_group
 from domain.matchmaking.services.profile_service import progress
 
 
@@ -72,6 +72,7 @@ class MemberDetailView(StaffRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         membership = getattr(self.object, "membership", None)
         profile = getattr(self.object, "profile", None)
+        photos = list(profile.photos.all()) if profile else []
       
         context.update(
             membership=membership,
@@ -83,8 +84,8 @@ class MemberDetailView(StaffRequiredMixin, DetailView):
             cancel_form=CancelMembershipForm(),
             assign_form=AssignForm(initial={"assigned_to": self.object.matchmaker_id}),
              profile=profile,
-                           profile_answers=answers(profile) if profile else [],
-                           profile_photos=profile.photos.all() if profile else [],
+                          profile_groups=answers_by_group(profile, has_photos=bool(photos)) if profile else [],
+            profile_photos=photos,
                            profile_progress=progress(profile) if profile else (0, 0),
         )
         return context

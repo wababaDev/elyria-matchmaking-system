@@ -63,3 +63,59 @@
 .badge.status-form-sent { background: rgba(var(--secondary-rgb), 0.15); color: #7a5f10; }
 .badge.status-complete  { background: rgba(var(--primary-rgb), 0.1); color: rgb(var(--primary-rgb)); }
 .badge.status-declined  { background: rgba(var(--dark-rgb), 0.08);    color: var(--text-muted); }
+
+/* ---------- Member page: Self-Service Profile ---------- */
+.member-profile .profile-part {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #6E1423;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 2px solid #6E1423;
+}
+.member-profile .profile-part-partner { color: #9a7a14; border-bottom-color: #C9A227; }
+
+.member-profile .accordion-button { font-size: 0.9rem; font-weight: 600; gap: 0.6rem; padding: 0.8rem 1rem; }
+.member-profile .profile-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    background: rgba(110, 20, 35, 0.08);
+    color: #6E1423;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+.member-profile .profile-accordion-partner .profile-num { background: rgba(201, 162, 39, 0.15); color: #9a7a14; }
+
+/* Answers: label above answer, two per row on wide screens */
+.member-profile .profile-answers {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem 1.5rem;
+    margin: 0;
+}
+.member-profile .profile-answers dt {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #74708a;
+    margin-bottom: 0.2rem;
+}
+.member-profile .profile-answers dd { font-size: 0.9rem; color: #1f1d2b; margin: 0; }
+.member-profile .profile-answers .is-empty dd { color: #b0adbd; font-style: italic; }
+
+/* Photos */
+.member-profile .profile-photo { text-align: center; font-size: 0.75rem; color: #74708a; text-decoration: none; }
+.member-profile .profile-photo img {
+    display: block;
+    width: 120px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 6px;
+    margin-bottom: 0.3rem;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}

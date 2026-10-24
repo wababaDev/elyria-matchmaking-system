@@ -104,7 +104,7 @@
 }
 
 .portal-progress .bar {
-    
+
     height: 6px;
     background: rgba(255, 255, 255, 0.2);
     border-radius: 3px;
@@ -816,3 +816,5 @@
 @media (max-width: 767px) {
     .portal-toasts { left: 1rem; right: 1rem; width: auto; }
 }
+
+
