@@ -42,8 +42,8 @@
                     <p class="text-muted fs-12 mb-2">
                         Held {{ consultation.held_at|date:"j M Y" }}{% if consultation.conducted_by %} by {{ consultation.conducted_by.full_name }}{% endif %}
                     </p>
-                    <div class="fs-14">{{ consultation.notes|linebreaksbr|default:"No notes recorded." }}</div>
-                {% else %}
+                    <div class="fs-14 mb-3">{{ consultation.notes|linebreaksbr|truncatewords:60|default:"No overall notes recorded." }}</div>
+                    <a href="{% url 'matchmaking:consultation-record' member.consultation_request_id %}" class="btn btn-sm btn-light">Open full consultation record</a>
                     <p class="text-muted mb-0">No consultation recorded.</p>
                 {% endif %}
             </div>

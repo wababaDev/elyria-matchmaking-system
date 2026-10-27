@@ -121,10 +121,16 @@ class FinanceAccessTests(FinanceCase):
     def test_notes_hidden_from_finance(self):
         Consultation.objects.create(request=self.request, notes="Private consultation notes")
         url = reverse("matchmaking:consultation-request-detail", args=[self.request.pk])
-        self.assertNotContains(self.client.get(url), "Private consultation notes")
+        record_url = reverse("matchmaking:consultation-record", args=[self.request.pk])
 
+        # Finance: no record card on the request page, and the record itself is forbidden
+        self.assertNotContains(self.client.get(url), record_url)
+        self.assertEqual(self.client.get(record_url).status_code, 403)
+
+        # Admin: sees the card, and the notes on the record page
         self.client.force_login(self.admin)
-        self.assertContains(self.client.get(url), "Private consultation notes")
+        self.assertContains(self.client.get(url), record_url)
+        self.assertContains(self.client.get(record_url), "Private consultation notes")
 
     def test_matchmaker_cannot_see_payments(self):
         self.client.force_login(self.matchmaker)

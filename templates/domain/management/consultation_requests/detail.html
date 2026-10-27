@@ -144,36 +144,32 @@
                     </div>
                 </div>
 
-                <!-- Notes: only for people who work on consultations (not Finance) -->
+
+                <!-- Consultation record: only for people who work on consultations (not Finance) -->
                 {% if cr.status != "awaiting_payment" and perms.base.manage_consultation_request %}
                     <div class="card custom-card">
-                        <div class="card-header">
-                            <div class="card-title">Consultation notes</div>
-                            <span class="text-muted fs-12 ms-2">Internal only, never shown to the client</span>
-                        </div>
-                        <div class="card-body">
-                            {% if cr.status == "fee_paid" or cr.status == "consulted" %}
-                                <form method="post"
-                                      action="{% url 'matchmaking:consultation-request-notes' cr.pk %}">
-                                    {% csrf_token %}
-                                    {{ notes_form.notes }}
-                                    <div class="d-flex gap-2 mt-3">
-                                        <button type="submit" class="btn btn-light">Save notes</button>
-                                        {% if cr.status == "fee_paid" %}
-                                            <button type="submit"
-                                                    class="btn btn-primary"
-                                                    formaction="{% url 'matchmaking:consultation-request-mark-consulted' cr.pk %}"
-                                                    data-confirm-title="Mark as consulted"
-                                                    data-confirm="Save the notes and mark {{ cr.display_name }}'s consultation as held? It will move to 'To decide' in the queue."
-                                                    data-confirm-button="Save & mark as consulted">
-                                                Save &amp; mark as consulted
-                                            </button>
-                                        {% endif %}
-                                    </div>
-                                </form>
+                        <div class="card-header justify-content-between">
+                            <div class="card-title">Consultation record</div>
+                            {% if consultation.is_locked %}
+                                <span class="badge bg-success-transparent"><i class="fe fe-lock me-1"></i>Locked {{ consultation.record_locked_at|date:"j M Y" }}</span>
+                            {% elif consultation %}
+                                <span class="badge bg-warning-transparent">Draft · {{ consultation.answered_count }} of {{ consultation.question_count }} answered</span>
                             {% else %}
-                                <div class="fs-14">{{ consultation.notes|linebreaksbr|default:"No notes recorded." }}</div>
+                                <span class="badge bg-light text-muted">Not started</span>
                             {% endif %}
+                        </div>
+                        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <span class="text-muted fs-13">
+                                {% if consultation.is_locked %}
+                                    Readiness: {% if consultation.readiness %}<strong>{{ consultation.get_readiness_display }}</strong>{% else %}<span class="text-warning">not scored yet</span>{% endif %}
+                                {% else %}
+                                    Fill it in during the call, then lock it. Locking also marks the consultation as held.
+                                {% endif %}
+                            </span>
+                            <a href="{% url 'matchmaking:consultation-record' cr.pk %}"
+                               class="btn btn-primary btn-sm">
+                                {% if consultation.is_locked %}View record{% elif consultation %}Continue record{% else %}Open consultation record{% endif %}
+                            </a>
                         </div>
                     </div>
                 {% endif %}
@@ -353,7 +349,9 @@
                             {{ undo_form.reason }}
                         </div>
                         <div class="modal-footer d-flex flex-nowrap gap-2">
-                            <button type="button" class="btn btn-light flex-fill m-0" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button"
+                                    class="btn btn-light flex-fill m-0"
+                                    data-bs-dismiss="modal">Cancel</button>
                             <button type="submit" class="btn btn-danger flex-fill m-0">Undo payment</button>
                         </div>
                     </form>
