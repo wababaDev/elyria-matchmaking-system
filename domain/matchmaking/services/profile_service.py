@@ -1,23 +1,24 @@
 """
 Self-Service Profile rules: create (pre-filled), save and return, mark complete.
 """
+from io import BytesIO
+
+from django.core.files.base import ContentFile
 from django.db import transaction
 from django.utils import timezone
+from PIL import Image, ImageOps
 
 from domain.matchmaking.models import ClientProfile, ConsultationRequest, ProfilePhoto
-from domain.matchmaking.profile_sections import SECTIONS, section_status
-from io import BytesIO
-from django.core.files.base import ContentFile
-from PIL import Image, ImageOps
-MAX_NON_NEGOTIABLES = 5
+from domain.matchmaking.profile_sections import HIGH_IMPACT, SECTIONS, display_value, section_status
 
-PHOTO_MAX_EDGE = 1600  # pixels, longest side
+MAX_NON_NEGOTIABLES = 5
+PHOTO_MAX_EDGE = 1600  # pixels, longest side (matches the browser)
 PHOTO_QUALITY = 80
 
 
 def _shrink_photo(upload):
     """
-    Resize to at most 2000px on the long side, turn it the right way up, and save as JPEG.
+    Resize to at most PHOTO_MAX_EDGE on the long side, turn it the right way up, and save as JPEG.
     Saving without EXIF also removes hidden data such as the GPS location the photo was taken at.
     """
     upload.seek(0)
@@ -93,6 +94,7 @@ def _save_photo(profile, kind, upload):
         old.delete()
     ProfilePhoto.objects.create(profile=profile, kind=kind, image=_shrink_photo(upload))
 
+
 @transaction.atomic
 def save_profile(profile, *, photos=None, complete=False):
     """
@@ -108,12 +110,12 @@ def save_profile(profile, *, photos=None, complete=False):
     photos = {kind: f for kind, f in (photos or {}).items() if f}
     has_photos = bool(photos) or profile.photos.exists()
 
-    edited_sections = []
+    changes = []
     if profile.is_complete:
         missing = incomplete_sections(profile, has_photos=has_photos)
         if missing:
             raise ProfileLockedError(missing)
-        edited_sections = changed_sections(profile, new_photos=bool(photos))
+        changes = changed_fields(profile, new_photos=photos)
 
     profile.save()
     for kind, upload in photos.items():
@@ -127,24 +129,45 @@ def save_profile(profile, *, photos=None, complete=False):
         from notification.services.profile_emails import notify_profile_completed
 
         transaction.on_commit(lambda: notify_profile_completed(profile.client))
-    elif edited_sections:
-        # A completed profile was changed: tell the matchmaker what to look at again
+    elif changes:
+        # A completed profile was changed: log each change in the member's notes, and tell the matchmaker
+        from domain.matchmaking.services.member_note_service import log_profile_changes
         from notification.services.profile_emails import notify_profile_updated
 
-        transaction.on_commit(lambda: notify_profile_updated(profile.client, edited_sections))
+        log_profile_changes(profile.client, changes)
+        sections = list(dict.fromkeys(c["section"] for c in changes))  # unique, in page order
+        important = [f'{c["label"]}: {c["old"] or "(blank)"} → {c["new"] or "(blank)"}' for c in changes if c["high_impact"]]
+        transaction.on_commit(lambda: notify_profile_updated(profile.client, sections, important))
     return missing
 
 
-def changed_sections(profile, *, new_photos=False):
-    """Titles of the sections whose answers differ from what is saved (call before saving)."""
+def changed_fields(profile, *, new_photos=None):
+    """
+    Every answer that differs from what is saved (call before saving).
+    [{"section", "label", "old", "new", "high_impact"}, ...] with readable values.
+    """
     saved = ClientProfile.objects.get(pk=profile.pk)
-    titles = []
+    changes = []
     for section in SECTIONS:
-        changed = any(getattr(saved, f.name) != getattr(profile, f.name) for f in section.fields)
+        for spec in section.fields:
+            if getattr(saved, spec.name) != getattr(profile, spec.name):
+                changes.append({
+                    "section": section.title,
+                    "label": str(ClientProfile._meta.get_field(spec.name).verbose_name),
+                    "old": display_value(saved, spec),
+                    "new": display_value(profile, spec),
+                    "high_impact": spec.name in HIGH_IMPACT,
+                })
         if section.has_non_negotiables and saved.non_negotiables != profile.non_negotiables:
-            changed = True
+            changes.append({
+                "section": section.title, "label": "Non-negotiables",
+                "old": "; ".join(saved.non_negotiables), "new": "; ".join(profile.non_negotiables),
+                "high_impact": False,
+            })
         if section.has_photos and new_photos:
-            changed = True
-        if changed:
-            titles.append(section.title)
-    return titles
+            kinds = ", ".join(str(ProfilePhoto.Kind(k).label) for k in new_photos)
+            changes.append({
+                "section": section.title, "label": "Profile photos",
+                "old": "", "new": f"New photo: {kinds}", "high_impact": False,
+            })
+    return changes

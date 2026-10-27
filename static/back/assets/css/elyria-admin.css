@@ -119,3 +119,20 @@
     margin-bottom: 0.3rem;
     border: 1px solid rgba(0, 0, 0, 0.06);
 }
+
+
+/* ---------- Member notes ---------- */
+.member-notes .notes-summary { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; font-size: .85rem; color: #74708a; padding: .75rem 1rem; background: #f9f7f4; border-radius: 6px; }
+.member-notes .notes-summary .is-alert { color: #b42318; }
+.member-notes .note { border-left: 3px solid #d9d4cc; padding: .8rem 1rem; margin-bottom: .75rem; background: #fff; border-radius: 0 6px 6px 0; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.member-notes .note-observation { border-left-color: #6c8ebf; }
+.member-notes .note-discrepancy { border-left-color: #6E1423; }
+.member-notes .note-profile_change { border-left-color: #C9A227; }
+.member-notes .note.is-open { background: #fffaf2; }
+.member-notes .note-kind { background: #f1ede7; color: #4a4458; font-weight: 600; }
+.member-notes .note-answer { background: #f9f7f4; border-radius: 4px; padding: .5rem .7rem; height: 100%; }
+.member-notes .note-answer span { display: block; font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: #74708a; margin-bottom: .2rem; }
+.member-notes .note-resolution { border-top: 1px dashed #e5ded3; padding-top: .5rem; }
+.member-notes .note-revision { border-left: 2px solid #eee; padding-left: .6rem; margin-top: .4rem; }
+.member-notes .note-action { color: #6E1423; font-weight: 600; text-decoration: none; }
+.member-notes .note-action:hover { color: #C9A227; }

@@ -6,11 +6,17 @@
         <strong>{{ client.full_name }}</strong>{% if client.preferred_name %} (&ldquo;{{ client.preferred_name }}&rdquo;){% endif %}
         has changed answers in their completed profile.
     </p>
+    {% if important %}
+        <p style="margin:0 0 8px; color:#B42318;"><strong>Changes that affect matching:</strong></p>
+        <ul style="margin:0 0 16px; padding-left:20px;">
+            {% for change in important %}<li style="margin-bottom:4px;">{{ change }}</li>{% endfor %}
+        </ul>
+    {% endif %}
     <p style="margin:0 0 8px;">Sections changed:</p>
     <ul style="margin:0 0 16px; padding-left:20px;">
         {% for section in sections %}<li style="margin-bottom:4px;">{{ section }}</li>{% endfor %}
     </ul>
-    <p style="margin:0 0 16px;">You may want to cross-check these against the consultation notes again.</p>
+    <p style="margin:0 0 16px;">Each change is logged in the member's notes for you to review.</p>
 
     {% include "notification/email/_button.html" with url=link label="Open the member" %}
 {% endblock %}

@@ -18,13 +18,14 @@ def deliver_profile_completed(client):
     )
 
 
-def deliver_profile_updated(client, sections):
-    """A member changed answers after completing their profile."""
+def deliver_profile_updated(client, sections, important=None):
+    """A member changed answers after completing their profile. `important`: high-impact changes."""
     link = settings.SITE_URL.rstrip("/") + reverse("matchmaking:member-detail", args=[client.pk])
+    prefix = "Important profile change" if important else "Profile updated"
     send_templated_email(
-        subject=f"Profile updated: {client.full_name}",
+        subject=f"{prefix}: {client.full_name}",
         template="notification/email/profile_updated",
-        context={"client": client, "sections": sections, "link": link},
+        context={"client": client, "sections": sections, "important": important or [], "link": link},
         to=[_recipient(client)],
     )
 
@@ -44,7 +45,7 @@ def notify_profile_completed(client):
     enqueue(tasks.send_profile_completed_email, client.pk)
 
 
-def notify_profile_updated(client, sections):
+def notify_profile_updated(client, sections, important=None):
     from notification import tasks
 
-    enqueue(tasks.send_profile_updated_email, client.pk, list(sections))
+    enqueue(tasks.send_profile_updated_email, client.pk, list(sections), list(important or []))

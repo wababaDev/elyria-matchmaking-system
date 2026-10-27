@@ -9,78 +9,171 @@
 {% block content %}
 {% with status=membership.display_status %}
 <div class="row">
-    <div class="col-xl-8">
 
-        <!-- Details (from their original request) -->
-        <div class="card custom-card">
-            <div class="card-header"><div class="card-title">Details</div></div>
-            <div class="card-body">
-                <dl class="row mb-0">
-                    <dt class="col-sm-4 text-muted fw-normal">Preferred name</dt><dd class="col-sm-8">{{ member.preferred_name }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Payment reference</dt><dd class="col-sm-8"><strong>{{ details.payment_reference|default:"—" }}</strong></dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Gender / seeking</dt><dd class="col-sm-8">{{ details.get_gender_display }} / {{ details.get_seeking_display }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Age (at request)</dt><dd class="col-sm-8">{{ details.age }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Location</dt><dd class="col-sm-8">{{ details.location }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Nationality</dt><dd class="col-sm-8">{{ details.nationality }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Occupation</dt><dd class="col-sm-8">{{ details.occupation }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Email</dt><dd class="col-sm-8"><a href="mailto:{{ member.user.email }}">{{ member.user.email }}</a></dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Phone</dt><dd class="col-sm-8 mb-0"><a href="tel:{{ details.phone }}">{{ details.phone }}</a></dd>
-                </dl>
-                <a href="{% url 'matchmaking:consultation-request-detail' member.consultation_request_id %}" class="fs-12 d-inline-block mt-3">View original request</a>
+    {# ================= LEFT: tabs ================= #}
+    <div class="col-xl-9">
+        <div class="card custom-card member-tabs">
+            <div class="card-header p-0 border-bottom-0">
+                <ul class="nav nav-tabs w-100 px-3 pt-2" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-overview" type="button" role="tab">Overview</button>
+                    </li>
+                    {% if perms.base.manage_client %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-profile" type="button" role="tab">
+                                Profile
+                                {% if profile.is_complete %}<i class="fe fe-check text-success ms-1"></i>{% elif profile %}<span class="badge bg-warning-transparent ms-1">{{ profile_progress.0 }}/{{ profile_progress.1 }}</span>{% endif %}
+                            </button>
+                        </li>
+                    {% endif %}
+                    {% if perms.base.manage_consultation_request %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-consultation" type="button" role="tab">
+                                Consultation
+                                {% if consultation.is_locked %}<i class="fe fe-lock text-muted ms-1"></i>{% endif %}
+                            </button>
+                        </li>
+                    {% endif %}
+                    {% if perms.base.manage_client %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-notes" type="button" role="tab">
+                                Notes
+                                {% with open=note_summary.open_discrepancies|add:note_summary.changes_to_review %}
+                                    {% if open %}<span class="badge bg-danger ms-1">{{ open }}</span>{% endif %}
+                                {% endwith %}
+                            </button>
+                        </li>
+                    {% endif %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-payments" type="button" role="tab">Payments</button>
+                    </li>
+                    {# Later: Shortlist, Introductions #}
+                </ul>
             </div>
         </div>
 
-        <!-- Consultation notes: only for people who work on consultations (not Finance) -->
-        {% if perms.base.manage_consultation_request %}
-        <div class="card custom-card">
-            <div class="card-header">
-                <div class="card-title">Consultation notes</div>
-                <span class="text-muted fs-12 ms-2">Internal only</span>
-            </div>
-            <div class="card-body">
-                {% if consultation %}
-                    <p class="text-muted fs-12 mb-2">
-                        Held {{ consultation.held_at|date:"j M Y" }}{% if consultation.conducted_by %} by {{ consultation.conducted_by.full_name }}{% endif %}
-                    </p>
-                    <div class="fs-14 mb-3">{{ consultation.notes|linebreaksbr|truncatewords:60|default:"No overall notes recorded." }}</div>
-                    <a href="{% url 'matchmaking:consultation-record' member.consultation_request_id %}" class="btn btn-sm btn-light">Open full consultation record</a>
-                    <p class="text-muted mb-0">No consultation recorded.</p>
+        <div class="tab-content">
+
+            {# ---------- Overview ---------- #}
+            <div class="tab-pane fade show active" id="tab-overview" role="tabpanel">
+                <div class="card custom-card">
+                    <div class="card-header"><div class="card-title">Details from their request</div></div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4 text-muted fw-normal">Preferred name</dt><dd class="col-sm-8">{{ member.preferred_name }}</dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Payment reference</dt><dd class="col-sm-8"><strong>{{ details.payment_reference|default:"—" }}</strong></dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Gender / seeking</dt><dd class="col-sm-8">{{ details.get_gender_display }} / {{ details.get_seeking_display }}</dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Age (at request)</dt><dd class="col-sm-8">{{ details.age }}</dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Location</dt><dd class="col-sm-8">{{ details.location }}</dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Nationality</dt><dd class="col-sm-8">{{ details.nationality }}</dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Occupation</dt><dd class="col-sm-8">{{ details.occupation }}</dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Email (sign-in)</dt><dd class="col-sm-8"><a href="mailto:{{ member.user.email }}">{{ member.user.email }}</a></dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Phone</dt><dd class="col-sm-8 mb-0"><a href="tel:{{ details.phone }}">{{ details.phone }}</a></dd>
+                        </dl>
+                        <a href="{% url 'matchmaking:consultation-request-detail' member.consultation_request_id %}" class="fs-12 d-inline-block mt-3">View original request</a>
+                    </div>
+                </div>
+
+                {% if perms.base.manage_client %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card custom-card">
+                                <div class="card-body">
+                                    <p class="text-muted fs-12 mb-1">Self-Service Profile</p>
+                                    <p class="fs-5 fw-semibold mb-0">
+                                        {% if profile.is_complete %}Complete{% elif profile %}In progress · {{ profile_progress.0 }} of {{ profile_progress.1 }}{% else %}Not started{% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card custom-card">
+                                <div class="card-body">
+                                    <p class="text-muted fs-12 mb-1">Open items in notes</p>
+                                    <p class="fs-5 fw-semibold mb-0 {% if note_summary.open_discrepancies or note_summary.changes_to_review %}text-danger{% endif %}">
+                                        {{ note_summary.open_discrepancies }} discrepanc{{ note_summary.open_discrepancies|pluralize:"y,ies" }} · {{ note_summary.changes_to_review }} change{{ note_summary.changes_to_review|pluralize }} to review
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 {% endif %}
             </div>
-        </div>
-        {% endif %}
 
-        <!-- Payments -->
-        <div class="card custom-card">
-            <div class="card-header"><div class="card-title">Membership payments</div></div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table mb-0 align-middle fs-13">
-                        <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Method</th><th>Transaction ID</th><th>Recorded by</th></tr></thead>
-                        <tbody>
-                            {% for p in payments %}
-                                <tr>
-                                    <td>{{ p.paid_on|date:"j M Y" }}</td>
-                                    <td>{{ p.get_kind_display }}</td>
-                                    <td class="fw-semibold">{{ p.currency }} {{ p.amount|floatformat:2 }}</td>
-                                    <td>{{ p.get_method_display }}</td>
-                                    <td>{{ p.reference|default:"—" }}</td>
-                                    <td>{{ p.recorded_by.full_name|default:"—" }}</td>
-                                </tr>
-                            {% empty %}
-                                <tr><td colspan="6" class="text-center text-muted py-4">No payments recorded.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+            {# ---------- Profile ---------- #}
+            {% if perms.base.manage_client %}
+                <div class="tab-pane fade" id="tab-profile" role="tabpanel">
+                    {% include "domain/management/members/_profile.html" %}
+                </div>
+            {% endif %}
+
+            {# ---------- Consultation ---------- #}
+            {% if perms.base.manage_consultation_request %}
+                <div class="tab-pane fade" id="tab-consultation" role="tabpanel">
+                    <div class="card custom-card">
+                        <div class="card-header justify-content-between">
+                            <div class="card-title">Consultation record</div>
+                            {% if consultation.is_locked %}
+                                <span class="badge bg-success-transparent"><i class="fe fe-lock me-1"></i>Locked {{ consultation.record_locked_at|date:"j M Y" }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="card-body">
+                            {% if consultation %}
+                                <p class="text-muted fs-12 mb-3">
+                                    Held {{ consultation.held_at|date:"j M Y"|default:"—" }}{% if consultation.conducted_by %} by {{ consultation.conducted_by.full_name }}{% endif %}
+                                    · Readiness: {% if consultation.readiness %}<strong>{{ consultation.get_readiness_display }}</strong>{% else %}not scored{% endif %}
+                                    · {{ consultation.answered_count }} of {{ consultation.question_count }} questions answered
+                                </p>
+                                <p class="fw-semibold fs-13 mb-1">Overall notes &amp; recommendation</p>
+                                <div class="fs-14 mb-3">{{ consultation.notes|linebreaksbr|default:"No overall notes recorded." }}</div>
+                                <a href="{% url 'matchmaking:consultation-record' member.consultation_request_id %}" class="btn btn-sm btn-primary">Open full consultation record</a>
+                            {% else %}
+                                <p class="text-muted mb-0">No consultation recorded.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            {# ---------- Notes ---------- #}
+            {% if perms.base.manage_client %}
+                <div class="tab-pane fade" id="tab-notes" role="tabpanel">
+                    {% include "domain/management/members/_notes.html" %}
+                </div>
+            {% endif %}
+
+            {# ---------- Payments ---------- #}
+            <div class="tab-pane fade" id="tab-payments" role="tabpanel">
+                <div class="card custom-card">
+                    <div class="card-header"><div class="card-title">Membership payments</div></div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table mb-0 align-middle fs-13">
+                                <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Method</th><th>Transaction ID</th><th>Recorded by</th></tr></thead>
+                                <tbody>
+                                    {% for p in payments %}
+                                        <tr>
+                                            <td>{{ p.paid_on|date:"j M Y" }}</td>
+                                            <td>{{ p.get_kind_display }}</td>
+                                            <td class="fw-semibold">{{ p.currency }} {{ p.amount|floatformat:2 }}</td>
+                                            <td>{{ p.get_method_display }}</td>
+                                            <td>{{ p.reference|default:"—" }}</td>
+                                            <td>{{ p.recorded_by.full_name|default:"—" }}</td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr><td colspan="6" class="text-center text-muted py-4">No payments recorded.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-
-    
-        <p class="text-muted fs-12">Cross-check log, shortlist, post-date feedback and observations will appear here as they're built.</p>
     </div>
 
-    <div class="col-xl-4">
+    {# ================= RIGHT: always visible ================= #}
+    <div class="col-xl-3">
 
         <!-- Membership -->
         <div class="card custom-card">
@@ -147,14 +240,6 @@
         </div>
     </div>
 </div>
-
-{% if perms.base.manage_client %}
-<div class="row">
-    <div class="col-12">
-        {% include "domain/management/members/_profile.html" %}
-    </div>
-</div>
-{% endif %}
 
 {% if status != "cancelled" and perms.base.manage_client %}
 <!-- Renew -->
@@ -239,7 +324,27 @@
         </form>
     </div>
 </div>
-
 {% endif %}
+
+<script>
+// Tabs remember where you were: the address ends in #notes, #profile, ...
+// so "back to the notes" after saving a note opens the Notes tab again.
+(function () {
+    var buttons = document.querySelectorAll('.member-tabs [data-bs-toggle="tab"]');
+    function show(name) {
+        var button = document.querySelector('.member-tabs [data-bs-target="#tab-' + name + '"]');
+        if (button && window.bootstrap) bootstrap.Tab.getOrCreateInstance(button).show();
+    }
+    buttons.forEach(function (button) {
+        button.addEventListener('shown.bs.tab', function () {
+            var name = button.dataset.bsTarget.replace('#tab-', '');
+            history.replaceState(null, '', location.pathname + location.search + '#' + name);
+        });
+    });
+    document.addEventListener('DOMContentLoaded', function () {
+        if (location.hash) show(location.hash.slice(1));
+    });
+})();
+</script>
 {% endwith %}
 {% endblock %}

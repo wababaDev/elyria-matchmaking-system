@@ -91,6 +91,23 @@ class MemberDetailView(StaffRequiredMixin, DetailView):
             profile_photos=photos,
                            profile_progress=progress(profile) if profile else (0, 0),
         )
+
+        from domain.matchmaking.forms.member_note_forms import CloseNoteForm, DiscrepancyForm, ObservationForm
+        from domain.matchmaking.services.member_note_service import note_summary, notes_for
+
+        show = self.request.GET.get("notes", "")
+        context.update(
+            notes=notes_for(self.object, show=show),
+            notes_show=show,
+            note_filters=[
+                ("", "All"), ("open", "Open only"), ("observation", "Observations"),
+                ("discrepancy", "Discrepancies"), ("profile_change", "Profile changes"),
+            ],
+            note_summary=note_summary(self.object),
+            observation_form=ObservationForm(),
+            discrepancy_form=DiscrepancyForm(),
+            close_form=CloseNoteForm(),
+        )
         return context
 
 

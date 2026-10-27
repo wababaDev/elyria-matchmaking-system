@@ -1,9 +1,12 @@
 {% autoescape off %}{{ client.full_name }}{% if client.preferred_name %} ("{{ client.preferred_name }}"){% endif %} has changed answers in their completed profile.
 
-Sections changed:
+{% if important %}Changes that affect matching:
+{% for change in important %}- {{ change }}
+{% endfor %}
+{% endif %}Sections changed:
 {% for section in sections %}- {{ section }}
 {% endfor %}
-You may want to cross-check these against the consultation notes again.
+Each change is logged in the member's notes for you to review.
 
 Open the member:
 {{ link }}

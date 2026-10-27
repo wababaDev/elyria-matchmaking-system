@@ -22,7 +22,7 @@ SECTIONS = [
         "code": "",
         "title": "Other Questions Asked by Matchmaker",
         "hint": "Follow-ups or new questions.",
-        "fields": ["followk_up_questions"],
+        "fields": ["follow_up_questions"],
         "side": True,
     },
     {

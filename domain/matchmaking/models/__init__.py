@@ -4,6 +4,7 @@ from .client import Client
 from .membership_tier import MembershipTier
 from .membership import Membership, MembershipPayment
 from .enquiry import Enquiry
+from .member_note import MemberNote, MemberNoteRevision
 
 from .client_profile import ClientProfile
 from .profile_photo import ProfilePhoto
