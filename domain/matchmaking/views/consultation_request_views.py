@@ -10,7 +10,6 @@ from domain.base.mixins import StaffRequiredMixin
 from domain.matchmaking.forms import (
     AssignForm,
     BookConsultationForm,
-    ConsultationNotesForm,
     FeePaymentForm,
     staff_members,
 )
@@ -31,8 +30,6 @@ from domain.matchmaking.services.consultation_request_service import (
 )
 from domain.matchmaking.services.consultation_service import (
     book_consultation,
-    mark_consulted,
-    save_consultation_notes,
 )
 from domain.website.models import SiteSettings
 from django.utils.decorators import method_decorator  # not needed, ignore if your linter complains
@@ -106,9 +103,7 @@ class ConsultationRequestDetailView(StaffRequiredMixin, DetailView):
                     ),
                 }
             ),
-            notes_form=ConsultationNotesForm(
-                initial={"notes": consultation.notes if consultation else ""}
-            ),
+
             assign_form=AssignForm(initial={"assigned_to": self.object.assigned_to_id}),
             undo_form=UndoFeePaidForm(),
             can_edit_details=self.object.status in ConsultationRequest.OPEN_STATUSES,
@@ -225,29 +220,6 @@ class BookConsultationView(ConsultationRequestActionView):
             location=data["location"],
             by=self.request.user,
         )
-
-
-class SaveNotesView(ConsultationRequestActionView):
-    form_class = ConsultationNotesForm
-    success_message = "Notes saved."
-
-    def perform(self, consultation_request, data):
-        save_consultation_notes(
-            consultation_request, notes=data["notes"], by=self.request.user
-        )
-
-
-class MarkConsultedView(ConsultationRequestActionView):
-    """Saves the notes in the box, then marks the consultation as held."""
-
-    form_class = ConsultationNotesForm
-    success_message = "{name}'s consultation is marked as held."
-
-    def perform(self, consultation_request, data):
-        save_consultation_notes(
-            consultation_request, notes=data["notes"], by=self.request.user
-        )
-        mark_consulted(consultation_request, by=self.request.user)
 
 
 class ConfirmMembershipView(ConsultationRequestActionView):

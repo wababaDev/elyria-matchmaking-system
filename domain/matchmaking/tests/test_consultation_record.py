@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
 from django.utils.functional import cached_property
 from django.views.generic import TemplateView
 
@@ -89,3 +90,8 @@ class ConsultationRecordView(StaffRequiredMixin, TemplateView):
         except InvalidTransitionError as e:
             messages.error(request, str(e))
         return redirect("matchmaking:consultation-record", self.cr.pk)
+
+    def test_old_mark_consulted_route_is_gone(self):
+            from django.urls import NoReverseMatch
+            with self.assertRaises(NoReverseMatch):
+                reverse("matchmaking:consultation-request-mark-consulted", args=[self.cr.pk])

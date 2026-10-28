@@ -89,7 +89,7 @@
                         <div class="card-title">{% if section.code %}{{ section.code }}. {% endif %}{{ section.title }}</div>
                         {% if section.hint %}<span class="text-muted fs-12">{{ section.hint }}</span>{% endif %}
                     </div>
-                    <span class="badge bg-light text-muted" data-section-count></span>
+                    <span class="badge bg-light text-muted" data-section-count>{{ section.answered }}/{{ section.total }}</span>
                 </div>
                 <div class="card-body">
                     {% for field in section.items %}
@@ -171,7 +171,7 @@
             <div class="card-header justify-content-between">
                 <div>
                     <div class="card-title">Questions answered</div>
-                    <span class="text-muted fs-12">How much of the interview is filled in. Not a score.</span>
+                    <span class="text-muted fs-12">{% if editable %}How much of the interview is filled in. Not a score.{% else %}How much of the interview was recorded. Not a score.{% endif %}</span>
                 </div>
                 <span class="fs-14 fw-semibold text-nowrap" id="progressText">
                     {{ consultation.answered_count|default:0 }} / {{ question_total }}
@@ -188,7 +188,7 @@
                     {% for section in sections %}
                         <li>
                             <a href="#sec-{{ forloop.counter }}">{% if section.code %}{{ section.code }}. {% endif %}{{ section.title }}</a>
-                            <span class="text-muted" data-nav-count="sec-{{ forloop.counter }}"></span>
+                            <span class="text-muted" data-nav-count="sec-{{ forloop.counter }}">{% if section.answered == section.total %}✓{% else %}{{ section.answered }}/{{ section.total }}{% endif %}</span>
                         </li>
                     {% endfor %}
                 </ul>

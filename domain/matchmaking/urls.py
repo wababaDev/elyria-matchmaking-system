@@ -20,8 +20,6 @@ urlpatterns = [
     path("requests/<int:pk>/assign/", requests.AssignRequestView.as_view(), name="consultation-request-assign-to"),
     path("requests/<int:pk>/decline/", requests.DeclineRequestView.as_view(), name="consultation-request-decline"),
     path("requests/<int:pk>/book/", requests.BookConsultationView.as_view(), name="consultation-request-book"),
-    path("requests/<int:pk>/notes/", requests.SaveNotesView.as_view(), name="consultation-request-notes"),
-    path("requests/<int:pk>/mark-consulted/", requests.MarkConsultedView.as_view(), name="consultation-request-mark-consulted"),
     path("requests/<int:pk>/confirm-membership/", requests.ConfirmMembershipView.as_view(), name="consultation-request-confirm-membership"),
 
 

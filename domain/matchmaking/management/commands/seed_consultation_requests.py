@@ -14,9 +14,9 @@ from domain.matchmaking.services.consultation_request_service import (
 )
 from domain.matchmaking.services.consultation_service import (
     book_consultation,
-    mark_consulted,
-    save_consultation_notes,
 )
+from domain.matchmaking.models import Consultation
+from domain.matchmaking.services.consultation_record_service import lock_consultation_record
 
 R = ConsultationRequest
 
@@ -104,8 +104,14 @@ class Command(BaseCommand):
                     scheduled_for=timezone.now() + timedelta(days=random.randint(1, 14), hours=random.randint(0, 8)),
                 )
             if stage == "consulted":
-                save_consultation_notes(req, by=staff, notes="[Test] Warm, ready to proceed. Values family and faith.")
-                mark_consulted(req, by=staff)
+                Consultation.objects.update_or_create(request=req, defaults={
+                    "recording_consent": "yes",
+                    "identity_confirmed": "yes",
+                    "a1": "[Test] Five years, ended amicably two years ago.",
+                    "b2": "[Test] Faith, honesty, wanting children.",
+                    "notes": "[Test] Warm, ready to proceed. Values family and faith.",
+                })
+                lock_consultation_record(req, by=staff)
             tally[stage] += 1
 
         summary = ", ".join(f"{v} {k}" for k, v in tally.items() if v)

@@ -44,3 +44,22 @@ BEFORE_YOU_BEGIN = ["recording_consent", "identity_confirmed"]
 
 # What must be filled in before the record can be locked
 REQUIRED_TO_LOCK = ["recording_consent", "identity_confirmed", "notes"]
+
+
+def record_answers(consultation):
+    """
+    The record as plain text, for read-only views elsewhere (e.g. the member page):
+    [{"title": "A. Relationship History & Readiness", "rows": [("A1", question, answer), ...]}, ...]
+    """
+    from domain.matchmaking.models import Consultation
+
+    result = []
+    for section in SECTIONS:
+        rows = []
+        for n, field in enumerate(section["fields"], start=1):
+            number = f'{section["code"]}{n}' if section["code"] else ""
+            question = str(Consultation._meta.get_field(field).verbose_name)
+            rows.append((number, question, (getattr(consultation, field) or "").strip()))
+        title = f'{section["code"]}. {section["title"]}' if section["code"] else section["title"]
+        result.append({"title": title, "rows": rows})
+    return result

@@ -4,7 +4,7 @@ from django.utils.functional import cached_property
 from django.views.generic import TemplateView
 
 from domain.base.mixins import StaffRequiredMixin
-from domain.matchmaking.consultation_questions import BEFORE_YOU_BEGIN, SECTIONS
+from domain.matchmaking.consultation_questions import BEFORE_YOU_BEGIN, QUESTION_FIELDS, SECTIONS
 from domain.matchmaking.forms.consultation_record_forms import ConsultationRecordForm, ReadinessForm
 from domain.matchmaking.models import Consultation
 from domain.matchmaking.services.consultation_record_service import (
@@ -53,14 +53,19 @@ class ConsultationRecordView(StaffRequiredMixin, TemplateView):
             editable=self.editable,
             form=form,
             before_you_begin=[form[f] for f in BEFORE_YOU_BEGIN],
-            sections=[
-                {**s, "items": [form[f] for f in s["fields"]]}
-                for s in SECTIONS
-            ],
+            sections=[self._section(s, form) for s in SECTIONS if not s.get("side")],
+            side_sections=[{**s, "items": [form[f] for f in s["fields"]]} for s in SECTIONS if s.get("side")],
+            question_total=len(QUESTION_FIELDS),
             readiness_form=ReadinessForm(),
             missing=missing_to_lock(consultation) if consultation and self.editable else [],
         )
         return context
+
+    @staticmethod
+    def _section(section, form):
+        items = [form[f] for f in section["fields"]]
+        answered = sum(1 for f in items if (f.value() or "").strip())
+        return {**section, "items": items, "answered": answered, "total": len(items)}
 
     def post(self, request, *args, **kwargs):
         action = request.POST.get("action")
