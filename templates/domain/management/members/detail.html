@@ -36,6 +36,12 @@
                     {% endif %}
                     {% if perms.base.manage_client %}
                         <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-compare" type="button" role="tab">
+                                Compare
+                                {% if comparison_differences %}<span class="badge bg-danger ms-1">{{ comparison_differences }}</span>{% endif %}
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
                             <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-notes" type="button" role="tab">
                                 Notes
                                 {% with open=note_summary.open_discrepancies|add:note_summary.changes_to_review %}
@@ -132,6 +138,13 @@
                             {% endif %}
                         </div>
                     </div>
+                </div>
+            {% endif %}
+
+            {# ---------- Compare ---------- #}
+            {% if perms.base.manage_client %}
+                <div class="tab-pane fade" id="tab-compare" role="tabpanel">
+                    {% include "domain/management/members/_compare.html" %}
                 </div>
             {% endif %}
 
@@ -326,6 +339,22 @@
 </div>
 {% endif %}
 
+<script>
+// Modals live inside tabs; move them to <body> so they open from any tab
+document.querySelectorAll('.modal').forEach(function (modal) { document.body.appendChild(modal); });
+
+// "Log discrepancy" on the Compare tab opens the discrepancy form with both answers filled in
+document.addEventListener('click', function (event) {
+    var button = event.target.closest('[data-log-discrepancy]');
+    if (!button) return;
+    var modal = document.getElementById('addDiscrepancyModal');
+    if (!modal || !window.bootstrap) return;
+    modal.querySelector('[name="subject"]').value = button.dataset.subject || '';
+    modal.querySelector('[name="consultation_answer"]').value = button.dataset.consultation || '';
+    modal.querySelector('[name="profile_answer"]').value = button.dataset.profile || '';
+    bootstrap.Modal.getOrCreateInstance(modal).show();
+});
+</script>
 <script>
 // Tabs remember where you were: the address ends in #notes, #profile, ...
 // so "back to the notes" after saving a note opens the Notes tab again.

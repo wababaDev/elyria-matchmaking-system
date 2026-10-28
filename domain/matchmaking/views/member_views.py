@@ -108,6 +108,12 @@ class MemberDetailView(StaffRequiredMixin, DetailView):
             discrepancy_form=DiscrepancyForm(),
             close_form=CloseNoteForm(),
         )
+
+        from domain.matchmaking.services.compare_service import compare
+
+        comparison = compare(self.object)
+        context["comparison"] = comparison
+        context["comparison_differences"] = sum(1 for row in comparison if row["differs"])
         return context
 
 

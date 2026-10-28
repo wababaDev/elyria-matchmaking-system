@@ -1,0 +1,67 @@
+{# Consultation vs profile, side by side. Included in the Compare tab of members/detail.html #}
+<div class="card custom-card member-compare">
+    <div class="card-header">
+        <div>
+            <div class="card-title">Consultation vs profile</div>
+            <span class="text-muted fs-12">
+                The questions {{ member.preferred_name }} answered twice. Facts are checked automatically;
+                for everything else, read both sides and decide. Most differences are memory or wording.
+            </span>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if not comparison %}
+            <p class="text-muted mb-0">Nothing to compare yet: {{ member.preferred_name }} hasn't started their profile.</p>
+        {% else %}
+            {% if not consultation.is_locked %}
+                <div class="alert alert-light border fs-13">The consultation record isn't locked yet, so its answers may still change.</div>
+            {% endif %}
+
+            <div class="compare-head d-none d-md-flex">
+                <div class="compare-topic"></div>
+                <div class="compare-side">Said in consultation</div>
+                <div class="compare-side">Entered in the profile</div>
+                <div class="compare-actions"></div>
+            </div>
+
+            {% for row in comparison %}
+                <div class="compare-row{% if row.differs %} differs{% endif %}">
+                    <div class="compare-topic">
+                        <strong>{{ row.title }}</strong>
+                        {% if row.differs %}
+                            <span class="badge bg-danger-transparent d-block mt-1">Different</span>
+                        {% elif row.fact %}
+                            <span class="badge bg-success-transparent d-block mt-1">Matches</span>
+                        {% endif %}
+                    </div>
+                    <div class="compare-side">
+                        <span class="compare-label d-md-none">Said in consultation</span>
+                        {% for label, value in row.consultation %}
+                            <div class="{% if not value %}text-muted fst-italic{% endif %}">{{ value|default:"Not recorded"|linebreaksbr }}</div>
+                        {% empty %}
+                            <div class="text-muted fst-italic">No consultation record</div>
+                        {% endfor %}
+                    </div>
+                    <div class="compare-side">
+                        <span class="compare-label d-md-none">Entered in the profile</span>
+                        {% for label, value in row.profile %}
+                            <div class="mb-1">
+                                {% if row.profile|length > 1 %}<span class="text-muted fs-12">{{ label }}:</span> {% endif %}
+                                <span class="{% if not value %}text-muted fst-italic{% endif %}">{{ value|default:"Not answered" }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="compare-actions">
+                        <button type="button" class="btn btn-sm {% if row.differs %}btn-primary{% else %}btn-light{% endif %} text-nowrap"
+                                data-log-discrepancy
+                                data-subject="{{ row.title }}"
+                                data-consultation="{{ row.consultation_text }}"
+                                data-profile="{{ row.profile_text }}">
+                            Log discrepancy
+                        </button>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+</div>

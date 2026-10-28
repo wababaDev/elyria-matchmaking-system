@@ -136,3 +136,15 @@
 .member-notes .note-revision { border-left: 2px solid #eee; padding-left: .6rem; margin-top: .4rem; }
 .member-notes .note-action { color: #6E1423; font-weight: 600; text-decoration: none; }
 .member-notes .note-action:hover { color: #C9A227; }
+
+/* ---------- Consultation vs profile ---------- */
+.member-compare .compare-head { gap: 1rem; padding: 0 .75rem .5rem; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: #74708a; }
+.member-compare .compare-row { display: flex; flex-wrap: wrap; gap: 1rem; padding: .9rem .75rem; border-top: 1px solid #f0ebe4; font-size: .875rem; }
+.member-compare .compare-row.differs { background: #fff5f4; border-left: 3px solid #b42318; }
+.member-compare .compare-topic { flex: 0 0 180px; }
+.member-compare .compare-side { flex: 1 1 0; min-width: 200px; }
+.member-compare .compare-actions { flex: 0 0 auto; align-self: center; }
+.member-compare .compare-label { display: block; font-size: .7rem; text-transform: uppercase; color: #74708a; margin-bottom: .2rem; }
+@media (max-width: 767px) {
+    .member-compare .compare-topic, .member-compare .compare-side { flex: 1 1 100%; }
+}
