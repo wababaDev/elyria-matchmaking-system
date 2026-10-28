@@ -163,7 +163,7 @@
                                 {% if consultation.is_locked %}
                                     Readiness: {% if consultation.readiness %}<strong>{{ consultation.get_readiness_display }}</strong>{% else %}<span class="text-warning">not scored yet</span>{% endif %}
                                 {% else %}
-                                    Fill it in during either consultation call or in-person consultation., then lock it. Locking also marks the consultation as held.
+                                    Fill it in during either consultation call or in-person consultation, then lock it. Locking also marks the consultation as held.
                                 {% endif %}
                             </span>
                             <a href="{% url 'matchmaking:consultation-record' cr.pk %}"
