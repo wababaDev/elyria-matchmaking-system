@@ -38,11 +38,16 @@ class ClientProfile(TimeStampedModel):
     # ---------- Choices
 
     class RelationshipStatus(models.TextChoices):
-        # Same values as the consultation request. Married/Separated were blocked there.
+        # Same values as the consultation request. The last three are blocked at enquiry,
+        # but a member's situation can change during membership, so they can report it here
+        # (a change to any of them is flagged to the matchmaker straight away).
         SINGLE = "single", "Single"
         DIVORCED = "divorced", "Divorced"
         WIDOWED = "widowed", "Widowed"
         OTHER = "other", "Other"
+        IN_RELATIONSHIP = "in_relationship", "In a relationship"
+        SEPARATED = "separated", "Separated"
+        MARRIED = "married", "Married"
 
     class Build(models.TextChoices):
         SLIM = "slim", "Slim"

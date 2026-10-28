@@ -46,6 +46,17 @@ OPTIONAL = {
     "religion",  # Elyria's decision: always optional
 }
 
+# A change to any of these after completion "affects matching": flagged in notes and in the email
+HIGH_IMPACT = {
+    "full_name",
+    "relationship_status",
+    "has_children", "children_count", "children_ages", "children_living", "wants_children",
+    "employment_status", "occupation",
+    "location", "willing_to_relocate",
+    "gender", "seeking",
+    "religion", "practice",
+}
+
 # Placeholder text shown on a select before anything is chosen
 SELECT_PLACEHOLDER = {"partner_build": "No preference"}
 
@@ -287,6 +298,11 @@ def _display(profile, spec):
     if model_field.choices:
         return str(dict(model_field.flatchoices).get(value, value))
     return str(value)
+
+
+def display_value(profile, spec):
+    """A readable answer, e.g. 'Divorced' instead of 'divorced' (blank if unanswered)."""
+    return _display(profile, spec)
 
 
 def answers(profile):

@@ -1,9 +1,10 @@
 from django.urls import path
 from django.views.generic import RedirectView
 
-from domain.matchmaking.views import consultation_request_views as requests
+from domain.matchmaking.views import consultation_record_views, consultation_request_views as requests
 from domain.matchmaking.views import settings_views as settings_
 from domain.matchmaking.views import dashboard_views, enquiry_views, member_views as members, payment_views, queue_views
+from domain.matchmaking.views import member_note_views as notes
 app_name = "matchmaking"
 
 urlpatterns = [
@@ -19,8 +20,6 @@ urlpatterns = [
     path("requests/<int:pk>/assign/", requests.AssignRequestView.as_view(), name="consultation-request-assign-to"),
     path("requests/<int:pk>/decline/", requests.DeclineRequestView.as_view(), name="consultation-request-decline"),
     path("requests/<int:pk>/book/", requests.BookConsultationView.as_view(), name="consultation-request-book"),
-    path("requests/<int:pk>/notes/", requests.SaveNotesView.as_view(), name="consultation-request-notes"),
-    path("requests/<int:pk>/mark-consulted/", requests.MarkConsultedView.as_view(), name="consultation-request-mark-consulted"),
     path("requests/<int:pk>/confirm-membership/", requests.ConfirmMembershipView.as_view(), name="consultation-request-confirm-membership"),
 
 
@@ -43,6 +42,10 @@ urlpatterns = [
     path("members/<int:pk>/cancel/", members.CancelMembershipView.as_view(), name="member-cancel"),
     path("members/<int:pk>/resend-link/", members.ResendSignInLinkView.as_view(), name="member-resend-link"),
     path("members/<int:pk>/reassign/", members.ReassignMatchmakerView.as_view(), name="member-reassign"),
+    path("members/<int:pk>/notes/observation/", notes.AddObservationView.as_view(), name="member-note-observation"),
+   path("members/<int:pk>/notes/discrepancy/", notes.AddDiscrepancyView.as_view(), name="member-note-discrepancy"),
+   path("members/<int:pk>/notes/<int:note_pk>/edit/", notes.EditNoteView.as_view(), name="member-note-edit"),
+   path("members/<int:pk>/notes/<int:note_pk>/close/", notes.CloseNoteView.as_view(), name="member-note-close"),
 
 
     # Enquiries
@@ -53,6 +56,7 @@ urlpatterns = [
     path("requests/<int:pk>/edit/", requests.ConsultationRequestEditView.as_view(), name="consultation-request-edit"),
     path("requests/<int:pk>/resend-payment/", requests.ResendPaymentInstructionsView.as_view(), name="consultation-request-resend-payment"),
     path("requests/<int:pk>/undo-paid/", requests.UndoFeePaidView.as_view(), name="consultation-request-undo-paid"),
+    path("requests/<int:pk>/record/", consultation_record_views.ConsultationRecordView.as_view(), name="consultation-record"),
 
     path("payments/", payment_views.PaymentListView.as_view(), name="payments"),
     path("members/<int:pk>/photos/<int:photo_pk>/", members.MemberPhotoView.as_view(), name="member-photo"),

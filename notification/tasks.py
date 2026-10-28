@@ -74,9 +74,9 @@ def send_profile_completed_email(client_id):
 
 
 @shared_task(**EMAIL_RETRY)
-def send_profile_updated_email(client_id, sections):
+def send_profile_updated_email(client_id, sections, important=None):
     if obj := _get(Client, client_id):
-        profile_emails.deliver_profile_updated(obj, sections)
+        profile_emails.deliver_profile_updated(obj, sections, important)
 
 @shared_task(**EMAIL_RETRY)
 def send_sign_in_email_changed_email(client_id, old_email):
