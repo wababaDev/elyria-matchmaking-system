@@ -113,7 +113,8 @@ class CandidateTests(PairingCase):
         self.assertTrue(MatchAccessLog.objects.filter(user=self.anisha, action="search").exists())
 
     def test_age_band(self):
-        self.assertEqual(age_band(34), "Early 30s")
+        self.assertEqual(age_band(33), "Early 30s")
+        self.assertEqual(age_band(34), "Mid 30s")
         self.assertEqual(age_band(45), "Mid 40s")
         self.assertEqual(age_band(48), "Late 40s")
 
@@ -202,7 +203,7 @@ class PairingListTests(PairingCase):
     def test_type_and_waiting_on_me(self):
         self.propose(self.natasha, self.joseph, self.anisha)   # both Anisha's
         self.propose(self.natasha, self.david, self.anisha)    # David is Annastasia's
-        url = reverse("matchmaking:pairing-list")
+        url = reverse("matchmaking:pairings")
 
         self.as_user(self.anisha)
         response = self.client.get(url + "?show=open")
