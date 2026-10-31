@@ -4,7 +4,7 @@ from django.utils.functional import cached_property
 from domain.base.mixins import MemberRequiredMixin
 from domain.matchmaking.models import Client
 from domain.matchmaking.services.profile_service import get_profile
-
+from domain.matchmaking.services.pairing_service import matches_to_answer
 
 class PortalMixin(MemberRequiredMixin):
     """
@@ -29,5 +29,5 @@ class PortalMixin(MemberRequiredMixin):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context.update(client=self.client, portal_nav=self.portal_nav)
+        context.update(client=self.client, portal_nav=self.portal_nav, matches_to_answer=matches_to_answer(self.client))
         return context

@@ -25,7 +25,12 @@ _n = 0
 
 
 def make_user(email, *groups):
-    user = User.objects.create_user(email=email, password="pass12345", first_name=email.split("@")[0].title(), last_name="User")
+    user = User.objects.create_user(
+        email=email,
+        password="pass12345",
+        first_name=email.split("@")[0].title(),
+        last_name="User",
+    )
     user.groups.add(*Group.objects.filter(name__in=groups))
     return user
 
@@ -36,22 +41,41 @@ def make_member(full_name, *, gender, seeking, matchmaker, age=35, complete=True
     email = f"member{_n}@example.com"
     first = full_name.split()[0]
     request = ConsultationRequest.objects.create(
-        full_name=full_name, preferred_name=first, gender=gender, age=age, seeking=seeking,
-        relationship_status="single", location="Lusaka, Zambia", nationality="Zambian",
-        occupation="Accountant", email=email, phone="+260977000000",
+        full_name=full_name,
+        preferred_name=first,
+        gender=gender,
+        age=age,
+        seeking=seeking,
+        relationship_status="single",
+        location="Lusaka, Zambia",
+        nationality="Zambian",
+        occupation="Accountant",
+        email=email,
+        phone="+260977000000",
         status=ConsultationRequest.Status.BECAME_MEMBER,
     )
     client = Client.objects.create(
-        user=make_user(email, Groups.MEMBER), consultation_request=request,
-        full_name=full_name, preferred_name=first, matchmaker=matchmaker,
+        user=make_user(email, Groups.MEMBER),
+        consultation_request=request,
+        full_name=full_name,
+        preferred_name=first,
+        matchmaker=matchmaker,
     )
     Membership.objects.create(
-        client=client, tier=MembershipTier.objects.get(name="Gold"),
-        start_date=date(2026, 1, 1), end_date=date(2099, 1, 1),
+        client=client,
+        tier=MembershipTier.objects.get(name="Gold"),
+        start_date=date(2026, 1, 1),
+        end_date=date(2099, 1, 1),
     )
     ClientProfile.objects.create(
-        client=client, full_name=full_name, preferred_name=first, gender=gender, seeking=seeking, age=age,
-        location="Lusaka, Zambia", completed_at=timezone.now() if complete else None,
+        client=client,
+        full_name=full_name,
+        preferred_name=first,
+        gender=gender,
+        seeking=seeking,
+        age=age,
+        location="Lusaka, Zambia",
+        completed_at=timezone.now() if complete else None,
     )
     return client
 
@@ -64,11 +88,29 @@ class PairingCase(TestCase):
         cls.annastasia = make_user("annastasia@x.com", Groups.MATCHMAKER)
         cls.finance = make_user("fin@x.com", Groups.FINANCE)
 
-        cls.natasha = make_member("Natasha Kabwe", gender="female", seeking="man", matchmaker=cls.anisha)
-        cls.david = make_member("David Mulenga", gender="male", seeking="woman", matchmaker=cls.annastasia, age=41)
-        cls.joseph = make_member("Joseph Banda", gender="male", seeking="woman", matchmaker=cls.anisha)
-        cls.grace = make_member("Grace Lungu", gender="female", seeking="man", matchmaker=cls.annastasia)
-        cls.peter = make_member("Peter Phiri", gender="male", seeking="woman", matchmaker=cls.anisha, complete=False)
+        cls.natasha = make_member(
+            "Natasha Kabwe", gender="female", seeking="man", matchmaker=cls.anisha
+        )
+        cls.david = make_member(
+            "David Mulenga",
+            gender="male",
+            seeking="woman",
+            matchmaker=cls.annastasia,
+            age=41,
+        )
+        cls.joseph = make_member(
+            "Joseph Banda", gender="male", seeking="woman", matchmaker=cls.anisha
+        )
+        cls.grace = make_member(
+            "Grace Lungu", gender="female", seeking="man", matchmaker=cls.annastasia
+        )
+        cls.peter = make_member(
+            "Peter Phiri",
+            gender="male",
+            seeking="woman",
+            matchmaker=cls.anisha,
+            complete=False,
+        )
 
     def as_user(self, user):
         self.client.force_login(user)
@@ -76,10 +118,15 @@ class PairingCase(TestCase):
     def propose(self, member, candidate, by):
         self.as_user(by)
         with self.captureOnCommitCallbacks(execute=True):
-            self.client.post(reverse("matchmaking:pairing-propose", args=[member.pk]), {
-                "candidate": candidate.pk, "note": "You both value family.",
-                "profession": "Works in engineering", "location": "Lusaka",
-            })
+            self.client.post(
+                reverse("matchmaking:pairing-propose", args=[member.pk]),
+                {
+                    "candidate": candidate.pk,
+                    "note": "You both value family.",
+                    "profession": "Works in engineering",
+                    "location": "Lusaka",
+                },
+            )
         return Pairing.objects.filter(client_a=member, client_b=candidate).first()
 
     def portal(self, member):
@@ -89,14 +136,19 @@ class PairingCase(TestCase):
     def decide(self, member, pairing, decision):
         self.as_user(member.user)
         with self.captureOnCommitCallbacks(execute=True):
-            self.client.post(reverse("portal:match-decision", args=[pairing.pk]), {"decision": decision})
+            self.client.post(
+                reverse("portal:match-decision", args=[pairing.pk]),
+                {"decision": decision},
+            )
         pairing.refresh_from_db()
 
 
 class CandidateTests(PairingCase):
     def test_only_fitting_complete_active_members(self):
         found = set(candidates_for(self.natasha))
-        self.assertEqual(found, {self.david, self.joseph})  # not Grace (female), not Peter (incomplete)
+        self.assertEqual(
+            found, {self.david, self.joseph}
+        )  # not Grace (female), not Peter (incomplete)
 
     def test_find_page_only_for_own_members_and_is_logged(self):
         url = reverse("matchmaking:find-match", args=[self.natasha.pk])
@@ -108,9 +160,13 @@ class CandidateTests(PairingCase):
         self.as_user(self.anisha)
         response = self.client.get(url)
         self.assertContains(response, "Propose pairing")
-        self.assertNotContains(response, "David Mulenga")   # another matchmaker's member: first name only
-        self.assertContains(response, "Joseph Banda")       # her own member: full name
-        self.assertTrue(MatchAccessLog.objects.filter(user=self.anisha, action="search").exists())
+        self.assertNotContains(
+            response, "David Mulenga"
+        )  # another matchmaker's member: first name only
+        self.assertContains(response, "Joseph Banda")  # her own member: full name
+        self.assertTrue(
+            MatchAccessLog.objects.filter(user=self.anisha, action="search").exists()
+        )
 
     def test_age_band(self):
         self.assertEqual(age_band(33), "Early 30s")
@@ -142,7 +198,10 @@ class CrossMatchmakerTests(PairingCase):
         # David's matchmaker approves: now Natasha sees David's card, David still sees nothing
         self.as_user(self.annastasia)
         with self.captureOnCommitCallbacks(execute=True):
-            self.client.post(reverse("matchmaking:pairing-approve", args=[pairing.pk]), {"approve": "yes"})
+            self.client.post(
+                reverse("matchmaking:pairing-approve", args=[pairing.pk]),
+                {"approve": "yes"},
+            )
         self.assertContains(self.portal(self.natasha), "David")
         self.assertNotContains(self.portal(self.david), "Natasha")
 
@@ -151,9 +210,14 @@ class CrossMatchmakerTests(PairingCase):
         self.assertEqual(pairing.a_decision, "interested")
         self.as_user(self.annastasia)
         with self.captureOnCommitCallbacks(execute=True):
-            self.client.post(reverse("matchmaking:pairing-present", args=[pairing.pk]), {
-                "note": "Warm and family-minded.", "profession": "Works in finance", "location": "Lusaka",
-            })
+            self.client.post(
+                reverse("matchmaking:pairing-present", args=[pairing.pk]),
+                {
+                    "note": "Warm and family-minded.",
+                    "profession": "Works in finance",
+                    "location": "Lusaka",
+                },
+            )
         response = self.portal(self.david)
         self.assertContains(response, "Natasha")
         self.assertContains(response, "Works in finance")
@@ -166,14 +230,20 @@ class CrossMatchmakerTests(PairingCase):
     def test_other_matchmaker_cannot_present_or_approve_for_someone_elses_member(self):
         pairing = self.propose(self.natasha, self.david, self.anisha)
         self.as_user(self.anisha)
-        self.client.post(reverse("matchmaking:pairing-approve", args=[pairing.pk]), {"approve": "yes"})
+        self.client.post(
+            reverse("matchmaking:pairing-approve", args=[pairing.pk]),
+            {"approve": "yes"},
+        )
         pairing.refresh_from_db()
         self.assertEqual(pairing.approval, Pairing.Approval.PENDING)
 
     def test_declined_approval_closes_and_nobody_sees_anything(self):
         pairing = self.propose(self.natasha, self.david, self.anisha)
         self.as_user(self.annastasia)
-        self.client.post(reverse("matchmaking:pairing-approve", args=[pairing.pk]), {"approve": "no", "reason": "Not suitable"})
+        self.client.post(
+            reverse("matchmaking:pairing-approve", args=[pairing.pk]),
+            {"approve": "no", "reason": "Not suitable"},
+        )
         pairing.refresh_from_db()
         self.assertFalse(pairing.is_open)
         self.assertNotContains(self.portal(self.natasha), "David")
@@ -184,15 +254,22 @@ class DeclineTests(PairingCase):
         pairing = self.propose(self.natasha, self.joseph, self.anisha)
         self.decide(self.natasha, pairing, "not_interested")
         self.assertFalse(pairing.is_open)
-        self.assertNotContains(self.portal(self.natasha), "Joseph")  # removed from her view
+        self.assertNotContains(
+            self.portal(self.natasha), "Joseph"
+        )  # removed from her view
         self.assertNotContains(self.portal(self.joseph), "Natasha")  # never shown
-        self.assertTrue(Pairing.objects.filter(pk=pairing.pk).exists())  # kept on record
+        self.assertTrue(
+            Pairing.objects.filter(pk=pairing.pk).exists()
+        )  # kept on record
 
     def test_b_says_no_then_a_sees_neutral_message(self):
         pairing = self.propose(self.natasha, self.joseph, self.anisha)
         self.decide(self.natasha, pairing, "interested")
         self.as_user(self.anisha)
-        self.client.post(reverse("matchmaking:pairing-present", args=[pairing.pk]), {"note": "Kind and steady."})
+        self.client.post(
+            reverse("matchmaking:pairing-present", args=[pairing.pk]),
+            {"note": "Kind and steady."},
+        )
         self.decide(self.joseph, pairing, "not_interested")
         response = self.portal(self.natasha)
         self.assertContains(response, "This introduction will not go ahead.")
@@ -201,8 +278,8 @@ class DeclineTests(PairingCase):
 
 class PairingListTests(PairingCase):
     def test_type_and_waiting_on_me(self):
-        self.propose(self.natasha, self.joseph, self.anisha)   # both Anisha's
-        self.propose(self.natasha, self.david, self.anisha)    # David is Annastasia's
+        self.propose(self.natasha, self.joseph, self.anisha)  # both Anisha's
+        self.propose(self.natasha, self.david, self.anisha)  # David is Annastasia's
         url = reverse("matchmaking:pairings")
 
         self.as_user(self.anisha)
@@ -213,7 +290,9 @@ class PairingListTests(PairingCase):
         self.as_user(self.annastasia)
         response = self.client.get(url + "?show=me")
         self.assertContains(response, "Received")
-        self.assertContains(response, "Approve: Anisha User wants to show David to their member")
+        self.assertContains(
+            response, "Approve: Anisha User wants to show David to their member"
+        )
 
 
 class PhotoPrivacyTests(PairingCase):
@@ -221,3 +300,24 @@ class PhotoPrivacyTests(PairingCase):
         self.as_user(self.natasha.user)
         response = self.client.get(reverse("portal:match-photo", args=[self.david.pk]))
         self.assertEqual(response.status_code, 404)
+
+
+class PortalCountTests(PairingCase):
+    def test_count_on_my_matches(self):
+        from domain.matchmaking.services.pairing_service import matches_to_answer
+
+        pairing = self.propose(self.natasha, self.joseph, self.anisha)
+        self.assertEqual(matches_to_answer(self.natasha), 1)
+        self.assertEqual(matches_to_answer(self.joseph), 0)  # not presented to him yet
+        self.assertContains(
+            self.portal(self.natasha), "1 introduction waiting for your answer"
+        )
+
+        self.decide(self.natasha, pairing, "interested")
+        self.assertEqual(matches_to_answer(self.natasha), 0)
+
+    def test_nothing_before_approval(self):
+        self.propose(
+            self.natasha, self.david, self.anisha
+        )  # waiting for David's matchmaker
+        self.assertEqual(self.portal(self.natasha).context["matches_to_answer"], 0)

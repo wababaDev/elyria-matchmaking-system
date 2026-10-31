@@ -234,6 +234,15 @@ def member_pairings(client):
     return (as_a | as_b).select_related("client_a__profile", "client_b__profile").order_by("-created_at")
 
 
+def matches_to_answer(client):
+    """How many introductions are waiting for this member's answer (the number on My Matches)."""
+    return Pairing.objects.exclude(status=P.Status.CLOSED).filter(
+        Q(client_a=client, a_decision=P.DecisionA.PENDING,
+          approval__in=[P.Approval.NOT_NEEDED, P.Approval.APPROVED])
+        | Q(client_b=client, b_decision=P.DecisionB.PENDING)
+    ).count()
+
+
 @transaction.atomic
 def member_decides(pairing, client, *, interested):
     pairing = _lock(pairing)
@@ -284,6 +293,7 @@ def member_card(pairing, client):
         "my_decision": pairing.a_decision if as_a else pairing.b_decision,
         "closed": not pairing.is_open,
         "mutual": pairing.status == P.Status.MUTUAL,
+        "needs_answer": pairing.is_open and (pairing.a_decision if as_a else pairing.b_decision) == "pending",
     }
 
 

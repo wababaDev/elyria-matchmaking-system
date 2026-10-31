@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="{% static 'front/css/style.css' %}">
     <link rel="stylesheet" href="{% static 'front/css/ext-style.css' %}">
     <link rel="stylesheet" href="{% static 'front/css/elyria.css' %}">
-    <link rel="stylesheet" href="{% static 'front/css/portal.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'front/css/portal.css' %}?v=4">
 </head>
 <body class="portal-body">
 
@@ -21,7 +21,7 @@
         <a href="{% url 'portal:home' %}"><img src="{% static 'front/assets/logo-hz.png' %}" alt="Elyria Matchmaking"></a>
         <nav class="portal-nav" aria-label="Member">
             <a href="{% url 'portal:profile' %}"{% if portal_nav == "profile" %} class="active"{% endif %}>My Profile</a>
-            <a href="{% url 'portal:matches' %}"{% if portal_nav == "matches" %} class="active"{% endif %}>My Matches</a>
+             <a href="{% url 'portal:matches' %}"{% if portal_nav == "matches" %} class="active"{% endif %}>My Matches{% if matches_to_answer %}<span class="nav-count" aria-label="{{ matches_to_answer }} waiting">{{ matches_to_answer }}</span>{% endif %}</a>
             <a href="{% url 'portal:account' %}" class="hide-sm{% if portal_nav == "account" %} active{% endif %}">Account</a>
             <form method="post" action="{% url 'base:sign-out' %}">
                 {% csrf_token %}

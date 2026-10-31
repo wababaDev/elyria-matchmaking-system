@@ -6,13 +6,17 @@
     <div class="portal-page-head">
         <h1>My Matches</h1>
         <p>Introductions your matchmaker has selected for you. Take your time with each one. Nothing happens without your consent.</p>
+        {% if matches_to_answer %}
+            <p class="match-waiting"><i class="fa-solid fa-bell me-2"></i>{{ matches_to_answer }} introduction{{ matches_to_answer|pluralize }} waiting for your answer.</p>
+        {% endif %}
     </div>
 
     {% if matches %}
         <div class="row g-4">
             {% for m in matches %}
                 <div class="col-lg-4 col-md-6">
-                    <article class="match-card">
+                    <article class="match-card{% if m.needs_answer %} is-new{% endif %}">
+                        {% if m.needs_answer %}<span class="match-new">New</span>{% endif %}
                         <div class="match-photo">
                             <img src="{% url 'portal:match-photo' m.photo_client_id %}" alt="Photo withheld until introduction" onerror="this.style.visibility='hidden'">
                         </div>
@@ -34,11 +38,12 @@
                             {% elif m.my_decision == "interested" %}
                                 <div class="match-status"><i class="fa-solid fa-circle-check me-2"></i>You're interested. Your matchmaker will be in touch about next steps.</div>
                             {% else %}
+                                {# The buttons only open the confirm box; the answer is saved from there #}
                                 <form method="post" action="{% url 'portal:match-decision' m.pairing.pk %}" class="match-actions">
                                     {% csrf_token %}
-                                    <button type="submit" name="decision" value="interested" class="register-submit-btn">I'm interested</button>
-                                    <button type="submit" name="decision" value="not_interested" class="btn-outline-elyria"
-                                            onclick="return confirm('Remove this introduction? Your matchmaker will be told, but no one else.');">Not for me</button>
+                                    <input type="hidden" name="decision" value="">
+                                    <button type="button" class="register-submit-btn" data-decide="interested" data-name="{{ m.first_name }}">I'm interested</button>
+                                    <button type="button" class="btn-outline-elyria" data-decide="not_interested" data-name="{{ m.first_name }}">Not for me</button>
                                 </form>
                             {% endif %}
                         </div>
@@ -54,4 +59,63 @@
         </div>
     {% endif %}
 </div>
+
+<dialog class="decide-dialog" id="decide-dialog" aria-labelledby="decide-title">
+    <h2 class="h5" id="decide-title"></h2>
+    <p id="decide-text"></p>
+    <div class="decide-actions">
+        <button type="button" class="btn-outline-elyria" data-cancel>Go back</button>
+        <button type="button" class="register-submit-btn" data-confirm>Confirm</button>
+    </div>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    var dialog = document.getElementById('decide-dialog');
+    if (!dialog) return;
+    var title = document.getElementById('decide-title'),
+        text = document.getElementById('decide-text'),
+        confirmBtn = dialog.querySelector('[data-confirm]'),
+        form = null, decision = '';
+
+    var copy = {
+        interested: {
+            title: function (n) { return "Say you're interested in " + n + "?"; },
+            text: "Your matchmaker will take the next step. You can't change this answer here once it's sent.",
+            button: "Yes, I'm interested"
+        },
+        not_interested: {
+            title: function (n) { return "Remove " + n + " from your matches?"; },
+            text: "This introduction won't go ahead. Only your matchmaker will know. You can't undo this here.",
+            button: "Yes, remove"
+        }
+    };
+
+    document.querySelectorAll('[data-decide]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            form = btn.closest('form');
+            decision = btn.dataset.decide;
+            var c = copy[decision];
+            title.textContent = c.title(btn.dataset.name || 'this person');
+            text.textContent = c.text;
+            confirmBtn.textContent = c.button;
+            dialog.showModal();
+        });
+    });
+
+    dialog.querySelector('[data-cancel]').addEventListener('click', function () { dialog.close(); });
+    // Clicking the dark area outside the box also cancels
+    dialog.addEventListener('click', function (e) { if (e.target === dialog) dialog.close(); });
+
+    confirmBtn.addEventListener('click', function () {
+        if (!form) return;
+        form.querySelector('input[name="decision"]').value = decision;
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Saving…';
+        form.submit();
+    });
+})();
+</script>
 {% endblock %}
