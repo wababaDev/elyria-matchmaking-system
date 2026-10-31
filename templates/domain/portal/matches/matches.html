@@ -8,8 +8,45 @@
         <p>Introductions your matchmaker has selected for you. Take your time with each one. Nothing happens without your consent.</p>
     </div>
 
-    {# TODO (matching): redacted match cards with "I'm interested" / "Not for me", as in the approved design #}
-    {% if not matches %}
+    {% if matches %}
+        <div class="row g-4">
+            {% for m in matches %}
+                <div class="col-lg-4 col-md-6">
+                    <article class="match-card">
+                        <div class="match-photo">
+                            <img src="{% url 'portal:match-photo' m.photo_client_id %}" alt="Photo withheld until introduction" onerror="this.style.visibility='hidden'">
+                        </div>
+                        <div class="match-body">
+                            <h2 class="match-name">{{ m.first_name }}</h2>
+                            <ul class="match-facts">
+                                {% if m.age_band %}<li><i class="fa-regular fa-user"></i>{{ m.age_band }}</li>{% endif %}
+                                {% if m.profession %}<li><i class="fa-solid fa-briefcase"></i>{{ m.profession }}</li>{% endif %}
+                                {% if m.location %}<li><i class="fa-solid fa-location-dot"></i>{{ m.location }}</li>{% endif %}
+                            </ul>
+                            {% if m.note %}
+                                <p class="match-blurb">{{ m.note|linebreaksbr }}<small>From your matchmaker{% if client.matchmaker %}, {{ client.matchmaker.first_name }}{% endif %}</small></p>
+                            {% endif %}
+
+                            {% if m.closed %}
+                                <div class="match-status">This introduction will not go ahead.</div>
+                            {% elif m.mutual %}
+                                <div class="match-status"><i class="fa-solid fa-heart me-2"></i>You're both interested. Your matchmaker will be in touch to arrange your introduction.</div>
+                            {% elif m.my_decision == "interested" %}
+                                <div class="match-status"><i class="fa-solid fa-circle-check me-2"></i>You're interested. Your matchmaker will be in touch about next steps.</div>
+                            {% else %}
+                                <form method="post" action="{% url 'portal:match-decision' m.pairing.pk %}" class="match-actions">
+                                    {% csrf_token %}
+                                    <button type="submit" name="decision" value="interested" class="register-submit-btn">I'm interested</button>
+                                    <button type="submit" name="decision" value="not_interested" class="btn-outline-elyria"
+                                            onclick="return confirm('Remove this introduction? Your matchmaker will be told, but no one else.');">Not for me</button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </article>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
         <div class="portal-empty mt-4">
             <i class="fa-regular fa-heart d-block"></i>
             <h2 class="h4">No new introductions right now</h2>

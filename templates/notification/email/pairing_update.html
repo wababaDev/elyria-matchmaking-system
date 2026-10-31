@@ -1,0 +1,8 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}{{ message|truncatewords:20 }}{% endblock %}
+{% block heading %}{{ heading }}{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">{{ message }}</p>
+    {% include "notification/email/_button.html" with url=link label="Open the member's pairings" %}
+{% endblock %}
+{% block signoff %}{% endblock %}

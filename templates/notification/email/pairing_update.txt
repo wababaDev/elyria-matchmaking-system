@@ -1,0 +1,7 @@
+{% autoescape off %}{{ heading }}
+
+{{ message }}
+
+Open the member's pairings:
+{{ link }}
+{% endautoescape %}

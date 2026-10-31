@@ -114,6 +114,25 @@ class MemberDetailView(StaffRequiredMixin, DetailView):
         comparison = compare(self.object)
         context["comparison"] = comparison
         context["comparison_differences"] = sum(1 for row in comparison if row["differs"])
+
+        from domain.matchmaking.models.pairing import OPEN_PAIRING_LIMIT
+        from domain.matchmaking.services.pairing_service import open_pairing_counts, pairings_for
+
+        mine = set(members_visible_to(self.request.user).values_list("pk", flat=True))
+        rows = []
+        for p in pairings_for(self.object):
+            other = p.other(self.object)
+            rows.append({
+                "p": p, "side": p.side(self.object), "other": other,
+                "other_profile": getattr(other, "profile", None), "other_is_mine": other.pk in mine,
+            })
+        context.update(
+            pairing_rows=rows,
+            open_pairings=open_pairing_counts([self.object])[self.object.pk],
+            pairing_limit=OPEN_PAIRING_LIMIT,
+            profile=getattr(self.object, "profile", None),
+        )
+        
         return context
 
 

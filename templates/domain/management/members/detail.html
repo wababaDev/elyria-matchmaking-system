@@ -12,15 +12,14 @@
 
     {# ================= LEFT: tabs ================= #}
     <div class="col-xl-9">
-        <div class="card custom-card member-tabs">
-            <div class="card-header p-0 border-bottom-0">
-                <ul class="nav nav-tabs w-100 px-3 pt-2" role="tablist">
+        {# Same pills as Settings and My Queue #}
+        <ul class="nav nav-pills gap-1 mb-3 member-tabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-overview" type="button" role="tab">Overview</button>
+                        <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-overview" type="button" role="tab">Overview</button>
                     </li>
                     {% if perms.base.manage_client %}
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-profile" type="button" role="tab">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-profile" type="button" role="tab">
                                 Profile
                                 {% if profile.is_complete %}<i class="fe fe-check text-success ms-1"></i>{% elif profile %}<span class="badge bg-warning-transparent ms-1">{{ profile_progress.0 }}/{{ profile_progress.1 }}</span>{% endif %}
                             </button>
@@ -28,7 +27,7 @@
                     {% endif %}
                     {% if perms.base.manage_consultation_request %}
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-consultation" type="button" role="tab">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-consultation" type="button" role="tab">
                                 Consultation
                                 {% if consultation.is_locked %}<i class="fe fe-lock text-muted ms-1"></i>{% endif %}
                             </button>
@@ -36,13 +35,13 @@
                     {% endif %}
                     {% if perms.base.manage_client %}
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-compare" type="button" role="tab">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-compare" type="button" role="tab">
                                 Compare
                                 {% if comparison_differences %}<span class="badge bg-danger ms-1">{{ comparison_differences }}</span>{% endif %}
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-notes" type="button" role="tab">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-notes" type="button" role="tab">
                                 Notes
                                 {% with open=note_summary.open_discrepancies|add:note_summary.changes_to_review %}
                                     {% if open %}<span class="badge bg-danger ms-1">{{ open }}</span>{% endif %}
@@ -51,12 +50,17 @@
                         </li>
                     {% endif %}
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-payments" type="button" role="tab">Payments</button>
+                        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-payments" type="button" role="tab">Payments</button>
                     </li>
-                    {# Later: Shortlist, Introductions #}
-                </ul>
-            </div>
-        </div>
+                    {% if perms.base.manage_matching %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-pairings" type="button" role="tab">
+                                Pairings
+                                {% if open_pairings %}<span class="badge bg-light text-muted ms-1">{{ open_pairings }}</span>{% endif %}
+                            </button>
+                        </li>
+                    {% endif %}
+        </ul>
 
         <div class="tab-content">
 
@@ -152,6 +156,13 @@
             {% if perms.base.manage_client %}
                 <div class="tab-pane fade" id="tab-notes" role="tabpanel">
                     {% include "domain/management/members/_notes.html" %}
+                </div>
+            {% endif %}
+
+            {# ---------- Pairings ---------- #}
+            {% if perms.base.manage_matching %}
+                <div class="tab-pane fade" id="tab-pairings" role="tabpanel">
+                    {% include "domain/management/members/_pairings.html" %}
                 </div>
             {% endif %}
 
@@ -359,7 +370,7 @@ document.addEventListener('click', function (event) {
 // Tabs remember where you were: the address ends in #notes, #profile, ...
 // so "back to the notes" after saving a note opens the Notes tab again.
 (function () {
-    var buttons = document.querySelectorAll('.member-tabs [data-bs-toggle="tab"]');
+    var buttons = document.querySelectorAll('.member-tabs [data-bs-toggle="pill"]');
     function show(name) {
         var button = document.querySelector('.member-tabs [data-bs-target="#tab-' + name + '"]');
         if (button && window.bootstrap) bootstrap.Tab.getOrCreateInstance(button).show();

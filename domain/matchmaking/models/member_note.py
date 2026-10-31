@@ -39,7 +39,7 @@ class MemberNote(TimeStampedModel):
         MESSAGE = "message", "Ask by message"
         UPDATE_FORM = "update_form", "Ask client to update the form"
         DOCUMENTS = "documents", "Verify with documents"
-        FOUNDER = "founder", "Escalate to the Founder"
+        ADMIN = "admin", "Escalate to Admin"
         NONE = "none", "No action"
 
     class Outcome(models.TextChoices):  # closing a discrepancy or reviewing a change
