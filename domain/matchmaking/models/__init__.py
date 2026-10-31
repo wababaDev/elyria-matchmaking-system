@@ -5,11 +5,11 @@ from .membership_tier import MembershipTier
 from .membership import Membership, MembershipPayment
 from .enquiry import Enquiry
 from .member_note import MemberNote, MemberNoteRevision
-
+from .pairing import MatchAccessLog, Pairing
 from .client_profile import ClientProfile
 from .profile_photo import ProfilePhoto
 __all__ = [
     "ConsultationRequest", "Consultation", "Client",
     "MembershipTier", "Membership", "MembershipPayment",
-    "Enquiry", "ClientProfile", "ProfilePhoto"
+    "Enquiry", "ClientProfile", "ProfilePhoto", "MatchAccessLog", "Pairing", "MemberNote", "MemberNoteRevision",
 ]

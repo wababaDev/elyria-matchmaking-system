@@ -39,7 +39,7 @@
                         {% with c=row.item %}
                             <tr>
                                 <td>
-                                    <span class="fw-semibold">{{ c.full_name }}</span>
+                                    <a href="{% url 'matchmaking:consultation-request-detail' c.pk %}" class="fw-semibold">{{ c.full_name }}</a>
                                     <div class="text-muted fs-12">{{ c.age }} · {{ c.location }}</div>
                                 </td>
                                 <td class="fs-13">{{ row.next_step }}</td>

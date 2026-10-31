@@ -54,7 +54,7 @@ TEMPLATES = [
                 "domain.base.context_processors.environment",
                 "domain.website.context_processors.consultation_form",
                 "domain.website.context_processors.site_settings",
-                "domain.matchmaking.context_processors.staff_queue",
+                "domain.matchmaking.context_processors.queue_counts",
             ],
         },
     },

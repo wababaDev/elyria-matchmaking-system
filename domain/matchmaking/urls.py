@@ -5,6 +5,7 @@ from domain.matchmaking.views import consultation_record_views, consultation_req
 from domain.matchmaking.views import settings_views as settings_
 from domain.matchmaking.views import dashboard_views, enquiry_views, member_views as members, payment_views, queue_views
 from domain.matchmaking.views import member_note_views as notes
+from domain.matchmaking.views import pairing_views as pairing
 app_name = "matchmaking"
 
 urlpatterns = [
@@ -63,4 +64,14 @@ urlpatterns = [
 
     path("members/<int:pk>/change-email/", members.ChangeSignInEmailView.as_view(), name="member-change-email"),
     path("members/<int:pk>/profile.pdf", members.MemberProfilePdfView.as_view(), name="member-profile-pdf"),
+
+        # Matching
+    path("members/<int:pk>/find-match/", pairing.FindMatchView.as_view(), name="find-match"),
+    path("members/<int:pk>/pairings/propose/", pairing.ProposePairingView.as_view(), name="pairing-propose"),
+    path("pairings/<int:pk>/approve/", pairing.ApprovePairingView.as_view(), name="pairing-approve"),
+    path("pairings/<int:pk>/present/", pairing.PresentPairingView.as_view(), name="pairing-present"),
+    path("pairings/<int:pk>/introduction/", pairing.IntroductionPairingView.as_view(), name="pairing-introduction"),
+    path("pairings/<int:pk>/close/", pairing.ClosePairingView.as_view(), name="pairing-close"),
+    path("pairings/photo/<int:client_pk>/", pairing.CandidatePhotoView.as_view(), name="candidate-photo"),
+    path("pairings/", pairing.PairingListView.as_view(), name="pairings"),
 ]

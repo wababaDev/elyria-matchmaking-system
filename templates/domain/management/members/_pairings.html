@@ -1,0 +1,118 @@
+{# Pairings tab: every pairing this member is part of. Included in members/detail.html #}
+<div class="card custom-card member-pairings" id="pairings">
+    <div class="card-header justify-content-between flex-wrap gap-2">
+        <div>
+            <div class="card-title">Pairings</div>
+            <span class="fs-12 {% if open_pairings >= pairing_limit %}text-danger fw-semibold{% else %}text-muted{% endif %}">
+                In {{ open_pairings }} open pairing{{ open_pairings|pluralize }}{% if open_pairings >= pairing_limit %} (limit {{ pairing_limit }}){% endif %}
+            </span>
+        </div>
+        {% if profile.is_complete and membership.display_status != "cancelled" %}
+            <a href="{% url 'matchmaking:find-match' member.pk %}" class="btn btn-sm btn-primary"><i class="fe fe-search me-1"></i>Find a match</a>
+        {% else %}
+            <span class="text-muted fs-12">Available once the profile is complete.</span>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        {% for row in pairing_rows %}
+            {% with p=row.p other=row.other op=row.other_profile %}
+            <div class="pairing{% if not p.is_open %} is-closed{% endif %}">
+                <div class="d-flex gap-3">
+                    <img src="{% url 'matchmaking:candidate-photo' other.pk %}" alt="" class="pairing-photo" onerror="this.style.visibility='hidden'">
+                    <div class="flex-fill">
+                        <div class="d-flex flex-wrap justify-content-between gap-2">
+                            <div>
+                                <strong class="fs-15">
+                                    {% if row.other_is_mine %}<a href="{% url 'matchmaking:member-detail' other.pk %}">{{ other.full_name }}</a>{% else %}{{ op.preferred_name|default:other.preferred_name }}{% endif %}
+                                </strong>
+                                <span class="text-muted fs-12 ms-1">
+                                    {{ op.age|default:"—" }} · {{ op.location|default:"—" }} · {{ op.get_religion_display|default:"Faith not given" }} · Children: {{ op.get_has_children_display|default:"—" }}
+                                </span>
+                                <div class="text-muted fs-12">
+                                    {% if row.side == "a" %}Proposed for {{ member.preferred_name }}{% else %}{{ member.preferred_name }} was proposed to them{% endif %}
+                                    by {{ p.added_by.full_name }}, {{ p.created_at|date:"j M Y" }}
+                                    · {{ other.preferred_name }}'s matchmaker: {{ other.matchmaker.full_name|default:"—" }}
+                                </div>
+                            </div>
+                            <span class="badge pairing-status status-{{ p.status }}">{{ p.get_status_display }}</span>
+                        </div>
+
+                        <!-- Where it stands -->
+                        <ul class="pairing-steps fs-12 mt-2 mb-0">
+                            <li class="{% if p.approval == 'pending' %}is-now{% endif %}">Approval: {{ p.get_approval_display }}</li>
+                            <li class="{% if p.a_decision == 'pending' and p.visible_to_a and p.is_open %}is-now{% endif %}">
+                                {% if row.side == "a" %}{{ member.preferred_name }}{% else %}{{ other.preferred_name }}{% endif %} (A): {{ p.get_a_decision_display }}
+                            </li>
+                            <li class="{% if p.b_decision == 'pending' and p.is_open %}is-now{% endif %}">
+                                {% if row.side == "b" %}{{ member.preferred_name }}{% else %}{{ other.preferred_name }}{% endif %} (B): {{ p.get_b_decision_display }}
+                            </li>
+                            {% if p.introduced_on %}<li>Introduced {{ p.introduced_on|date:"j M Y" }}</li>{% endif %}
+                        </ul>
+
+                        {% if row.side == "a" and p.note_for_a %}
+                            <p class="fs-13 mt-2 mb-0"><span class="text-muted">Note {{ member.preferred_name }} reads:</span> {{ p.note_for_a }}</p>
+                        {% elif row.side == "b" and p.note_for_b %}
+                            <p class="fs-13 mt-2 mb-0"><span class="text-muted">Note {{ member.preferred_name }} reads:</span> {{ p.note_for_b }}</p>
+                        {% endif %}
+                        {% if not p.is_open %}
+                            <p class="fs-12 text-muted mt-2 mb-0">Closed {{ p.closed_at|date:"j M Y" }}: {{ p.closed_reason }}</p>
+                        {% endif %}
+
+                        <!-- Actions for this member's matchmaker -->
+                        {% if p.is_open %}
+                            {% if row.side == "b" and p.approval == "pending" %}
+                                <form method="post" action="{% url 'matchmaking:pairing-approve' p.pk %}" class="pairing-action mt-3">
+                                    {% csrf_token %}
+                                    <p class="fs-13 mb-2"><strong>Your approval is needed.</strong> {{ other.preferred_name }}'s matchmaker would like to show {{ member.preferred_name }} to them. Nothing is shown until you approve.</p>
+                                    <input type="text" name="reason" class="form-control form-control-sm mb-2" placeholder="Reason, if declining (staff only)">
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" name="approve" value="yes" class="btn btn-sm btn-primary">Approve</button>
+                                        <button type="submit" name="approve" value="no" class="btn btn-sm btn-outline-danger">Decline</button>
+                                    </div>
+                                </form>
+                            {% endif %}
+
+                            {% if row.side == "b" and p.a_decision == "interested" and p.b_decision == "not_presented" %}
+                                <form method="post" action="{% url 'matchmaking:pairing-present' p.pk %}" class="pairing-action mt-3">
+                                    {% csrf_token %}
+                                    <p class="fs-13 mb-2"><strong>{{ other.preferred_name }} is interested.</strong> Present them to {{ member.preferred_name }}: write the note {{ member.preferred_name }} will read.</p>
+                                    <textarea name="note" rows="2" class="form-control form-control-sm mb-2" required placeholder="Why this person could suit {{ member.preferred_name }}"></textarea>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-md-6"><input type="text" name="profession" class="form-control form-control-sm" placeholder="Their profession, as shown (e.g. Works in finance)"></div>
+                                        <div class="col-md-6"><input type="text" name="location" class="form-control form-control-sm" placeholder="Their location, as shown (e.g. Lusaka)"></div>
+                                    </div>
+                                    <button type="submit" class="btn btn-sm btn-primary"
+                                            data-confirm-title="Present to {{ member.preferred_name }}"
+                                            data-confirm="{{ member.preferred_name }} will see the card in their portal and be emailed."
+                                            data-confirm-button="Present">Present to {{ member.preferred_name }}</button>
+                                </form>
+                            {% endif %}
+
+                            {% if p.status == "mutual" %}
+                                <form method="post" action="{% url 'matchmaking:pairing-introduction' p.pk %}" class="pairing-action mt-3 d-flex flex-wrap align-items-center gap-2">
+                                    {% csrf_token %}
+                                    <strong class="fs-13 text-success">Both said yes.</strong>
+                                    <label class="fs-12 text-muted mb-0" for="intro-{{ p.pk }}">Introduction date</label>
+                                    <input type="date" name="introduced_on" id="intro-{{ p.pk }}" value="{{ p.introduced_on|date:'Y-m-d' }}" class="form-control form-control-sm" style="max-width: 170px;" required>
+                                    <button type="submit" class="btn btn-sm btn-light">Save</button>
+                                </form>
+                            {% endif %}
+
+                            <details class="mt-2 fs-12">
+                                <summary class="text-muted">Close this pairing</summary>
+                                <form method="post" action="{% url 'matchmaking:pairing-close' p.pk %}" class="d-flex gap-2 mt-2">
+                                    {% csrf_token %}
+                                    <input type="text" name="reason" class="form-control form-control-sm" required placeholder="Why (staff only), e.g. member changed their mind">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger text-nowrap">Close</button>
+                                </form>
+                            </details>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endwith %}
+        {% empty %}
+            <p class="text-muted mb-0">No pairings yet.</p>
+        {% endfor %}
+    </div>
+</div>

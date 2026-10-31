@@ -1,0 +1,96 @@
+{% extends "layouts/management.html" %}
+{% block title %}Pairings{% endblock %}
+{% block page_title %}Pairings{% endblock %}
+
+{% block content %}
+<ul class="nav nav-pills gap-1 mb-3">
+    {% for value, label in filters %}
+        <li class="nav-item">
+            <a class="nav-link {% if show == value %}active{% endif %}" href="?show={{ value }}">
+                {{ label }}{% if value == "me" and pairings_waiting %} <span class="badge bg-danger ms-1">{{ pairings_waiting }}</span>{% endif %}
+            </a>
+        </li>
+    {% endfor %}
+</ul>
+
+<div class="card custom-card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Your member</th>
+                        <th>Paired with</th>
+                        <th>Type</th>
+                        <th>Where it stands</th>
+                        <th>Proposed</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                        {% with p=row.p mine=row.mine other=row.other op=row.other_profile %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'matchmaking:member-detail' mine.pk %}#pairings" class="fw-semibold">{{ mine.full_name }}</a>
+                                    <div class="text-muted fs-12">{{ mine.membership.tier.name|default:"" }}</div>
+                                </td>
+                                <td>
+                                    {% if row.other_is_mine %}
+                                        <a href="{% url 'matchmaking:member-detail' other.pk %}#pairings" class="fw-semibold">{{ other.full_name }}</a>
+                                    {% else %}
+                                        <span class="fw-semibold">{{ op.preferred_name|default:other.preferred_name }}</span>
+                                    {% endif %}
+                                    <div class="text-muted fs-12">{{ op.age|default:"—" }} · {{ op.location|default:"—" }}</div>
+                                </td>
+                                <td class="fs-13">
+                                    {% if row.kind == "internal" %}
+                                        <span class="badge bg-light text-dark">Between your members</span>
+                                        <div class="text-muted fs-12">No approval needed</div>
+                                    {% elif row.kind == "sent" %}
+                                        <span class="badge bg-info-transparent">Sent</span>
+                                        <div class="text-muted fs-12">to {{ other.matchmaker.full_name|default:"no matchmaker" }}</div>
+                                    {% else %}
+                                        <span class="badge bg-warning-transparent">Received</span>
+                                        <div class="text-muted fs-12">from {{ other.matchmaker.full_name|default:"no matchmaker" }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if row.on_me %}
+                                        <span class="badge bg-danger-transparent">{{ row.stands }}</span>
+                                    {% elif not p.is_open %}
+                                        <span class="text-muted fs-13">{{ row.stands }}</span>
+                                    {% elif p.status == "mutual" %}
+                                        <span class="badge bg-success-transparent">{{ row.stands }}</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-muted">{{ row.stands }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="fs-13">
+                                    {{ p.created_at|date:"j M Y" }}
+                                    <div class="text-muted fs-12">by {{ p.added_by.full_name }}</div>
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'matchmaking:member-detail' mine.pk %}#pairings" class="btn btn-sm btn-light">Open</a>
+                                </td>
+                            </tr>
+                        {% endwith %}
+                    {% empty %}
+                        <tr><td colspan="6" class="text-center text-muted py-5">No pairings here.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if page_obj.has_other_pages %}
+    <nav class="d-flex justify-content-between align-items-center fs-13 mt-3">
+        <span class="text-muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        <span class="d-flex gap-2">
+            {% if page_obj.has_previous %}<a class="btn btn-sm btn-light" href="?show={{ show }}&page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+            {% if page_obj.has_next %}<a class="btn btn-sm btn-light" href="?show={{ show }}&page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+        </span>
+    </nav>
+{% endif %}
+{% endblock %}

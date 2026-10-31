@@ -46,7 +46,7 @@
                            class="side-menu__item {% if request.resolver_match.url_name == 'my-queue' %}active{% endif %}">
                             <i class="fe fe-check-square side-menu__icon"></i>
                             <span class="side-menu__label">My Queue</span>
-                            {% if staff_queue_count %}<span class="badge bg-elyria-gold ms-auto">{{ staff_queue_count }}</span>{% endif %}
+                            {% if staff_queue_count %}<span class="badge bg-elyria-gold ms-auto" title="Consultation requests in your queue">{{ staff_queue_count }}</span>{% endif %}
                         </a>
                     </li>
                 {% endif %}
@@ -77,6 +77,16 @@
                            class="side-menu__item {% if 'member' in request.resolver_match.url_name %}active{% endif %}">
                             <i class="fe fe-users side-menu__icon"></i>
                             <span class="side-menu__label">{% if perms.base.view_all_members %}Members{% else %}My Members{% endif %}</span>
+                        </a>
+                    </li>
+                {% endif %}
+                {% if perms.base.manage_matching %}
+                    <li class="slide">
+                        <a href="{% url 'matchmaking:pairings' %}"
+                           class="side-menu__item {% if request.resolver_match.url_name == 'pairings' %}active{% endif %}">
+                            <i class="fe fe-heart side-menu__icon"></i>
+                            <span class="side-menu__label">Pairings</span>
+                            {% if pairings_waiting %}<span class="badge bg-danger ms-auto" title="Pairings waiting on you">{{ pairings_waiting }}</span>{% endif %}
                         </a>
                     </li>
                 {% endif %}

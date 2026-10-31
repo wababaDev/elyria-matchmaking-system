@@ -6,6 +6,8 @@ from django.contrib.auth import get_user_model
 
 from domain.matchmaking.models import Client, Consultation, ConsultationRequest, Enquiry
 from notification.services import consultation_emails, enquiry_emails, member_emails, profile_emails ,staff_emails
+from domain.matchmaking.models import Pairing
+from notification.services import pairing_emails
 
 logger = logging.getLogger(__name__)
 
@@ -82,3 +84,16 @@ def send_profile_updated_email(client_id, sections, important=None):
 def send_sign_in_email_changed_email(client_id, old_email):
     if obj := _get(Client, client_id):
         member_emails.deliver_sign_in_email_changed(obj, old_email)
+
+
+
+@shared_task(**EMAIL_RETRY)
+def send_pairing_staff_email(pairing_id, kind):
+    if obj := _get(Pairing, pairing_id):
+        pairing_emails.deliver_pairing_staff_email(obj, kind)
+
+
+@shared_task(**EMAIL_RETRY)
+def send_new_introduction_email(client_id):
+    if obj := _get(Client, client_id):
+        pairing_emails.deliver_new_introduction(obj)
