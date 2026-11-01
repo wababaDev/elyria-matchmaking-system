@@ -31,7 +31,7 @@ def pairings_visible_to(user):
     mine = members_visible_to(user).values("pk")
     return Pairing.objects.filter(Q(client_a__in=mine) | Q(client_b__in=mine)).select_related(
         "client_a__profile", "client_b__profile", "client_a__matchmaker", "client_b__matchmaker",
-        "added_by", "approval_by", "b_presented_by",
+        "added_by", "approval_by", "b_presented_by", "closed_by",
     )
 
 
@@ -39,7 +39,7 @@ def pairings_for(client):
     """All pairings a member is part of, either side (staff view)."""
     return Pairing.objects.filter(Q(client_a=client) | Q(client_b=client)).select_related(
         "client_a__profile", "client_b__profile", "client_a__matchmaker", "client_b__matchmaker",
-        "added_by", "approval_by",
+        "added_by", "approval_by", "closed_by",
     )
 
 
@@ -116,6 +116,36 @@ def candidates_for(client, *, age_min=None, age_max=None, city="", children="", 
     return qs.select_related("profile", "matchmaker", "membership").order_by("-created_at")
 
 
+def paired_before(client, candidate_ids):
+    """
+    {candidate_id: short note} for candidates this member was paired with before (closed pairings),
+    so Find a match can say so on the card. Most recent one wins.
+    """
+    closed = (
+        Pairing.objects.filter(status=P.Status.CLOSED)
+        .filter(Q(client_a=client, client_b__in=candidate_ids) | Q(client_b=client, client_a__in=candidate_ids))
+        .select_related("client_a", "client_b", "closed_by", "approval_by")
+        .order_by("closed_at")
+    )
+    notes = {}
+    for p in closed:
+        other = p.other(client)
+        notes[other.pk] = f"Paired before · closed {p.closed_at:%d %b %Y}: {_why_closed(p)}"
+    return notes
+
+
+def _why_closed(p):
+    if p.a_decision == P.DecisionA.NOT_INTERESTED:
+        return f"{p.client_a.preferred_name} said not for me"
+    if p.b_decision == P.DecisionB.NOT_INTERESTED:
+        return f"{p.client_b.preferred_name} said not for me"
+    if p.approval == P.Approval.DECLINED:
+        who = p.approval_by.full_name if p.approval_by else "the other matchmaker"
+        return f"declined by {who}"
+    who = f"by {p.closed_by.full_name}" if p.closed_by else ""
+    return f"closed {who}".strip() + (f" ({p.closed_reason[:60]})" if p.closed_reason else "")
+
+
 # ---------------------------------------------------------------- staff actions
 
 @transaction.atomic
@@ -171,7 +201,7 @@ def answer_approval(pairing, *, by, approve, reason=""):
     pairing.approval_by = by
     pairing.approval_at = timezone.now()
     if not approve:
-        _close(pairing, reason or "Declined by the other member's matchmaker.")
+        _close(pairing, reason or "Declined by the other member's matchmaker.", by=by)
     pairing.save()
 
     from notification.services import pairing_emails
@@ -251,15 +281,16 @@ def close_pairing(pairing, *, by, reason):
         raise InvalidTransitionError("This pairing is already closed.")
     if not reason.strip():
         raise InvalidTransitionError("Say why it's being closed.")
-    _close(pairing, reason.strip())
+    _close(pairing, reason.strip(), by=by)
     pairing.save()
     return pairing
 
 
-def _close(pairing, reason):
+def _close(pairing, reason, by=None):
     pairing.status = P.Status.CLOSED
     pairing.closed_at = timezone.now()
     pairing.closed_reason = reason
+    pairing.closed_by = by
 
 
 # ---------------------------------------------------------------- member side
@@ -432,7 +463,8 @@ def where_it_stands(pairing, user):
     on_either_side = on_b_side or a.matchmaker_id == user.pk
 
     if not pairing.is_open:
-        return f"Closed: {pairing.closed_reason}", False
+        who = f" by {pairing.closed_by.full_name}" if pairing.closed_by else ""
+        return f"Closed{who}: {pairing.closed_reason}", False
     if pairing.approval == P.Approval.PENDING:
         if on_b_side:
             return f"Approve: {a_mm} wants to show {b.preferred_name} to their member", True
@@ -494,3 +526,31 @@ def pairing_overview(user, show="open"):
             "stands": text, "on_me": on_me,
         })
     return rows
+
+
+def member_pairing_rows(user, member):
+    """
+    The member page's Pairings tab, as (open_rows, closed_rows).
+    Open: what's waiting on you first, then what's waiting on others, then introduced; newest activity first.
+    Closed: most recently closed first.
+    """
+    visible_ids = set(members_visible_to(user).values_list("pk", flat=True))
+    open_rows, closed_rows = [], []
+    for p in pairings_for(member).select_related("a_presented_by", "b_presented_by", "closed_by"):
+        other = p.other(member)
+        text, on_me = where_it_stands(p, user)
+        row = {
+            "p": p, "other": other, "other_profile": getattr(other, "profile", None),
+            "other_is_mine": other.pk in visible_ids, "side": p.side(member),
+            "stands": text, "on_me": on_me,
+        }
+        (open_rows if p.is_open else closed_rows).append(row)
+
+    def priority(row):
+        p = row["p"]
+        group = 0 if row["on_me"] else 2 if p.introduced_on else 1
+        return (group, -p.updated_at.timestamp())
+
+    open_rows.sort(key=priority)
+    closed_rows.sort(key=lambda r: r["p"].closed_at or r["p"].updated_at, reverse=True)
+    return open_rows, closed_rows

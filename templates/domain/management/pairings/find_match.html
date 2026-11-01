@@ -83,6 +83,11 @@
                                 <li class="text-muted fs-12">Wants: {{ p.partner_age_min|default:"?" }}–{{ p.partner_age_max|default:"?" }} · Partner with children: {{ p.get_open_to_partner_children_display|default:"—" }}</li>
                                 <li class="text-muted fs-12">Matchmaker: {% if card.mine %}You{% else %}{{ c.matchmaker.full_name|default:"—" }}{% endif %}</li>
                             </ul>
+                            {% if card.paired_before %}
+                                <p class="fs-12 text-warning-emphasis bg-warning-transparent rounded px-2 py-1 mb-2">
+                                    <i class="fe fe-alert-circle me-1"></i>{{ card.paired_before }}
+                                </p>
+                            {% endif %}
                             <button type="button" class="btn btn-sm btn-primary w-100"
                                     data-propose
                                     data-candidate="{{ c.pk }}"

@@ -29,6 +29,12 @@ from domain.matchmaking.profile_sections import answers_by_group
 from domain.matchmaking.services.profile_service import progress
 from django.http import HttpResponse
 from domain.matchmaking.services.profile_pdf import ProfileNotCompleteError, profile_filename, profile_pdf
+from domain.matchmaking.forms.member_note_forms import CloseNoteForm, DiscrepancyForm, ObservationForm
+from domain.matchmaking.models.pairing import OPEN_PAIRING_LIMIT
+from domain.matchmaking.services.compare_service import compare
+from domain.matchmaking.services.member_note_service import note_summary, notes_for
+from domain.matchmaking.services.pairing_service import member_pairing_rows, open_pairing_counts
+
 
 class MemberListView(StaffRequiredMixin, ListView):
     permission_required = "base.view_members"
@@ -59,80 +65,76 @@ class MemberListView(StaffRequiredMixin, ListView):
         return context
 
 
+NOTE_FILTERS = [
+    ("", "All"),
+    ("open", "Open only"),
+    ("observation", "Observations"),
+    ("discrepancy", "Discrepancies"),
+    ("profile_change", "Profile changes"),
+]
+ 
+ 
 class MemberDetailView(StaffRequiredMixin, DetailView):
+    """One member: Overview, Profile, Consultation, Compare, Notes, Pairings, Payments."""
     permission_required = "base.view_members"
     template_name = "domain/management/members/detail.html"
     context_object_name = "member"
-
+ 
     def get_queryset(self):
         return members_visible_to(self.request.user).select_related(
             "user", "matchmaker", "consultation_request",
             "consultation_request__consultation", "consultation_request__consultation__conducted_by",
             "membership", "membership__tier",
         )
-
+ 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        membership = getattr(self.object, "membership", None)
-        profile = getattr(self.object, "profile", None)
+        member = self.object
+        membership = getattr(member, "membership", None)
+        profile = getattr(member, "profile", None)
         photos = list(profile.photos.all()) if profile else []
-      
+        comparison = compare(member)
+        open_rows, closed_rows = member_pairing_rows(self.request.user, member)
+        notes_show = self.request.GET.get("notes", "")
+ 
         context.update(
+            # Overview: membership, payments, matchmaker
             membership=membership,
             payments=membership.payments.select_related("recorded_by") if membership else [],
-            consultation=self.object.consultation,
-            details=self.object.consultation_request,
             renew_form=RenewMembershipForm(initial={"tier": membership.tier_id if membership else None}),
             active_tiers=MembershipTier.objects.filter(is_active=True),
             cancel_form=CancelMembershipForm(),
-            assign_form=AssignForm(initial={"assigned_to": self.object.matchmaker_id}),
-             profile=profile,
-                          profile_groups=answers_by_group(profile, has_photos=bool(photos)) if profile else [],
+            assign_form=AssignForm(initial={"assigned_to": member.matchmaker_id}),
+            details=member.consultation_request,
+ 
+            # Profile
+            profile=profile,
             profile_photos=photos,
-                           profile_progress=progress(profile) if profile else (0, 0),
-        )
-
-        from domain.matchmaking.forms.member_note_forms import CloseNoteForm, DiscrepancyForm, ObservationForm
-        from domain.matchmaking.services.member_note_service import note_summary, notes_for
-
-        show = self.request.GET.get("notes", "")
-        context.update(
-            notes=notes_for(self.object, show=show),
-            notes_show=show,
-            note_filters=[
-                ("", "All"), ("open", "Open only"), ("observation", "Observations"),
-                ("discrepancy", "Discrepancies"), ("profile_change", "Profile changes"),
-            ],
-            note_summary=note_summary(self.object),
+            profile_groups=answers_by_group(profile, has_photos=bool(photos)) if profile else [],
+            profile_progress=progress(profile) if profile else (0, 0),
+ 
+            # Consultation
+            consultation=member.consultation,
+ 
+            # Compare
+            comparison=comparison,
+            comparison_differences=sum(1 for row in comparison if row["differs"]),
+ 
+            # Notes
+            notes=notes_for(member, show=notes_show),
+            notes_show=notes_show,
+            note_filters=NOTE_FILTERS,
+            note_summary=note_summary(member),
             observation_form=ObservationForm(),
             discrepancy_form=DiscrepancyForm(),
             close_form=CloseNoteForm(),
-        )
-
-        from domain.matchmaking.services.compare_service import compare
-
-        comparison = compare(self.object)
-        context["comparison"] = comparison
-        context["comparison_differences"] = sum(1 for row in comparison if row["differs"])
-
-        from domain.matchmaking.models.pairing import OPEN_PAIRING_LIMIT
-        from domain.matchmaking.services.pairing_service import open_pairing_counts, pairings_for
-
-        mine = set(members_visible_to(self.request.user).values_list("pk", flat=True))
-        rows = []
-        for p in pairings_for(self.object):
-            other = p.other(self.object)
-            rows.append({
-                "p": p, "side": p.side(self.object), "other": other,
-                "other_profile": getattr(other, "profile", None), "other_is_mine": other.pk in mine,
-            })
-        context.update(
-            pairing_rows=rows,
-            open_pairings=open_pairing_counts([self.object])[self.object.pk],
+ 
+            # Pairings
+            pairing_rows=open_rows,
+            closed_pairing_rows=closed_rows,
+            open_pairings=open_pairing_counts([member])[member.pk],
             pairing_limit=OPEN_PAIRING_LIMIT,
-            profile=getattr(self.object, "profile", None),
         )
-        
         return context
 
 

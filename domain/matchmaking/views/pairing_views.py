@@ -29,6 +29,7 @@ from domain.matchmaking.services.pairing_service import (
     close_pairing,
     log_access,
     open_pairing_counts,
+    paired_before,
     pairings_visible_to,
     present_to_a,
     present_to_b,
@@ -67,6 +68,7 @@ class FindMatchView(StaffRequiredMixin, TemplateView):
         candidates = candidates_for(member, **{k: v for k, v in filters.items() if v not in (None, "")})
         page = Paginator(candidates, PER_PAGE).get_page(self.request.GET.get("page"))
         counts = open_pairing_counts(page.object_list)
+        before = paired_before(member, [c.pk for c in page.object_list])
         mine = set(members_visible_to(self.request.user).values_list("pk", flat=True))
 
         log_access(self.request.user, MatchAccessLog.Action.SEARCH, member,
@@ -82,7 +84,8 @@ class FindMatchView(StaffRequiredMixin, TemplateView):
             page_obj=page,
             cards=[
                 {"client": c, "profile": c.profile, "open_pairings": counts.get(c.pk, 0),
-                 "mine": c.pk in mine, "at_limit": counts.get(c.pk, 0) >= OPEN_PAIRING_LIMIT}
+                 "mine": c.pk in mine, "at_limit": counts.get(c.pk, 0) >= OPEN_PAIRING_LIMIT,
+                 "paired_before": before.get(c.pk, "")}
                 for c in page.object_list
             ],
             member_open_pairings=open_pairing_counts([member])[member.pk],

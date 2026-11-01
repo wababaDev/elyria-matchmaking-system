@@ -401,3 +401,20 @@
     background: #C9A227 !important;
     color: #6E1423 !important;
 }
+
+/* Member page, Pairings tab: number in front of each pairing */
+.member-pairings .pairing-index {
+    flex: 0 0 auto;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    background: var(--primary01, rgba(110, 20, 35, 0.08));
+    color: var(--primary-color, #6E1423);
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0.25rem;
+}
+.member-pairings .is-closed .pairing-index { background: #f0f0f0; color: #999; }

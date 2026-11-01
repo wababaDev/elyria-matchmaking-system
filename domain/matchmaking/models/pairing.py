@@ -82,6 +82,10 @@ class Pairing(TimeStampedModel):
 
     introduced_on = models.DateField(null=True, blank=True)
     closed_at = models.DateTimeField(null=True, blank=True)
+    # Staff who closed or declined it. Empty when a member said "not interested".
+    closed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="pairings_closed"
+    )
     closed_reason = models.CharField(max_length=300, blank=True)  # staff only
 
     class Meta:

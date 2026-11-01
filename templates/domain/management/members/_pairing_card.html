@@ -1,0 +1,134 @@
+{# One pairing on the member's Pairings tab. Used by _pairings.html with row and index #}
+{% with p=row.p other=row.other op=row.other_profile %}
+    <div class="pairing{% if not p.is_open %} is-closed{% endif %}">
+        <div class="d-flex gap-3">
+            <span class="pairing-index">{{ index }}</span>
+            <img src="{% url 'matchmaking:pairing-card-photo' p.pk other.pk %}" alt="" class="pairing-photo" onerror="this.style.visibility='hidden'">
+            <div class="flex-fill">
+                <div class="d-flex flex-wrap justify-content-between gap-2">
+                    <div>
+                        <strong class="fs-15">
+                            {% if row.other_is_mine %}<a href="{% url 'matchmaking:member-detail' other.pk %}">{{ other.full_name }}</a>{% else %}{{ op.preferred_name|default:other.preferred_name }}{% endif %}
+                        </strong>
+                        {# Full profile of the other matchmaker's member: B's side from the start, A's side once approved #}
+                        {% if p.is_open and other.matchmaker_id != request.user.pk and row.side == "b" or p.is_open and other.matchmaker_id != request.user.pk and p.approval == "approved" %}
+                            <a href="{% url 'matchmaking:pairing-profile' p.pk other.pk %}" class="btn btn-sm btn-light py-0 px-2 ms-1 fs-12"><i class="fe fe-user me-1"></i>View profile</a>
+                        {% endif %}
+                        <span class="text-muted fs-12 ms-1">
+                            {{ op.age|default:"—" }} · {{ op.location|default:"—" }} · {{ op.get_religion_display|default:"Faith not given" }} · Children: {{ op.get_has_children_display|default:"—" }}
+                        </span>
+                        <div class="text-muted fs-12">
+                            {% if row.side == "a" %}Proposed for {{ member.preferred_name }}{% else %}{{ member.preferred_name }} was proposed to them{% endif %}
+                            by {{ p.added_by.full_name }}, {{ p.created_at|date:"j M Y" }}
+                            · {{ other.preferred_name }}'s matchmaker: {{ other.matchmaker.full_name|default:"—" }}
+                        </div>
+                    </div>
+                    <span class="badge {% if row.on_me %}bg-danger-transparent{% elif not p.is_open %}bg-light text-muted{% elif p.status == 'mutual' %}bg-success-transparent{% else %}bg-light text-dark{% endif %} text-wrap text-start" style="max-width: 280px;">{{ row.stands }}</span>
+                </div>
+
+                <!-- Where it stands -->
+                <ul class="pairing-steps fs-12 mt-2 mb-0">
+                    <li class="{% if p.approval == 'pending' %}is-now{% endif %}">Approval: {{ p.get_approval_display }}</li>
+                    {% if p.approval != "not_needed" %}
+                        <li class="{% if p.waiting_to_present_to_a %}is-now{% endif %}">
+                            Presented to {% if row.side == "a" %}{{ member.preferred_name }}{% else %}{{ other.preferred_name }}{% endif %}:
+                            {% if p.a_presented_at %}{{ p.a_presented_at|date:"j M" }}{% else %}not yet{% endif %}
+                        </li>
+                    {% endif %}
+                    <li class="{% if p.a_decision == 'pending' and p.visible_to_a and p.is_open %}is-now{% endif %}">
+                        {% if row.side == "a" %}{{ member.preferred_name }}{% else %}{{ other.preferred_name }}{% endif %} (A): {{ p.get_a_decision_display }}
+                    </li>
+                    <li class="{% if p.b_decision == 'pending' and p.is_open %}is-now{% endif %}">
+                        {% if row.side == "b" %}{{ member.preferred_name }}{% else %}{{ other.preferred_name }}{% endif %} (B): {{ p.get_b_decision_display }}
+                    </li>
+                    {% if p.introduced_on %}<li>Introduced {{ p.introduced_on|date:"j M Y" }}</li>{% endif %}
+                </ul>
+
+                {% if row.side == "a" and p.note_for_a %}
+                    <p class="fs-13 mt-2 mb-0"><span class="text-muted">Note {{ member.preferred_name }} reads:</span> {{ p.note_for_a }}</p>
+                {% elif row.side == "b" and p.note_for_b %}
+                    <p class="fs-13 mt-2 mb-0"><span class="text-muted">Note {{ member.preferred_name }} reads:</span> {{ p.note_for_b }}</p>
+                {% endif %}
+                {% if not p.is_open %}
+                    <p class="fs-12 text-muted mt-2 mb-0">Closed {{ p.closed_at|date:"j M Y" }}{% if p.closed_by %} by {{ p.closed_by.full_name }}{% endif %}: {{ p.closed_reason }}</p>
+                {% endif %}
+
+                <!-- Actions for this member's matchmaker -->
+                {% if p.is_open %}
+                    {% if row.side == "b" and p.approval == "pending" %}
+                        <form method="post" action="{% url 'matchmaking:pairing-approve' p.pk %}" class="pairing-action mt-3">
+                            {% csrf_token %}
+                            <p class="fs-13 mb-2">
+                                <strong>Your approval is needed.</strong> {{ other.matchmaker.full_name|default:"Another matchmaker" }} would like to pair {{ member.preferred_name }} with {{ other.preferred_name }}.
+                                <a href="{% url 'matchmaking:pairing-profile' p.pk other.pk %}">Review {{ other.preferred_name }}'s full profile</a> first.
+                                If you approve, they'll see {{ member.preferred_name }}'s full profile and decide whether to present. No member sees anything yet.
+                            </p>
+                            <input type="text" name="reason" class="form-control form-control-sm mb-2" placeholder="Reason, if declining (staff only)">
+                            <div class="d-flex gap-2">
+                                <button type="submit" name="approve" value="yes" class="btn btn-sm btn-primary">Approve</button>
+                                <button type="submit" name="approve" value="no" class="btn btn-sm btn-outline-danger"
+                                    data-confirm-title="Decline this pairing?"
+                                    data-confirm="It will be closed and no member will see anything. Add a reason in the box first if you can (staff only)."
+                                    data-confirm-button="Decline" data-confirm-variant="danger">Decline</button>
+                            </div>
+                        </form>
+                    {% endif %}
+
+                    {% if row.side == "a" and p.waiting_to_present_to_a %}
+                        <form method="post" action="{% url 'matchmaking:pairing-present-a' p.pk %}" class="pairing-action mt-3">
+                            {% csrf_token %}
+                            <p class="fs-13 mb-2">
+                                <strong>Approved by {{ p.approval_by.full_name|default:"the other matchmaker" }}.</strong>
+                                <a href="{% url 'matchmaking:pairing-profile' p.pk other.pk %}">See {{ other.preferred_name }}'s full profile</a>
+                                and talk it through. If you're happy, present {{ other.preferred_name }} to {{ member.preferred_name }}; if not, close the pairing below.
+                            </p>
+                            <textarea name="note" rows="2" class="form-control form-control-sm mb-2" required placeholder="Why this person could suit {{ member.preferred_name }}">{{ p.note_for_a }}</textarea>
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-6"><input type="text" name="profession" value="{{ p.b_profession }}" class="form-control form-control-sm" placeholder="Their profession, as shown (e.g. Works in finance)"></div>
+                                <div class="col-md-6"><input type="text" name="location" value="{{ p.b_location }}" class="form-control form-control-sm" placeholder="Their location, as shown (e.g. Lusaka)"></div>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-primary"
+                                data-confirm-title="Present to {{ member.preferred_name }}"
+                                data-confirm="{{ member.preferred_name }} will see the card in their portal and be emailed."
+                                data-confirm-button="Present">Present to {{ member.preferred_name }}</button>
+                        </form>
+                    {% endif %}
+
+                    {% if row.side == "b" and p.a_decision == "interested" and p.b_decision == "not_presented" %}
+                        <form method="post" action="{% url 'matchmaking:pairing-present' p.pk %}" class="pairing-action mt-3">
+                            {% csrf_token %}
+                            <p class="fs-13 mb-2"><strong>{{ other.preferred_name }} is interested.</strong> Present them to {{ member.preferred_name }}: write the note {{ member.preferred_name }} will read.</p>
+                            <textarea name="note" rows="2" class="form-control form-control-sm mb-2" required placeholder="Why this person could suit {{ member.preferred_name }}"></textarea>
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-6"><input type="text" name="profession" class="form-control form-control-sm" placeholder="Their profession, as shown (e.g. Works in finance)"></div>
+                                <div class="col-md-6"><input type="text" name="location" class="form-control form-control-sm" placeholder="Their location, as shown (e.g. Lusaka)"></div>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-primary"
+                                data-confirm-title="Present to {{ member.preferred_name }}"
+                                data-confirm="{{ member.preferred_name }} will see the card in their portal and be emailed."
+                                data-confirm-button="Present">Present to {{ member.preferred_name }}</button>
+                        </form>
+                    {% endif %}
+
+                    {% if p.status == "mutual" %}
+                        <form method="post" action="{% url 'matchmaking:pairing-introduction' p.pk %}" class="pairing-action mt-3 d-flex flex-wrap align-items-center gap-2">
+                            {% csrf_token %}
+                            <strong class="fs-13 text-success">Both said yes.</strong>
+                            <label class="fs-12 text-muted mb-0" for="intro-{{ p.pk }}">Introduction date</label>
+                            <input type="date" name="introduced_on" id="intro-{{ p.pk }}" value="{{ p.introduced_on|date:'Y-m-d' }}" class="form-control form-control-sm" style="max-width: 170px;" required>
+                            <button type="submit" class="btn btn-sm btn-light">Save</button>
+                        </form>
+                    {% endif %}
+
+                    <div class="mt-3 pt-2 border-top d-flex justify-content-end">
+                        <button type="button" class="btn btn-sm btn-outline-danger"
+                            data-close-pairing="{% url 'matchmaking:pairing-close' p.pk %}"
+                            data-names="{% if row.side == 'a' %}{{ member.preferred_name }} + {{ other.preferred_name }}{% else %}{{ other.preferred_name }} + {{ member.preferred_name }}{% endif %}">
+                            <i class="fe fe-x-circle me-1"></i>Close this pairing
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endwith %}

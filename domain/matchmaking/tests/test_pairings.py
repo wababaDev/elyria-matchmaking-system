@@ -451,3 +451,50 @@ class FindMatchChildrenTests(PairingCase):
         )
         self.assertNotContains(response, "Joseph Banda")
         self.assertContains(response, 'data-name="David"')
+
+
+class ClosedByTests(PairingCase):
+    def test_close_and_decline_record_who(self):
+        pairing = self.propose(self.natasha, self.joseph, self.anisha)
+        self.as_user(self.anisha)
+        self.client.post(reverse("matchmaking:pairing-close", args=[pairing.pk]), {"reason": "Changed my mind"})
+        pairing.refresh_from_db()
+        self.assertEqual(pairing.closed_by, self.anisha)
+
+        declined = self.propose(self.natasha, self.david, self.anisha)
+        self.as_user(self.annastasia)
+        self.client.post(reverse("matchmaking:pairing-approve", args=[declined.pk]), {"approve": "no", "reason": "Not suitable"})
+        declined.refresh_from_db()
+        self.assertEqual(declined.closed_by, self.annastasia)
+
+    def test_member_saying_no_has_no_staff_name(self):
+        pairing = self.propose(self.natasha, self.joseph, self.anisha)
+        self.decide(self.natasha, pairing, "not_interested")
+        self.assertIsNone(pairing.closed_by)
+
+
+class PairedBeforeTests(PairingCase):
+    def test_closed_pairing_shows_note_on_search_card(self):
+        pairing = self.propose(self.natasha, self.joseph, self.anisha)
+        self.decide(self.natasha, pairing, "not_interested")
+
+        self.as_user(self.anisha)
+        response = self.client.get(reverse("matchmaking:find-match", args=[self.natasha.pk]))
+        self.assertContains(response, "Joseph Banda")              # back in the search
+        self.assertContains(response, "Natasha said not for me")   # with the note
+
+class MemberPairingRowsTests(PairingCase):
+    def test_waiting_on_me_first_and_closed_separate(self):
+        from domain.matchmaking.services.pairing_service import member_pairing_rows
+
+        waiting = self.propose(self.natasha, self.david, self.anisha)   # Annastasia must approve
+        closed = self.propose(self.natasha, self.joseph, self.anisha)
+        self.decide(self.natasha, closed, "not_interested")
+
+        open_rows, closed_rows = member_pairing_rows(self.annastasia, self.david)
+        self.assertEqual([r["p"] for r in open_rows], [waiting])
+        self.assertTrue(open_rows[0]["on_me"])
+
+        open_rows, closed_rows = member_pairing_rows(self.anisha, self.natasha)
+        self.assertEqual([r["p"] for r in open_rows], [waiting])
+        self.assertEqual([r["p"] for r in closed_rows], [closed])
