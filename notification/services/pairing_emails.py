@@ -28,7 +28,8 @@ def _staff_email(pairing, kind):
             b.matchmaker,
             f"Pairing to approve: {b.preferred_name}",
             f"{pairing.added_by.full_name} would like to pair your member {b.full_name} with one of their members. "
-            f"Nobody sees anything until you approve. Please approve or decline it.",
+            f"Open {b.preferred_name}'s Pairings tab to see the other member's full profile, then approve or decline. "
+            f"Nobody sees anything until you approve.",
             b,
         )
     if kind == "approval_answered":
@@ -37,7 +38,12 @@ def _staff_email(pairing, kind):
             pairing.added_by,
             f"Pairing {answer}: {a.preferred_name}",
             f"The pairing you proposed for {a.full_name} was {answer} by the other member's matchmaker."
-            + (f" {a.preferred_name} can now see it in their portal." if answer == "approved" else ""),
+            + (
+                f" You can now see {b.preferred_name}'s full profile on {a.preferred_name}'s Pairings tab."
+                f" When you're ready, present it to {a.preferred_name}, or close the pairing."
+                f" {a.preferred_name} sees nothing until you present it."
+                if answer == "approved" else ""
+            ),
             a,
         )
     if kind == "ready_to_present":

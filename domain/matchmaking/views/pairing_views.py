@@ -15,7 +15,8 @@ from domain.matchmaking.forms.pairing_forms import (
     PresentForm,
     ProposePairingForm,
 )
-from domain.matchmaking.models import Client, MatchAccessLog, ProfilePhoto
+from domain.matchmaking.consultation_questions import record_answers
+from domain.matchmaking.models import Client, Consultation, MatchAccessLog, ProfilePhoto
 from domain.matchmaking.models.pairing import OPEN_PAIRING_LIMIT
 from domain.matchmaking.services.blurred_photo import blurred_jpeg
 from domain.matchmaking.services.consultation_request_service import InvalidTransitionError
@@ -29,8 +30,9 @@ from domain.matchmaking.services.pairing_service import (
     log_access,
     open_pairing_counts,
     pairings_visible_to,
+    present_to_a,
     present_to_b,
-    profile_pairing_for,
+    may_view_profile,
     propose,
     record_introduction,
 )
@@ -160,6 +162,19 @@ class ApprovePairingView(PairingActionView):
         return "Approved. The other member can now see the card." if approve else "Declined. Nobody was shown anything."
 
 
+class PresentToAPairingView(PairingActionView):
+    """Second approval: after seeing B's full profile, A's matchmaker shows B's card to A."""
+    form_class = PresentForm
+
+    def back_to(self, pairing):
+        return member_page(pairing.client_a)
+
+    def perform(self, pairing, data):
+        present_to_a(pairing, by=self.request.user, note_for_a=data["note"],
+                     b_profession=data["profession"], b_location=data["location"])
+        return "Presented. Your member can now see the card in their portal."
+
+
 class PresentPairingView(PairingActionView):
     form_class = PresentForm
 
@@ -215,7 +230,7 @@ class PairingCardPhotoView(StaffRequiredMixin, View):
         if client_pk not in (pairing.client_a_id, pairing.client_b_id):
             raise Http404
         other = pairing.client_a if client_pk == pairing.client_a_id else pairing.client_b
-        allowed = can_manage(request.user, other) or profile_pairing_for(request.user, pairing) == other
+        allowed = can_manage(request.user, other) or may_view_profile(request.user, pairing, other)
         photo = ProfilePhoto.objects.filter(profile__client=other).order_by("kind").first() if allowed else None
         if photo:
             try:
@@ -254,45 +269,48 @@ class PairingListView(StaffRequiredMixin, TemplateView):
 
 class PairingProfileView(StaffRequiredMixin, TemplateView):
     """
-    The member proposed to one of yours: their profile answers and photos, read-only.
-    The same page for every matchmaker, Admin included. Every visit is logged.
+    The other matchmaker's member in a pairing: membership form + consultation record, read-only,
+    with real photos. Same page for every matchmaker, Admin included. Every visit is logged.
     """
     permission_required = "base.manage_matching"
     template_name = "domain/management/pairings/profile.html"
 
     def get(self, request, *args, **kwargs):
         self.pairing = get_object_or_404(pairings_visible_to(request.user), pk=kwargs["pk"])
-        self.other = profile_pairing_for(request.user, self.pairing)
-        if self.other is None:
+        self.other = get_object_or_404(Client.objects.select_related("profile", "matchmaker"), pk=kwargs["client_pk"])
+        if not may_view_profile(request.user, self.pairing, self.other):
             raise Http404
         log_access(request.user, MatchAccessLog.Action.VIEW_PAIRING, self.other,
-                   f"opened profile through pairing {self.pairing.pk}")
+                   f"opened full profile through pairing {self.pairing.pk}")
         return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         profile = getattr(self.other, "profile", None)
+        consultation = Consultation.objects.filter(request_id=self.other.consultation_request_id).first()
+        locked = bool(consultation and consultation.is_locked)
         context.update(
             pairing=self.pairing,
             other=self.other,
-            mine=self.pairing.client_b,
+            mine=self.pairing.other(self.other),
             profile=profile,
             photos=list(profile.photos.all()) if profile else [],
             profile_groups=_without_contact(answers_by_group(profile, has_photos=True)) if profile else [],
+            consultation=consultation if locked else None,
+            consultation_sections=record_answers(consultation) if locked else [],
         )
         return context
 
 
 class PairingPhotoView(StaffRequiredMixin, View):
-    """One of A's real photos, for the page above. Same rule: B's side, pairing still open."""
+    """A real photo for the page above. Same rule as the page."""
     permission_required = "base.manage_matching"
 
     def get(self, request, pk, photo_pk):
         pairing = get_object_or_404(pairings_visible_to(request.user), pk=pk)
-        other = profile_pairing_for(request.user, pairing)
-        if other is None:
+        photo = get_object_or_404(ProfilePhoto.objects.select_related("profile__client"), pk=photo_pk)
+        if not may_view_profile(request.user, pairing, photo.profile.client):
             raise Http404
-        photo = get_object_or_404(ProfilePhoto, pk=photo_pk, profile__client=other)
         try:
             response = FileResponse(photo.image.open("rb"))
         except FileNotFoundError:

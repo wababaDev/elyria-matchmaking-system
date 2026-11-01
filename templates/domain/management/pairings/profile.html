@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-{# Read-only, for the matchmaker who received this pairing (Admin too). Profile and photos only. #}
+{# Read-only full profile of the other matchmaker's member in a pairing: membership form + consultation record + photos. #}
 <style>
     .pp-photos { border-radius: 8px; overflow: hidden; background: #f3f0ee; }
     .pp-photos .carousel-item img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; display: block; }
@@ -70,7 +70,7 @@
                 <dl class="pp-facts fs-13 mb-0">
                     <dt>Occupation</dt><dd>{{ profile.occupation|default:"—" }}</dd>
                     <dt>Matchmaker</dt><dd>{{ other.matchmaker.full_name|default:"—" }}</dd>
-                    <dt>Proposed for</dt>
+                    <dt>Paired with</dt>
                     <dd>
                         <a href="{% url 'matchmaking:member-detail' mine.pk %}#pairings">{{ mine.preferred_name }}</a>
                         on {{ pairing.created_at|date:"j M Y" }}
@@ -124,6 +124,46 @@
             </div>
         </div>
         {% endif %}
+
+        <!-- Official Consultation Record -->
+        <div class="card custom-card">
+            <div class="card-header justify-content-between flex-wrap gap-2">
+                <div class="card-title">Official Consultation Record</div>
+                {% if consultation %}
+                    <span class="text-muted fs-12">Locked {{ consultation.record_locked_at|date:"j M Y" }}{% if consultation.record_locked_by %} by {{ consultation.record_locked_by.full_name }}{% endif %}</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if not consultation %}
+                    <p class="text-muted mb-0">No locked consultation record yet.</p>
+                {% else %}
+                    <div class="accordion profile-accordion">
+                        {% for section in consultation_sections %}
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="ch-{{ forloop.counter }}">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                            data-bs-target="#cc-{{ forloop.counter }}" aria-expanded="false" aria-controls="cc-{{ forloop.counter }}">
+                                        {{ section.title }}
+                                    </button>
+                                </h2>
+                                <div id="cc-{{ forloop.counter }}" class="accordion-collapse collapse" aria-labelledby="ch-{{ forloop.counter }}">
+                                    <div class="accordion-body">
+                                        <dl class="profile-answers">
+                                            {% for number, question, answer in section.rows %}
+                                                <div{% if not answer %} class="is-empty"{% endif %}>
+                                                    <dt>{% if number %}{{ number }}. {% endif %}{{ question }}</dt>
+                                                    <dd>{{ answer|default:"Not answered"|linebreaksbr }}</dd>
+                                                </div>
+                                            {% endfor %}
+                                        </dl>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
 

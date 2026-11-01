@@ -3,10 +3,12 @@ Matching: one Pairing record shared by both members.
 
 Order:
 1. A's matchmaker proposes A + B. Nobody sees anything yet.
-2. If B belongs to another matchmaker, B's matchmaker approves (or declines) first.
-3. A sees B's card and decides. "Not interested" ends it; B is never shown or told.
-4. If A is interested, B's matchmaker presents A's card to B. B decides.
-5. Both interested = mutual interest; the matchmakers arrange the introduction.
+2. If B belongs to another matchmaker, B's matchmaker reviews A's full profile and approves (or declines).
+3. A's matchmaker now sees B's full profile, talks it through with B's matchmaker, and either
+   presents B to A or closes the pairing. (Same matchmaker: steps 2 and 3 are skipped.)
+4. A sees B's card and decides. "Not interested" ends it; B is never shown or told.
+5. If A is interested, B's matchmaker presents A's card to B. B decides.
+6. Both interested = mutual interest; the matchmakers arrange the introduction.
 Declines are never deleted. Members are only ever told "This introduction will not go ahead."
 """
 from django.conf import settings
@@ -53,6 +55,12 @@ class Pairing(TimeStampedModel):
     )
     approval_at = models.DateTimeField(null=True, blank=True)
 
+    # A's matchmaker presents B to A (second approval). Set at once when it's the same matchmaker.
+    a_presented_at = models.DateTimeField(null=True, blank=True)
+    a_presented_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="pairings_presented_to_a"
+    )
+
     a_decision = models.CharField(max_length=20, choices=DecisionA.choices, default=DecisionA.PENDING)
     a_decided_at = models.DateTimeField(null=True, blank=True)
     b_decision = models.CharField(max_length=20, choices=DecisionB.choices, default=DecisionB.NOT_PRESENTED)
@@ -88,7 +96,12 @@ class Pairing(TimeStampedModel):
 
     @property
     def visible_to_a(self):
-        return self.approval in (self.Approval.NOT_NEEDED, self.Approval.APPROVED)
+        return self.a_presented_at is not None
+
+    @property
+    def waiting_to_present_to_a(self):
+        """Approved by B's matchmaker; A's matchmaker hasn't presented it to A yet."""
+        return self.is_open and self.approval == self.Approval.APPROVED and self.a_presented_at is None
 
     def other(self, client):
         return self.client_b if client.pk == self.client_a_id else self.client_a
@@ -99,7 +112,7 @@ class Pairing(TimeStampedModel):
 
 class MatchAccessLog(models.Model):
     """Who searched for or opened which member while matching. Kept for Admin to review."""
-    
+
     class Action(models.TextChoices):
         SEARCH = "search", "Searched for candidates"
         PROPOSE = "propose", "Proposed a pairing"

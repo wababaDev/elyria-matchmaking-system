@@ -55,16 +55,21 @@ def open_pairing_counts(clients):
     return counts
 
 
-def profile_pairing_for(user, pairing):
+def may_view_profile(user, pairing, client):
     """
-    B's side (her matchmaker, or Admin) may read A's profile and see A's photos while the pairing
-    is open, to decide whether to approve and how to present. Profile only: no consultation, notes,
-    comparisons or other pairings (Admin opens the member's own page for those).
-    Returns the member whose profile may be shown, or None.
+    Full profile (membership form + consultation record) of the other matchmaker's member,
+    only while the pairing is open:
+    - A's profile: B's side, from the moment it's proposed (to decide on approval)
+    - B's profile: A's side, once B's matchmaker has approved
+    Everyone else works from the search card. Admin is "both sides" for every member.
     """
-    if pairing.is_open and can_manage(user, pairing.client_b):
-        return pairing.client_a
-    return None
+    if not pairing.is_open:
+        return False
+    if client.pk == pairing.client_a_id:
+        return can_manage(user, pairing.client_b)
+    if client.pk == pairing.client_b_id:
+        return pairing.approval == P.Approval.APPROVED and can_manage(user, pairing.client_a)
+    return False
 
 
 def log_access(user, action, client=None, detail=""):
@@ -126,6 +131,9 @@ def propose(client_a, client_b, *, by, note_for_a, b_profession, b_location):
     pairing = Pairing.objects.create(
         client_a=client_a, client_b=client_b, added_by=by,
         approval=P.Approval.NOT_NEEDED if same_matchmaker else P.Approval.PENDING,
+        # Same matchmaker: no approvals, A sees it straight away
+        a_presented_at=timezone.now() if same_matchmaker else None,
+        a_presented_by=by if same_matchmaker else None,
         note_for_a=note_for_a.strip(), b_profession=b_profession.strip(), b_location=b_location.strip(),
     )
     log_access(by, MatchAccessLog.Action.PROPOSE, client_b, f"Proposed for {client_a.pk}")
@@ -149,7 +157,10 @@ def _lock(pairing):
 
 @transaction.atomic
 def answer_approval(pairing, *, by, approve, reason=""):
-    """B's matchmaker approves (A then sees the card) or declines (closed; A never sees it)."""
+    """
+    B's matchmaker approves (A's matchmaker can then see B's full profile and present it to A)
+    or declines (closed; A never sees anything).
+    """
     pairing = _lock(pairing)
     if not can_manage(by, pairing.client_b):
         raise InvalidTransitionError("Only the other member's matchmaker can answer this.")
@@ -165,9 +176,31 @@ def answer_approval(pairing, *, by, approve, reason=""):
 
     from notification.services import pairing_emails
 
-    if approve:
-        transaction.on_commit(lambda: pairing_emails.notify_member_new_introduction(pairing, pairing.client_a))
     transaction.on_commit(lambda: pairing_emails.notify_proposer_of_approval(pairing))
+    return pairing
+
+
+@transaction.atomic
+def present_to_a(pairing, *, by, note_for_a, b_profession, b_location):
+    """Second approval: A's matchmaker has seen B's full profile and shows B's card to A."""
+    pairing = _lock(pairing)
+    if not can_manage(by, pairing.client_a):
+        raise InvalidTransitionError("Only your member's matchmaker can present this.")
+    if not pairing.waiting_to_present_to_a:
+        raise InvalidTransitionError("This pairing isn't waiting to be presented.")
+    if not note_for_a.strip():
+        raise InvalidTransitionError("Write the note your member will read.")
+
+    pairing.note_for_a = note_for_a.strip()
+    pairing.b_profession = b_profession.strip()
+    pairing.b_location = b_location.strip()
+    pairing.a_presented_at = timezone.now()
+    pairing.a_presented_by = by
+    pairing.save()
+
+    from notification.services import pairing_emails
+
+    transaction.on_commit(lambda: pairing_emails.notify_member_new_introduction(pairing, pairing.client_a))
     return pairing
 
 
@@ -234,12 +267,12 @@ def _close(pairing, reason):
 def member_pairings(client):
     """
     What a member may see, and nothing else:
-    - as A: once approved (or no approval needed), unless A said "not interested"
+    - as A: once A's matchmaker has presented it, unless A said "not interested"
     - as B: once presented, unless B said "not interested"
     """
-    as_a = Pairing.objects.filter(
-        client_a=client, approval__in=[P.Approval.NOT_NEEDED, P.Approval.APPROVED]
-    ).exclude(a_decision=P.DecisionA.NOT_INTERESTED)
+    as_a = Pairing.objects.filter(client_a=client, a_presented_at__isnull=False).exclude(
+        a_decision=P.DecisionA.NOT_INTERESTED
+    )
     as_b = Pairing.objects.filter(client_b=client).exclude(
         b_decision__in=[P.DecisionB.NOT_PRESENTED, P.DecisionB.NOT_INTERESTED]
     )
@@ -249,8 +282,7 @@ def member_pairings(client):
 def matches_to_answer(client):
     """How many introductions are waiting for this member's answer (the number on My Matches)."""
     return Pairing.objects.exclude(status=P.Status.CLOSED).filter(
-        Q(client_a=client, a_decision=P.DecisionA.PENDING,
-          approval__in=[P.Approval.NOT_NEEDED, P.Approval.APPROVED])
+        Q(client_a=client, a_decision=P.DecisionA.PENDING, a_presented_at__isnull=False)
         | Q(client_b=client, b_decision=P.DecisionB.PENDING)
     ).count()
 
@@ -343,6 +375,7 @@ def pairing_queue(user):
     )
     return {
         "to_approve": base.filter(approval=P.Approval.PENDING, client_b__in=mine),
+        "to_present_a": base.filter(approval=P.Approval.APPROVED, a_presented_at__isnull=True, client_a__in=mine),
         "to_present": base.filter(a_decision=P.DecisionA.INTERESTED, b_decision=P.DecisionB.NOT_PRESENTED,
                                   client_b__in=mine),
         "to_introduce": base.filter(status=P.Status.MUTUAL, introduced_on__isnull=True).filter(
@@ -367,6 +400,8 @@ def pairing_queue_rows(user):
 
     for p in q["to_approve"]:
         add(p, "approve", p.client_b, p.created_at)
+    for p in q["to_present_a"]:
+        add(p, "present_a", p.client_a, p.approval_at or p.updated_at)
     for p in q["to_present"]:
         add(p, "present", p.client_b, p.a_decided_at or p.updated_at)
     for p in q["to_introduce"]:
@@ -402,6 +437,10 @@ def where_it_stands(pairing, user):
         if on_b_side:
             return f"Approve: {a_mm} wants to show {b.preferred_name} to their member", True
         return f"Waiting for {b_mm} to approve", False
+    if pairing.waiting_to_present_to_a:
+        if a.matchmaker_id == user.pk:
+            return f"Approved: review {b.preferred_name}'s profile, then present to {a.preferred_name}", True
+        return f"Approved. Waiting for {a_mm} to present to {a.preferred_name}", False
     if pairing.a_decision == P.DecisionA.PENDING:
         return f"Waiting for {a.preferred_name} to decide", False
     if pairing.b_decision == P.DecisionB.NOT_PRESENTED:

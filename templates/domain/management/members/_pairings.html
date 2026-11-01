@@ -25,8 +25,9 @@
                                 <strong class="fs-15">
                                     {% if row.other_is_mine %}<a href="{% url 'matchmaking:member-detail' other.pk %}">{{ other.full_name }}</a>{% else %}{{ op.preferred_name|default:other.preferred_name }}{% endif %}
                                 </strong>
-                                {% if row.side == "b" and p.is_open and other.matchmaker_id != request.user.pk %}
-                                    <a href="{% url 'matchmaking:pairing-profile' p.pk %}" class="btn btn-sm btn-light py-0 px-2 ms-1 fs-12"><i class="fe fe-user me-1"></i>View profile</a>
+                                {# Full profile of the other matchmaker's member: B's side from the start, A's side once approved #}
+                                {% if p.is_open and other.matchmaker_id != request.user.pk and row.side == "b" or p.is_open and other.matchmaker_id != request.user.pk and p.approval == "approved" %}
+                                    <a href="{% url 'matchmaking:pairing-profile' p.pk other.pk %}" class="btn btn-sm btn-light py-0 px-2 ms-1 fs-12"><i class="fe fe-user me-1"></i>View profile</a>
                                 {% endif %}
                                 <span class="text-muted fs-12 ms-1">
                                     {{ op.age|default:"—" }} · {{ op.location|default:"—" }} · {{ op.get_religion_display|default:"Faith not given" }} · Children: {{ op.get_has_children_display|default:"—" }}
@@ -43,6 +44,12 @@
                         <!-- Where it stands -->
                         <ul class="pairing-steps fs-12 mt-2 mb-0">
                             <li class="{% if p.approval == 'pending' %}is-now{% endif %}">Approval: {{ p.get_approval_display }}</li>
+                            {% if p.approval != "not_needed" %}
+                                <li class="{% if p.waiting_to_present_to_a %}is-now{% endif %}">
+                                    Presented to {% if row.side == "a" %}{{ member.preferred_name }}{% else %}{{ other.preferred_name }}{% endif %}:
+                                    {% if p.a_presented_at %}{{ p.a_presented_at|date:"j M" }}{% else %}not yet{% endif %}
+                                </li>
+                            {% endif %}
                             <li class="{% if p.a_decision == 'pending' and p.visible_to_a and p.is_open %}is-now{% endif %}">
                                 {% if row.side == "a" %}{{ member.preferred_name }}{% else %}{{ other.preferred_name }}{% endif %} (A): {{ p.get_a_decision_display }}
                             </li>
@@ -66,12 +73,36 @@
                             {% if row.side == "b" and p.approval == "pending" %}
                                 <form method="post" action="{% url 'matchmaking:pairing-approve' p.pk %}" class="pairing-action mt-3">
                                     {% csrf_token %}
-                                    <p class="fs-13 mb-2"><strong>Your approval is needed.</strong> {{ other.preferred_name }}'s matchmaker would like to show {{ member.preferred_name }} to them. Nothing is shown until you approve.</p>
+                                    <p class="fs-13 mb-2">
+                                        <strong>Your approval is needed.</strong> {{ other.matchmaker.full_name|default:"Another matchmaker" }} would like to pair {{ member.preferred_name }} with {{ other.preferred_name }}.
+                                        <a href="{% url 'matchmaking:pairing-profile' p.pk other.pk %}">Review {{ other.preferred_name }}'s full profile</a> first.
+                                        If you approve, they'll see {{ member.preferred_name }}'s full profile and decide whether to present. No member sees anything yet.
+                                    </p>
                                     <input type="text" name="reason" class="form-control form-control-sm mb-2" placeholder="Reason, if declining (staff only)">
                                     <div class="d-flex gap-2">
                                         <button type="submit" name="approve" value="yes" class="btn btn-sm btn-primary">Approve</button>
                                         <button type="submit" name="approve" value="no" class="btn btn-sm btn-outline-danger">Decline</button>
                                     </div>
+                                </form>
+                            {% endif %}
+
+                            {% if row.side == "a" and p.waiting_to_present_to_a %}
+                                <form method="post" action="{% url 'matchmaking:pairing-present-a' p.pk %}" class="pairing-action mt-3">
+                                    {% csrf_token %}
+                                    <p class="fs-13 mb-2">
+                                        <strong>Approved by {{ p.approval_by.full_name|default:"the other matchmaker" }}.</strong>
+                                        <a href="{% url 'matchmaking:pairing-profile' p.pk other.pk %}">See {{ other.preferred_name }}'s full profile</a>
+                                        and talk it through. If you're happy, present {{ other.preferred_name }} to {{ member.preferred_name }}; if not, close the pairing below.
+                                    </p>
+                                    <textarea name="note" rows="2" class="form-control form-control-sm mb-2" required placeholder="Why this person could suit {{ member.preferred_name }}">{{ p.note_for_a }}</textarea>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-md-6"><input type="text" name="profession" value="{{ p.b_profession }}" class="form-control form-control-sm" placeholder="Their profession, as shown (e.g. Works in finance)"></div>
+                                        <div class="col-md-6"><input type="text" name="location" value="{{ p.b_location }}" class="form-control form-control-sm" placeholder="Their location, as shown (e.g. Lusaka)"></div>
+                                    </div>
+                                    <button type="submit" class="btn btn-sm btn-primary"
+                                            data-confirm-title="Present to {{ member.preferred_name }}"
+                                            data-confirm="{{ member.preferred_name }} will see the card in their portal and be emailed."
+                                            data-confirm-button="Present">Present to {{ member.preferred_name }}</button>
                                 </form>
                             {% endif %}
 

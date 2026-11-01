@@ -195,37 +195,35 @@ class CrossMatchmakerTests(PairingCase):
         self.assertNotContains(self.portal(self.natasha), "David")
         self.assertNotContains(self.portal(self.david), "Natasha")
 
-        # David's matchmaker approves: now Natasha sees David's card, David still sees nothing
+        # Approval 1: David's matchmaker approves. Still nobody sees anything.
         self.as_user(self.annastasia)
         with self.captureOnCommitCallbacks(execute=True):
             self.client.post(
                 reverse("matchmaking:pairing-approve", args=[pairing.pk]),
                 {"approve": "yes"},
             )
-        self.assertContains(self.portal(self.natasha), "David")
+        self.assertNotContains(self.portal(self.natasha), "David")
         self.assertNotContains(self.portal(self.david), "Natasha")
 
-        # Natasha is interested; David's matchmaker presents
-        self.decide(self.natasha, pairing, "interested")
-        self.assertEqual(pairing.a_decision, "interested")
-        self.as_user(self.annastasia)
+        # Approval 2: Natasha's matchmaker sees David's full profile, then presents him to Natasha
+        self.as_user(self.anisha)
+        self.assertEqual(
+            self.client.get(
+                reverse("matchmaking:pairing-profile", args=[pairing.pk, self.david.pk])
+            ).status_code,
+            200,
+        )
         with self.captureOnCommitCallbacks(execute=True):
             self.client.post(
-                reverse("matchmaking:pairing-present", args=[pairing.pk]),
+                reverse("matchmaking:pairing-present-a", args=[pairing.pk]),
                 {
-                    "note": "Warm and family-minded.",
-                    "profession": "Works in finance",
+                    "note": "You both value family.",
+                    "profession": "Works in engineering",
                     "location": "Lusaka",
                 },
             )
-        response = self.portal(self.david)
-        self.assertContains(response, "Natasha")
-        self.assertContains(response, "Works in finance")
-        self.assertNotContains(response, "Kabwe")
-
-        # David is interested too: mutual interest
-        self.decide(self.david, pairing, "interested")
-        self.assertEqual(pairing.status, Pairing.Status.MUTUAL)
+        self.assertContains(self.portal(self.natasha), "David")
+        self.assertNotContains(self.portal(self.david), "Natasha")
 
     def test_other_matchmaker_cannot_present_or_approve_for_someone_elses_member(self):
         pairing = self.propose(self.natasha, self.david, self.anisha)
@@ -295,45 +293,21 @@ class PairingListTests(PairingCase):
         )
 
 
-class OtherMatchmakerProfileTests(PairingCase):
-    def test_receiving_matchmaker_sees_profile_without_contact_details(self):
-        pairing = self.propose(self.natasha, self.david, self.anisha)   # David is Annastasia's
-        url = reverse("matchmaking:pairing-profile", args=[pairing.pk])
-
-        self.as_user(self.annastasia)
-        response = self.client.get(url)
-        self.assertContains(response, "Natasha's profile")
-        self.assertNotContains(response, "Kabwe")   # full name hidden
-        self.assertTrue(MatchAccessLog.objects.filter(user=self.annastasia, client=self.natasha).exists())
-
-    def test_proposing_matchmaker_goes_to_her_own_member_page(self):
-        pairing = self.propose(self.natasha, self.david, self.anisha)
-        self.as_user(self.anisha)
-        response = self.client.get(reverse("matchmaking:pairing-profile", args=[pairing.pk]))
-        self.assertRedirects(response, reverse("matchmaking:member-detail", args=[self.natasha.pk]),
-                             fetch_redirect_response=False)
-
-    def test_not_after_close_and_not_for_finance(self):
-        pairing = self.propose(self.natasha, self.david, self.anisha)
-        url = reverse("matchmaking:pairing-profile", args=[pairing.pk])
-        self.as_user(self.finance)
-        self.assertEqual(self.client.get(url).status_code, 403)
-
-        self.as_user(self.annastasia)
-        self.client.post(reverse("matchmaking:pairing-approve", args=[pairing.pk]), {"approve": "no", "reason": "Not suitable"})
-        self.assertEqual(self.client.get(url).status_code, 404)
-
-
 class FindMatchChildrenTests(PairingCase):
     def test_not_open_to_children_starts_without_them(self):
-        ClientProfile.objects.filter(client=self.natasha).update(open_to_partner_children="no")
+        ClientProfile.objects.filter(client=self.natasha).update(
+            open_to_partner_children="no"
+        )
         ClientProfile.objects.filter(client=self.joseph).update(has_children="yes")
         ClientProfile.objects.filter(client=self.david).update(has_children="no")
 
         self.as_user(self.anisha)
-        response = self.client.get(reverse("matchmaking:find-match", args=[self.natasha.pk]))
+        response = self.client.get(
+            reverse("matchmaking:find-match", args=[self.natasha.pk])
+        )
         self.assertNotContains(response, "Joseph Banda")
         self.assertContains(response, 'data-name="David"')
+
 
 class PhotoPrivacyTests(PairingCase):
     def test_member_cannot_fetch_photo_of_someone_not_presented(self):
@@ -366,61 +340,114 @@ class PortalCountTests(PairingCase):
 class AdminAsMatchmakerTests(PairingCase):
     def test_admin_with_own_members_sees_her_side(self):
         boss = make_user("boss@x.com", Groups.ADMIN)
-        chipo = make_member("Chipo Mwale", gender="female", seeking="man", matchmaker=boss)
-        self.propose(self.joseph, chipo, self.anisha)          # Anisha's member -> Admin's member
-        self.propose(self.natasha, self.david, self.anisha)    # nothing to do with the Admin's members
+        chipo = make_member(
+            "Chipo Mwale", gender="female", seeking="man", matchmaker=boss
+        )
+        self.propose(
+            self.joseph, chipo, self.anisha
+        )  # Anisha's member -> Admin's member
+        self.propose(
+            self.natasha, self.david, self.anisha
+        )  # nothing to do with the Admin's members
 
         self.as_user(boss)
         response = self.client.get(reverse("matchmaking:pairings") + "?show=me")
-        self.assertContains(response, "Chipo Mwale")            # her member, in the Member column
+        self.assertContains(response, "Chipo Mwale")  # her member, in the Member column
         self.assertContains(response, "Received")
-        self.assertContains(response, "Approve: Anisha User wants to show Chipo to their member")
-        self.assertNotContains(response, "wants to show David")  # Annastasia's to approve, not hers
+        self.assertContains(
+            response, "Approve: Anisha User wants to show Chipo to their member"
+        )
+        self.assertNotContains(
+            response, "wants to show David"
+        )  # Annastasia's to approve, not hers
 
         response = self.client.get(reverse("matchmaking:pairings") + "?show=others")
-        self.assertContains(response, "Other matchmakers")      # still visible to Admin, just not "on me"
+        self.assertContains(
+            response, "Other matchmakers"
+        )  # still visible to Admin, just not "on me"
 
 
-class OtherMatchmakerProfileTests(PairingCase):
-    def test_receiving_matchmaker_sees_profile_and_photos_without_contact_details(self):
-        pairing = self.propose(self.natasha, self.david, self.anisha)   # David is Annastasia's
-        url = reverse("matchmaking:pairing-profile", args=[pairing.pk])
+class FullProfileAccessTests(PairingCase):
+    """Natasha (Anisha's) proposed to David (Annastasia's)."""
 
+    def profile_url(self, pairing, client):
+        return reverse("matchmaking:pairing-profile", args=[pairing.pk, client.pk])
+
+    def approve(self, pairing):
         self.as_user(self.annastasia)
-        response = self.client.get(url)
+        self.client.post(
+            reverse("matchmaking:pairing-approve", args=[pairing.pk]),
+            {"approve": "yes"},
+        )
+
+    def test_receiving_matchmaker_sees_proposed_member_without_contact_details(self):
+        pairing = self.propose(self.natasha, self.david, self.anisha)
+        self.as_user(self.annastasia)
+        response = self.client.get(self.profile_url(pairing, self.natasha))
         self.assertContains(response, "Natasha's profile")
-        self.assertNotContains(response, "Kabwe")   # full name hidden
-        self.assertTrue(MatchAccessLog.objects.filter(user=self.annastasia, client=self.natasha).exists())
+        self.assertContains(response, "Official Consultation Record")
+        self.assertNotContains(response, "Kabwe")  # full name hidden
+        self.assertTrue(
+            MatchAccessLog.objects.filter(
+                user=self.annastasia, client=self.natasha
+            ).exists()
+        )
+
+    def test_proposing_matchmaker_sees_other_member_only_after_approval(self):
+        pairing = self.propose(self.natasha, self.david, self.anisha)
+        self.as_user(self.anisha)
+        self.assertEqual(
+            self.client.get(self.profile_url(pairing, self.david)).status_code, 404
+        )
+        self.approve(pairing)
+        self.as_user(self.anisha)
+        self.assertContains(
+            self.client.get(self.profile_url(pairing, self.david)), "David's profile"
+        )
+
+    def test_member_sees_nothing_until_second_approval(self):
+        pairing = self.propose(self.natasha, self.david, self.anisha)
+        self.approve(pairing)
+        self.assertNotContains(self.portal(self.natasha), "David")
+        self.as_user(self.anisha)
+        response = self.client.get(reverse("matchmaking:pairings") + "?show=me")
+        self.assertContains(
+            response, "Approved: review David&#x27;s profile, then present to Natasha"
+        )
 
     def test_admin_gets_the_same_page(self):
         boss = make_user("boss@x.com", Groups.ADMIN)
         pairing = self.propose(self.natasha, self.david, self.anisha)
         self.as_user(boss)
-        response = self.client.get(reverse("matchmaking:pairing-profile", args=[pairing.pk]))
-        self.assertContains(response, "Natasha's profile")
+        self.assertContains(
+            self.client.get(self.profile_url(pairing, self.natasha)),
+            "Natasha's profile",
+        )
 
-    def test_proposing_matchmaker_and_finance_cannot(self):
+    def test_not_for_finance_and_not_after_close(self):
         pairing = self.propose(self.natasha, self.david, self.anisha)
-        url = reverse("matchmaking:pairing-profile", args=[pairing.pk])
-        self.as_user(self.anisha)                   # Natasha's own matchmaker is not B's side
-        self.assertEqual(self.client.get(url).status_code, 404)
+        url = self.profile_url(pairing, self.natasha)
         self.as_user(self.finance)
         self.assertEqual(self.client.get(url).status_code, 403)
-
-    def test_not_after_close(self):
-        pairing = self.propose(self.natasha, self.david, self.anisha)
         self.as_user(self.annastasia)
-        self.client.post(reverse("matchmaking:pairing-approve", args=[pairing.pk]), {"approve": "no", "reason": "Not suitable"})
-        self.assertEqual(self.client.get(reverse("matchmaking:pairing-profile", args=[pairing.pk])).status_code, 404)
+        self.client.post(
+            reverse("matchmaking:pairing-approve", args=[pairing.pk]),
+            {"approve": "no", "reason": "Not suitable"},
+        )
+        self.assertEqual(self.client.get(url).status_code, 404)
 
 
 class FindMatchChildrenTests(PairingCase):
     def test_not_open_to_children_starts_without_them(self):
-        ClientProfile.objects.filter(client=self.natasha).update(open_to_partner_children="no")
+        ClientProfile.objects.filter(client=self.natasha).update(
+            open_to_partner_children="no"
+        )
         ClientProfile.objects.filter(client=self.joseph).update(has_children="yes")
         ClientProfile.objects.filter(client=self.david).update(has_children="no")
 
         self.as_user(self.anisha)
-        response = self.client.get(reverse("matchmaking:find-match", args=[self.natasha.pk]))
+        response = self.client.get(
+            reverse("matchmaking:find-match", args=[self.natasha.pk])
+        )
         self.assertNotContains(response, "Joseph Banda")
         self.assertContains(response, 'data-name="David"')

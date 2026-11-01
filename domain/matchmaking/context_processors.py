@@ -16,8 +16,7 @@ def queue_counts(request):
 
     counts = {"open_enquiries_count": Enquiry.objects.filter(status=Enquiry.Status.OPEN).count()}
     if user.has_perm("base.manage_matching"):
-        q = pairing_queue(user)
-        counts["pairings_waiting"] = q["to_approve"].count() + q["to_present"].count() + q["to_introduce"].count()
+        counts["pairings_waiting"] = sum(qs.count() for qs in pairing_queue(user).values())
     if user.has_perm("base.manage_consultation_request"):
         counts["staff_queue_count"] = sum(len(s["items"]) for s in queue_for(user))
     return counts
