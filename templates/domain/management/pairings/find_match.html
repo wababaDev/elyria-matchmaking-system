@@ -21,8 +21,17 @@
                     <dt class="text-muted fw-normal">Partner with children</dt><dd>{{ profile.get_open_to_partner_children_display|default:"—" }}</dd>
                     <dt class="text-muted fw-normal">Long distance</dt><dd>{{ profile.get_open_to_long_distance_display|default:"—" }}</dd>
                     <dt class="text-muted fw-normal">Shared faith</dt><dd>{{ profile.get_partner_faith_importance_display|default:"—" }}</dd>
-                    <dt class="text-muted fw-normal">Non-negotiables</dt><dd class="mb-0">{{ profile.non_negotiables|join:"; "|default:"—" }}</dd>
+                    <dt class="text-muted fw-normal">Non-negotiables</dt><dd>{{ profile.non_negotiables|join:"; "|default:"—" }}</dd>
+                    <dt class="text-muted fw-normal">Other preferences</dt><dd class="mb-0">{{ profile.partner_preferences|default:"—"|truncatechars:200 }}</dd>
                 </dl>
+                <hr>
+                <p class="text-muted fs-12 mb-1">About {{ member.preferred_name }}, to compare</p>
+                <ul class="list-unstyled mb-0">
+                    <li>{{ profile.age|default:"—" }} · {{ profile.location|default:"—" }}</li>
+                    <li>Education: {{ profile.get_education_display|default:"—" }}</li>
+                    <li>Work: {{ profile.occupation|default:"—" }}{% if profile.employment_status %} · {{ profile.employment_status|truncatechars:40 }}{% endif %}</li>
+                    <li>Children: {{ profile.get_has_children_display|default:"—" }}</li>
+                </ul>
                 <p class="text-muted fs-12 mt-3 mb-0">{{ member.preferred_name }} is in {{ member_open_pairings }} open pairing{{ member_open_pairings|pluralize }}.</p>
             </div>
         </div>
@@ -69,6 +78,9 @@
                                 <li>{{ p.age|default:"—" }} · {{ p.location|default:"—" }}</li>
                                 <li>Faith: {{ p.get_religion_display|default:"—" }}</li>
                                 <li>Children: {{ p.get_has_children_display|default:"—" }} · Wants: {{ p.get_wants_children_display|default:"—" }}</li>
+                                <li>Education: {{ p.get_education_display|default:"—" }}</li>
+                                <li>Work: {{ p.occupation|default:"—" }}{% if p.employment_status %} · {{ p.employment_status|truncatechars:40 }}{% endif %}</li>
+                                <li class="text-muted fs-12">Wants: {{ p.partner_age_min|default:"?" }}–{{ p.partner_age_max|default:"?" }} · Partner with children: {{ p.get_open_to_partner_children_display|default:"—" }}</li>
                                 <li class="text-muted fs-12">Matchmaker: {% if card.mine %}You{% else %}{{ c.matchmaker.full_name|default:"—" }}{% endif %}</li>
                             </ul>
                             <button type="button" class="btn btn-sm btn-primary w-100"

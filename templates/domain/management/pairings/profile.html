@@ -1,0 +1,154 @@
+{% extends "layouts/management.html" %}
+{% block title %}{{ profile.preferred_name|default:other.preferred_name }}: profile{% endblock %}
+{% block page_title %}{{ profile.preferred_name|default:other.preferred_name }}'s profile{% endblock %}
+{% block page_actions %}
+    <a href="{% url 'matchmaking:member-detail' mine.pk %}#pairings" class="btn btn-sm btn-light"><i class="fe fe-arrow-left me-1"></i>Back to {{ mine.preferred_name }}</a>
+{% endblock %}
+
+{% block content %}
+{# Read-only, for the matchmaker who received this pairing (Admin too). Profile and photos only. #}
+<style>
+    .pp-photos { border-radius: 8px; overflow: hidden; background: #f3f0ee; }
+    .pp-photos .carousel-item img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; display: block; }
+    .pp-photos .pp-kind {
+        position: absolute; left: .75rem; bottom: .75rem;
+        background: rgba(0, 0, 0, .55); color: #fff; font-size: .75rem;
+        padding: .15rem .55rem; border-radius: 999px;
+    }
+    .pp-photos .carousel-indicators { margin-bottom: .5rem; }
+    .pp-thumbs { display: flex; gap: .5rem; margin-top: .5rem; }
+    .pp-thumbs button { border: 2px solid transparent; padding: 0; border-radius: 6px; overflow: hidden; width: 56px; background: none; }
+    .pp-thumbs button.active { border-color: var(--primary-color, #6E1423); }
+    .pp-thumbs img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+    .pp-facts dt { font-weight: 400; color: #8c8c8c; font-size: .75rem; margin-top: .6rem; }
+    .pp-facts dd { margin-bottom: 0; }
+</style>
+
+<div class="row">
+    <!-- Left: photos and the short facts -->
+    <div class="col-xl-3">
+        <div class="card custom-card">
+            <div class="card-body">
+                {% if photos %}
+                    <div id="ppPhotos" class="carousel slide pp-photos" data-bs-ride="false">
+                        <div class="carousel-inner">
+                            {% for photo in photos %}
+                                <div class="carousel-item{% if forloop.first %} active{% endif %}">
+                                    <a href="{% url 'matchmaking:pairing-photo' pairing.pk photo.pk %}" target="_blank" rel="noopener" title="Open full size">
+                                        <img src="{% url 'matchmaking:pairing-photo' pairing.pk photo.pk %}" alt="{{ photo.get_kind_display }} photo">
+                                    </a>
+                                    <span class="pp-kind">{{ photo.get_kind_display }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% if photos|length > 1 %}
+                            <button class="carousel-control-prev" type="button" data-bs-target="#ppPhotos" data-bs-slide="prev" aria-label="Previous photo">
+                                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                            </button>
+                            <button class="carousel-control-next" type="button" data-bs-target="#ppPhotos" data-bs-slide="next" aria-label="Next photo">
+                                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                            </button>
+                        {% endif %}
+                    </div>
+                    {% if photos|length > 1 %}
+                        <div class="pp-thumbs">
+                            {% for photo in photos %}
+                                <button type="button" data-bs-target="#ppPhotos" data-bs-slide-to="{{ forloop.counter0 }}"
+                                        class="{% if forloop.first %}active{% endif %}" aria-label="{{ photo.get_kind_display }} photo">
+                                    <img src="{% url 'matchmaking:pairing-photo' pairing.pk photo.pk %}" alt="">
+                                </button>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="pp-photos d-flex align-items-center justify-content-center text-muted fs-13" style="aspect-ratio: 3 / 4;">No photos uploaded</div>
+                {% endif %}
+
+                <h5 class="mt-3 mb-0">{{ profile.preferred_name|default:other.preferred_name }}</h5>
+                <div class="text-muted fs-13">{{ profile.age|default:"—" }} · {{ profile.location|default:"—" }}</div>
+
+                <dl class="pp-facts fs-13 mb-0">
+                    <dt>Occupation</dt><dd>{{ profile.occupation|default:"—" }}</dd>
+                    <dt>Matchmaker</dt><dd>{{ other.matchmaker.full_name|default:"—" }}</dd>
+                    <dt>Proposed for</dt>
+                    <dd>
+                        <a href="{% url 'matchmaking:member-detail' mine.pk %}#pairings">{{ mine.preferred_name }}</a>
+                        on {{ pairing.created_at|date:"j M Y" }}
+                    </dd>
+                </dl>
+
+                <p class="text-muted fs-12 border-top pt-2 mt-3 mb-0">
+                    <i class="fe fe-lock me-1"></i>Read-only. Contact details are hidden and this visit is recorded.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: their answers -->
+    <div class="col-xl-9">
+        {% if not profile %}
+            <p class="text-muted">No profile yet.</p>
+        {% else %}
+        <div class="card custom-card member-profile">
+            <div class="card-header justify-content-between flex-wrap gap-2">
+                <div class="card-title">Self-Service Profile</div>
+                <button type="button" class="btn btn-sm btn-light" data-profile-toggle>Expand all</button>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="col-xxl-6">
+                        {% for group in profile_groups %}
+                            {% if group.zone != "partner" %}
+                                <h3 class="profile-part">{{ group.label }}</h3>
+                                <div class="accordion profile-accordion mb-4">
+                                    {% for item in group.sections %}
+                                        {% include "domain/management/members/_profile_section.html" %}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <div class="col-xxl-6">
+                        {% for group in profile_groups %}
+                            {% if group.zone == "partner" %}
+                                <h3 class="profile-part profile-part-partner">{{ group.label }}</h3>
+                                <div class="accordion profile-accordion profile-accordion-partner">
+                                    {% for item in group.sections %}
+                                        {% include "domain/management/members/_profile_section.html" %}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Expand / collapse all answers
+document.querySelectorAll('[data-profile-toggle]').forEach(function (button) {
+    button.addEventListener('click', function () {
+        var card = button.closest('.member-profile');
+        var open = button.textContent.trim() === 'Expand all';
+        card.querySelectorAll('.accordion-collapse').forEach(function (panel) {
+            bootstrap.Collapse.getOrCreateInstance(panel, { toggle: false })[open ? 'show' : 'hide']();
+        });
+        button.textContent = open ? 'Collapse all' : 'Expand all';
+    });
+});
+
+// Keep the thumbnail highlight in step with the slider
+(function () {
+    var carousel = document.getElementById('ppPhotos');
+    if (!carousel) return;
+    carousel.addEventListener('slid.bs.carousel', function (event) {
+        document.querySelectorAll('.pp-thumbs button').forEach(function (thumb, i) {
+            thumb.classList.toggle('active', i === event.to);
+        });
+    });
+})();
+</script>
+{% endblock %}

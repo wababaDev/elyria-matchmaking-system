@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.http import Http404, HttpResponse
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.views import View
@@ -15,11 +15,12 @@ from domain.matchmaking.forms.pairing_forms import (
     PresentForm,
     ProposePairingForm,
 )
-from domain.matchmaking.models import Client, MatchAccessLog
+from domain.matchmaking.models import Client, MatchAccessLog, ProfilePhoto
 from domain.matchmaking.models.pairing import OPEN_PAIRING_LIMIT
 from domain.matchmaking.services.blurred_photo import blurred_jpeg
 from domain.matchmaking.services.consultation_request_service import InvalidTransitionError
 from domain.matchmaking.services.member_service import members_visible_to
+from domain.matchmaking.profile_sections import answers_by_group
 from domain.matchmaking.services.pairing_service import (
     answer_approval,
     can_manage,
@@ -29,6 +30,7 @@ from domain.matchmaking.services.pairing_service import (
     open_pairing_counts,
     pairings_visible_to,
     present_to_b,
+    profile_pairing_for,
     propose,
     record_introduction,
 )
@@ -54,6 +56,9 @@ class FindMatchView(StaffRequiredMixin, TemplateView):
 
         # Start from the member's own preferred age range
         initial = {"age_min": getattr(profile, "partner_age_min", None), "age_max": getattr(profile, "partner_age_max", None)}
+        # "Not open to a partner with children" starts the search on candidates without children
+        if getattr(profile, "open_to_partner_children", "") == "no":
+            initial["children"] = "no"
         form = FindMatchForm(self.request.GET or None, initial=initial)
         filters = form.cleaned_data if form.is_bound and form.is_valid() else initial
 
@@ -197,6 +202,36 @@ class CandidatePhotoView(StaffRequiredMixin, View):
         return response
 
 
+class PairingCardPhotoView(StaffRequiredMixin, View):
+    """
+    The small photo of the other person on a member's Pairings tab.
+    The real photo (close-up first) when you may see it: your own member, Admin, or the member
+    proposed to yours while the pairing is open. Otherwise the blurred one, as on Find a match.
+    """
+    permission_required = "base.manage_matching"
+
+    def get(self, request, pk, client_pk):
+        pairing = get_object_or_404(pairings_visible_to(request.user), pk=pk)
+        if client_pk not in (pairing.client_a_id, pairing.client_b_id):
+            raise Http404
+        other = pairing.client_a if client_pk == pairing.client_a_id else pairing.client_b
+        allowed = can_manage(request.user, other) or profile_pairing_for(request.user, pairing) == other
+        photo = ProfilePhoto.objects.filter(profile__client=other).order_by("kind").first() if allowed else None
+        if photo:
+            try:
+                response = FileResponse(photo.image.open("rb"))
+                response["Cache-Control"] = "private, no-store"
+                return response
+            except FileNotFoundError:
+                pass
+        data = blurred_jpeg(other)
+        if data is None:
+            raise Http404
+        response = HttpResponse(data, content_type="image/jpeg")
+        response["Cache-Control"] = "private, max-age=600"
+        return response
+
+
 class PairingListView(StaffRequiredMixin, TemplateView):
     """Every pairing involving your members, wherever it's waiting (Admin: all)."""
     permission_required = "base.manage_matching"
@@ -215,3 +250,63 @@ class PairingListView(StaffRequiredMixin, TemplateView):
         page = Paginator(rows, self.paginate_by).get_page(self.request.GET.get("page"))
         context.update(filters=OVERVIEW_FILTERS, show=show, rows=page.object_list, page_obj=page)
         return context
+
+
+class PairingProfileView(StaffRequiredMixin, TemplateView):
+    """
+    The member proposed to one of yours: their profile answers and photos, read-only.
+    The same page for every matchmaker, Admin included. Every visit is logged.
+    """
+    permission_required = "base.manage_matching"
+    template_name = "domain/management/pairings/profile.html"
+
+    def get(self, request, *args, **kwargs):
+        self.pairing = get_object_or_404(pairings_visible_to(request.user), pk=kwargs["pk"])
+        self.other = profile_pairing_for(request.user, self.pairing)
+        if self.other is None:
+            raise Http404
+        log_access(request.user, MatchAccessLog.Action.VIEW_PAIRING, self.other,
+                   f"opened profile through pairing {self.pairing.pk}")
+        return super().get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        profile = getattr(self.other, "profile", None)
+        context.update(
+            pairing=self.pairing,
+            other=self.other,
+            mine=self.pairing.client_b,
+            profile=profile,
+            photos=list(profile.photos.all()) if profile else [],
+            profile_groups=_without_contact(answers_by_group(profile, has_photos=True)) if profile else [],
+        )
+        return context
+
+
+class PairingPhotoView(StaffRequiredMixin, View):
+    """One of A's real photos, for the page above. Same rule: B's side, pairing still open."""
+    permission_required = "base.manage_matching"
+
+    def get(self, request, pk, photo_pk):
+        pairing = get_object_or_404(pairings_visible_to(request.user), pk=pk)
+        other = profile_pairing_for(request.user, pairing)
+        if other is None:
+            raise Http404
+        photo = get_object_or_404(ProfilePhoto, pk=photo_pk, profile__client=other)
+        try:
+            response = FileResponse(photo.image.open("rb"))
+        except FileNotFoundError:
+            raise Http404
+        response["Cache-Control"] = "private, no-store"
+        return response
+
+
+# Never shown to another matchmaker: they introduce members through their own matchmaker
+CONTACT_LABELS = {"Full name", "Phone number"}
+
+
+def _without_contact(groups):
+    for group in groups:
+        for item in group["sections"]:
+            item["rows"] = [(label, answer) for label, answer in item["rows"] if label not in CONTACT_LABELS]
+    return groups

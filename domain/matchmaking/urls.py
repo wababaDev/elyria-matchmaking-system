@@ -74,4 +74,7 @@ urlpatterns = [
     path("pairings/<int:pk>/close/", pairing.ClosePairingView.as_view(), name="pairing-close"),
     path("pairings/photo/<int:client_pk>/", pairing.CandidatePhotoView.as_view(), name="candidate-photo"),
     path("pairings/", pairing.PairingListView.as_view(), name="pairings"),
+     path("pairings/<int:pk>/profile/", pairing.PairingProfileView.as_view(), name="pairing-profile"),
+        path("pairings/<int:pk>/photos/<int:photo_pk>/", pairing.PairingPhotoView.as_view(), name="pairing-photo"),
+           path("pairings/<int:pk>/card-photo/<int:client_pk>/", pairing.PairingCardPhotoView.as_view(), name="pairing-card-photo"),
 ]

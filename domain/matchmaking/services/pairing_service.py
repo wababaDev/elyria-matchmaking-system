@@ -55,6 +55,18 @@ def open_pairing_counts(clients):
     return counts
 
 
+def profile_pairing_for(user, pairing):
+    """
+    B's side (her matchmaker, or Admin) may read A's profile and see A's photos while the pairing
+    is open, to decide whether to approve and how to present. Profile only: no consultation, notes,
+    comparisons or other pairings (Admin opens the member's own page for those).
+    Returns the member whose profile may be shown, or None.
+    """
+    if pairing.is_open and can_manage(user, pairing.client_b):
+        return pairing.client_a
+    return None
+
+
 def log_access(user, action, client=None, detail=""):
     MatchAccessLog.objects.create(user=user, action=action, client=client, detail=detail[:300])
 
@@ -318,9 +330,14 @@ def warning_for(client):
     return ""
 
 
+def own_members(user):
+    """Members this person is the matchmaker for. Admin can see everyone, but only these are hers."""
+    return Client.objects.filter(matchmaker=user)
+
+
 def pairing_queue(user):
-    """For My Queue: pairings waiting on this matchmaker."""
-    mine = members_visible_to(user).values("pk")
+    """Pairings waiting on this matchmaker for her own members (the red sidebar number)."""
+    mine = own_members(user).values("pk")
     base = Pairing.objects.exclude(status=P.Status.CLOSED).select_related(
         "client_a", "client_b", "client_a__profile", "client_b__profile"
     )
@@ -339,7 +356,7 @@ def pairing_queue_rows(user):
     One row per thing waiting on this staff member, oldest first:
     {"p", "step": approve|present|introduce, "mine", "other", "other_profile", "since"}
     """
-    mine_ids = set(members_visible_to(user).values_list("pk", flat=True))
+    mine_ids = set(own_members(user).values_list("pk", flat=True))
     q = pairing_queue(user)
     rows = []
 
@@ -375,7 +392,9 @@ def where_it_stands(pairing, user):
     a, b = pairing.client_a, pairing.client_b
     a_mm = a.matchmaker.full_name if a.matchmaker else "the other matchmaker"
     b_mm = b.matchmaker.full_name if b.matchmaker else "the other matchmaker"
-    on_b_side = can_manage(user, b)
+    # "Waiting on me" means your own members. Admin can still act on anyone's, from the member page.
+    on_b_side = b.matchmaker_id == user.pk
+    on_either_side = on_b_side or a.matchmaker_id == user.pk
 
     if not pairing.is_open:
         return f"Closed: {pairing.closed_reason}", False
@@ -392,7 +411,7 @@ def where_it_stands(pairing, user):
     if pairing.b_decision == P.DecisionB.PENDING:
         return f"Waiting for {b.preferred_name} to decide", False
     if pairing.status == P.Status.MUTUAL and not pairing.introduced_on:
-        return "Both interested: arrange the introduction", True
+        return "Both interested: arrange the introduction", on_either_side
     if pairing.introduced_on:
         return f"Introduced {pairing.introduced_on:%d %b %Y}", False
     return pairing.get_status_display(), False
@@ -400,7 +419,7 @@ def where_it_stands(pairing, user):
 
 def pairing_overview(user, show="open"):
     """Every pairing involving the user's members (Admin: all), with where each one stands."""
-    mine_ids = set(members_visible_to(user).values_list("pk", flat=True))
+    visible_ids = set(members_visible_to(user).values_list("pk", flat=True))
     qs = pairings_visible_to(user).select_related("client_a__membership__tier", "client_b__membership__tier")
     if show == "closed":
         qs = qs.filter(status=P.Status.CLOSED)
@@ -411,19 +430,28 @@ def pairing_overview(user, show="open"):
 
     rows = []
     for p in qs.order_by("-updated_at"):
-        a_mine, b_mine = p.client_a_id in mine_ids, p.client_b_id in mine_ids
-        # internal: both are my members (no approval needed); sent: my member is A; received: my member is B
-        kind = "internal" if a_mine and b_mine else "sent" if a_mine else "received"
+        # "Mine" = I'm their matchmaker (not just able to see them, as Admin can see everyone)
+        a_mine, b_mine = p.client_a.matchmaker_id == user.pk, p.client_b.matchmaker_id == user.pk
+        # internal: both mine (no approval needed); sent: mine is A; received: mine is B;
+        # others: neither is mine (Admin looking at other matchmakers' pairings)
+        if a_mine and b_mine:
+            kind = "internal"
+        elif a_mine:
+            kind = "sent"
+        elif b_mine:
+            kind = "received"
+        else:
+            kind = "others"
         text, on_me = where_it_stands(p, user)
         if show == "me" and not on_me:
             continue
         if show == "others" and on_me:
             continue
-        mine = p.client_a if a_mine else p.client_b
+        mine = p.client_b if b_mine and not a_mine else p.client_a
         other = p.other(mine)
         rows.append({
             "p": p, "mine": mine, "other": other, "other_profile": getattr(other, "profile", None),
-            "other_is_mine": other.pk in mine_ids, "kind": kind,
+            "other_is_mine": other.pk in visible_ids, "kind": kind,
             "stands": text, "on_me": on_me,
         })
     return rows

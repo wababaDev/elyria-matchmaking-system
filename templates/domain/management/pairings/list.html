@@ -19,7 +19,7 @@
             <table class="table table-hover mb-0 align-middle">
                 <thead>
                     <tr>
-                        <th>Your member</th>
+                        <th>Member</th>
                         <th>Paired with</th>
                         <th>Type</th>
                         <th>Where it stands</th>
@@ -36,7 +36,13 @@
                                     <div class="text-muted fs-12">{{ mine.membership.tier.name|default:"" }}</div>
                                 </td>
                                 <td>
-                                    {% if row.other_is_mine %}
+                                    {% if row.kind == "received" %}
+                                        {# Another matchmaker's member: the profile page, same for Admin #}
+                                        <span class="fw-semibold">{{ op.preferred_name|default:other.preferred_name }}</span>
+                                        {% if p.is_open %}
+                                            <a href="{% url 'matchmaking:pairing-profile' p.pk %}" class="fs-12 ms-1">View profile</a>
+                                        {% endif %}
+                                    {% elif row.other_is_mine %}
                                         <a href="{% url 'matchmaking:member-detail' other.pk %}#pairings" class="fw-semibold">{{ other.full_name }}</a>
                                     {% else %}
                                         <span class="fw-semibold">{{ op.preferred_name|default:other.preferred_name }}</span>
@@ -50,9 +56,12 @@
                                     {% elif row.kind == "sent" %}
                                         <span class="badge bg-info-transparent">Sent</span>
                                         <div class="text-muted fs-12">to {{ other.matchmaker.full_name|default:"no matchmaker" }}</div>
-                                    {% else %}
+                                    {% elif row.kind == "received" %}
                                         <span class="badge bg-warning-transparent">Received</span>
                                         <div class="text-muted fs-12">from {{ other.matchmaker.full_name|default:"no matchmaker" }}</div>
+                                    {% else %}
+                                        <span class="badge bg-light text-muted">Other matchmakers</span>
+                                        <div class="text-muted fs-12">{{ mine.matchmaker.full_name|default:"—" }} → {{ other.matchmaker.full_name|default:"—" }}</div>
                                     {% endif %}
                                 </td>
                                 <td>

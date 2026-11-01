@@ -18,13 +18,16 @@
             {% with p=row.p other=row.other op=row.other_profile %}
             <div class="pairing{% if not p.is_open %} is-closed{% endif %}">
                 <div class="d-flex gap-3">
-                    <img src="{% url 'matchmaking:candidate-photo' other.pk %}" alt="" class="pairing-photo" onerror="this.style.visibility='hidden'">
+                    <img src="{% url 'matchmaking:pairing-card-photo' p.pk other.pk %}" alt="" class="pairing-photo" onerror="this.style.visibility='hidden'">
                     <div class="flex-fill">
                         <div class="d-flex flex-wrap justify-content-between gap-2">
                             <div>
                                 <strong class="fs-15">
                                     {% if row.other_is_mine %}<a href="{% url 'matchmaking:member-detail' other.pk %}">{{ other.full_name }}</a>{% else %}{{ op.preferred_name|default:other.preferred_name }}{% endif %}
                                 </strong>
+                                {% if row.side == "b" and p.is_open and other.matchmaker_id != request.user.pk %}
+                                    <a href="{% url 'matchmaking:pairing-profile' p.pk %}" class="btn btn-sm btn-light py-0 px-2 ms-1 fs-12"><i class="fe fe-user me-1"></i>View profile</a>
+                                {% endif %}
                                 <span class="text-muted fs-12 ms-1">
                                     {{ op.age|default:"—" }} · {{ op.location|default:"—" }} · {{ op.get_religion_display|default:"Faith not given" }} · Children: {{ op.get_has_children_display|default:"—" }}
                                 </span>
