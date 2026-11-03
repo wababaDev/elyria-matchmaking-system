@@ -3,9 +3,10 @@ Read-only view of every payment the system records, for Finance and Admin.
 
 Payments live in two places and stay there:
 - consultation fees, on ConsultationRequest (fee_* fields)
-- membership payments (new + renewals), in MembershipPayment
+- membership payments (new, renewals and upgrades), in MembershipPayment
 This module reads both and returns one combined, filtered list.
 """
+
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -21,13 +22,17 @@ from domain.matchmaking.models.membership import EXPIRING_SOON_DAYS
 KIND_FEE = "fee"
 KIND_NEW = "new"
 KIND_RENEWAL = "renewal"
+KIND_UPGRADE = "upgrade"
+MEMBERSHIP_KINDS = (KIND_NEW, KIND_RENEWAL, KIND_UPGRADE)
 
 KIND_CHOICES = [
     ("", "All payments"),
     (KIND_FEE, "Consultation fees"),
     (KIND_NEW, "New memberships"),
     (KIND_RENEWAL, "Renewals"),
+    (KIND_UPGRADE, "Upgrades"),
 ]
+
 KIND_LABELS = dict(KIND_CHOICES)
 
 
@@ -46,15 +51,24 @@ class PaymentRow:
 
     @property
     def kind_label(self):
-        return {KIND_FEE: "Consultation fee", KIND_NEW: "New membership", KIND_RENEWAL: "Renewal"}[self.kind]
+        return {
+            KIND_FEE: "Consultation fee",
+            KIND_NEW: "New membership",
+            KIND_RENEWAL: "Renewal",
+            KIND_UPGRADE: "Upgrade",
+        }.get(self.kind, self.kind.title())
 
 
 def _fee_rows(*, q, staff, date_from, date_to):
-    qs = ConsultationRequest.objects.filter(fee_paid_at__isnull=False).select_related("fee_marked_paid_by")
+    qs = ConsultationRequest.objects.filter(fee_paid_at__isnull=False).select_related(
+        "fee_marked_paid_by"
+    )
     if q:
         qs = qs.filter(
-            Q(payment_reference__icontains=q) | Q(full_name__icontains=q)
-            | Q(preferred_name__icontains=q) | Q(fee_reference__icontains=q)
+            Q(payment_reference__icontains=q)
+            | Q(full_name__icontains=q)
+            | Q(preferred_name__icontains=q)
+            | Q(fee_reference__icontains=q)
         )
     if staff:
         qs = qs.filter(fee_marked_paid_by=staff)
@@ -82,7 +96,7 @@ def _membership_rows(*, kind, q, staff, date_from, date_to):
     qs = MembershipPayment.objects.select_related(
         "recorded_by", "membership__client", "membership__client__consultation_request"
     )
-    if kind in (KIND_NEW, KIND_RENEWAL):
+    if kind in MEMBERSHIP_KINDS:
         qs = qs.filter(kind=kind)
     if q:
         qs = qs.filter(
@@ -121,8 +135,10 @@ def payment_rows(*, kind="", q="", staff=None, date_from=None, date_to=None):
     rows = []
     if kind in ("", KIND_FEE):
         rows += _fee_rows(q=q, staff=staff, date_from=date_from, date_to=date_to)
-    if kind in ("", KIND_NEW, KIND_RENEWAL):
-        rows += _membership_rows(kind=kind, q=q, staff=staff, date_from=date_from, date_to=date_to)
+    if kind in ("",) + MEMBERSHIP_KINDS:
+        rows += _membership_rows(
+            kind=kind, q=q, staff=staff, date_from=date_from, date_to=date_to
+        )
     return sorted(rows, key=lambda r: r.paid_on, reverse=True)
 
 
@@ -141,7 +157,9 @@ def payment_summary(rows):
         "all": totals_by_currency(rows),
         "this_month": totals_by_currency(r for r in rows if r.paid_on >= month_start),
         "fees": totals_by_currency(r for r in rows if r.kind == KIND_FEE),
-        "memberships": totals_by_currency(r for r in rows if r.kind in (KIND_NEW, KIND_RENEWAL)),
+        "memberships": totals_by_currency(
+            r for r in rows if r.kind in MEMBERSHIP_KINDS
+        ),
         "count": len(rows),
     }
 
@@ -155,17 +173,29 @@ def staff_summary(rows, *, date_from=None, date_to=None):
         if key not in people:
             people[key] = {
                 "user": user,
-                "fees": 0, "new": 0, "renewals": 0, "cancelled": 0,
+                "fees": 0,
+                "new": 0,
+                "renewals": 0,
+                "cancelled": 0,
                 "totals": defaultdict(Decimal),
             }
         return people[key]
 
     for row in rows:
         e = entry(row.recorded_by)
-        e[{KIND_FEE: "fees", KIND_NEW: "new", KIND_RENEWAL: "renewals"}[row.kind]] += 1
+        e[
+            {
+                KIND_FEE: "fees",
+                KIND_NEW: "new",
+                KIND_RENEWAL: "renewals",
+                KIND_UPGRADE: "renewals",
+            }[row.kind]
+        ] += 1
         e["totals"][row.currency] += row.amount
 
-    cancelled = Membership.objects.filter(status=Membership.Status.CANCELLED).select_related("cancelled_by")
+    cancelled = Membership.objects.filter(
+        status=Membership.Status.CANCELLED
+    ).select_related("cancelled_by")
     if date_from:
         cancelled = cancelled.filter(cancelled_at__date__gte=date_from)
     if date_to:
@@ -177,7 +207,10 @@ def staff_summary(rows, *, date_from=None, date_to=None):
     for e in people.values():
         e["totals"] = sorted(e["totals"].items())
         result.append(e)
-    return sorted(result, key=lambda e: (e["user"] is None, e["user"].full_name if e["user"] else ""))
+    return sorted(
+        result,
+        key=lambda e: (e["user"] is None, e["user"].full_name if e["user"] else ""),
+    )
 
 
 def member_counts():
@@ -188,6 +221,8 @@ def member_counts():
         "active": active.filter(end_date__gte=today).count(),
         "expiring": active.filter(end_date__gte=today, end_date__lte=soon).count(),
         "expired": active.filter(end_date__lt=today).count(),
-        "cancelled": Membership.objects.filter(status=Membership.Status.CANCELLED).count(),
+        "cancelled": Membership.objects.filter(
+            status=Membership.Status.CANCELLED
+        ).count(),
         "total": Membership.objects.count(),
     }
