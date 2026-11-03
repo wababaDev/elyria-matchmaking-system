@@ -9,6 +9,20 @@
 {% if not profile_ready %}
     <div class="alert alert-light border">Matching is available once {{ member.preferred_name }} has completed their profile.</div>
 {% else %}
+{% if hold %}
+    <div class="alert alert-warning fs-13">
+        <strong>{{ member.preferred_name }} is on hold</strong> since {{ hold.started_on|date:"j M Y" }} ({{ hold.get_reason_display|lower }}). Matching resumes when the hold ends.
+    </div>
+{% elif introductions.state == "none_left" %}
+    <div class="alert alert-warning fs-13">
+        <strong>{{ member.preferred_name }} has used all {{ introductions.allowed }} introductions.</strong>
+        You can still propose matches, but they'll need to renew or upgrade before their next introduction.
+    </div>
+{% elif introductions.state == "last" %}
+    <div class="alert alert-light border fs-13">
+        {{ member.preferred_name }} has <strong>one introduction left</strong> ({{ introductions.used }} of {{ introductions.allowed }} used).
+    </div>
+{% endif %}
 <div class="row">
     <!-- Left: filters + what the member is looking for -->
     <div class="col-xl-3">

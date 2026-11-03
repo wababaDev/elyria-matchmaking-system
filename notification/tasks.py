@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from domain.matchmaking.models import Client, Consultation, ConsultationRequest, Enquiry
 from notification.services import consultation_emails, enquiry_emails, member_emails, profile_emails ,staff_emails
 from domain.matchmaking.models import Pairing
-from notification.services import pairing_emails
+from notification.services import pairing_emails, introduction_emails
 
 logger = logging.getLogger(__name__)
 
@@ -97,3 +97,10 @@ def send_pairing_staff_email(pairing_id, kind):
 def send_new_introduction_email(client_id):
     if obj := _get(Client, client_id):
         pairing_emails.deliver_new_introduction(obj)
+
+
+@shared_task(**EMAIL_RETRY)
+def send_introductions_email(client_id):
+    if obj := _get(Client, client_id):
+        introduction_emails.deliver_introductions_email(obj)
+ 

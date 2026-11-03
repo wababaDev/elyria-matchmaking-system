@@ -76,6 +76,9 @@ urlpatterns = [
     path("pairings/", pairing.PairingListView.as_view(), name="pairings"),
     path("pairings/<int:pk>/photos/<int:photo_pk>/", pairing.PairingPhotoView.as_view(), name="pairing-photo"),
     path("pairings/<int:pk>/card-photo/<int:client_pk>/", pairing.PairingCardPhotoView.as_view(), name="pairing-card-photo"),
-       path("pairings/<int:pk>/profile/<int:client_pk>/", pairing.PairingProfileView.as_view(), name="pairing-profile"),
-   path("pairings/<int:pk>/present-a/", pairing.PresentToAPairingView.as_view(), name="pairing-present-a"),
+    path("pairings/<int:pk>/profile/<int:client_pk>/", pairing.PairingProfileView.as_view(), name="pairing-profile"),
+    path("pairings/<int:pk>/present-a/", pairing.PresentToAPairingView.as_view(), name="pairing-present-a"),
+    
+    path("members/<int:pk>/hold/start/", members.StartHoldView.as_view(), name="member-hold-start"),
+    path("members/<int:pk>/hold/end/", members.EndHoldView.as_view(), name="member-hold-end"),
 ]

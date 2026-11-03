@@ -20,7 +20,7 @@ from domain.matchmaking.models import Client, Consultation, MatchAccessLog, Prof
 from domain.matchmaking.models.pairing import OPEN_PAIRING_LIMIT
 from domain.matchmaking.services.blurred_photo import blurred_jpeg
 from domain.matchmaking.services.consultation_request_service import InvalidTransitionError
-from domain.matchmaking.services.member_service import members_visible_to
+from domain.matchmaking.services.member_service import introduction_status, members_visible_to
 from domain.matchmaking.profile_sections import answers_by_group
 from domain.matchmaking.services.pairing_service import (
     answer_approval,
@@ -89,6 +89,8 @@ class FindMatchView(StaffRequiredMixin, TemplateView):
                 for c in page.object_list
             ],
             member_open_pairings=open_pairing_counts([member])[member.pk],
+            introductions=introduction_status(getattr(member, "membership", None)),
+            hold=member.membership.current_hold if hasattr(member, "membership") else None,
             limit=OPEN_PAIRING_LIMIT,
             propose_form=ProposePairingForm(),
             filter_query=params.urlencode(),

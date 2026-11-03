@@ -18,7 +18,14 @@ class MatchesView(PortalMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["matches"] = [member_card(p, self.client) for p in member_pairings(self.client)]
+        from domain.matchmaking.services.member_service import introduction_status
+
+        membership = getattr(self.client, "membership", None)
+        context.update(
+            matches=[member_card(p, self.client) for p in member_pairings(self.client)],
+            introductions=introduction_status(membership),
+            hold=membership.current_hold if membership else None,
+        )
         return context
 
 
