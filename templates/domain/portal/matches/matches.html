@@ -6,6 +6,22 @@
     <div class="portal-page-head">
         <h1>My Matches</h1>
         <p>Introductions your matchmaker has selected for you. Take your time with each one. Nothing happens without your consent.</p>
+        {% if hold %}
+            <div class="portal-notice">
+                <i class="fa-solid fa-pause me-2"></i>Your membership is on hold since {{ hold.started_on|date:"j F Y" }}.
+                We won't arrange new introductions until you're back, and the days on hold are added to your membership.
+            </div>
+        {% elif introductions.state == "last" %}
+            <div class="portal-notice">
+                <i class="fa-solid fa-circle-info me-2"></i>You have one introduction left in your membership
+                ({{ introductions.used }} of {{ introductions.allowed }} used). To keep being introduced, speak to your matchmaker about renewing or upgrading.
+            </div>
+        {% elif introductions.state == "none_left" %}
+            <div class="portal-notice">
+                <i class="fa-solid fa-circle-info me-2"></i>You've had all {{ introductions.allowed }} introductions in your membership.
+                You can still review matches; speak to your matchmaker about renewing or upgrading to be introduced again.
+            </div>
+        {% endif %}
         {% if matches_to_answer %}
             <p class="match-waiting"><i class="fa-solid fa-bell me-2"></i>{{ matches_to_answer }} introduction{{ matches_to_answer|pluralize }} waiting for your answer.</p>
         {% endif %}

@@ -1,6 +1,6 @@
 from django import forms
 
-from domain.matchmaking.models import ClientProfile
+from domain.matchmaking.models import ClientProfile, Pairing
 
 TEXT = {"class": "form-control"}
 SELECT = {"class": "form-select"}
@@ -47,6 +47,15 @@ class PresentForm(forms.Form):
 
 class IntroductionForm(forms.Form):
     introduced_on = forms.DateField()
+    setting = forms.ChoiceField(choices=[("", "Setting")] + list(Pairing.Setting.choices), required=False)
+    minutes = forms.IntegerField(min_value=10, max_value=600, required=False)
+    setting_other = forms.CharField(max_length=120, required=False)
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("setting") == Pairing.Setting.OTHER and not cleaned.get("setting_other", "").strip():
+            self.add_error("setting_other", "Say what the other setting is.")
+        return cleaned
 
 
 class ClosePairingForm(forms.Form):

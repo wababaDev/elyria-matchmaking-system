@@ -53,6 +53,31 @@
                     <p class="fs-12 text-muted mt-2 mb-0">Closed {{ p.closed_at|date:"j M Y" }}{% if p.closed_by %} by {{ p.closed_by.full_name }}{% endif %}: {{ p.closed_reason }}</p>
                 {% endif %}
 
+                {% if p.introduced_on %}
+                    <!-- Date feedback ({{ member.preferred_name }}'s only) -->
+                    <div class="pairing-feedback mt-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fs-12 text-muted text-uppercase fw-semibold">Date feedback</span>
+                            {% if p.is_open %}
+                                <a href="{% url 'matchmaking:date-feedback-add' p.pk member.pk %}" class="btn btn-sm btn-primary py-0">
+                                    <i class="fe fe-plus me-1"></i>{% if row.feedback %}Add date {{ row.feedback|length|add:1 }}{% else %}Add date feedback{% endif %}
+                                </a>
+                            {% endif %}
+                        </div>
+                        {% for fb in row.feedback %}
+                            <a href="{% url 'matchmaking:date-feedback-edit' fb.pk %}" class="d-flex flex-wrap gap-2 align-items-center fs-13 py-1 border-bottom text-reset">
+                                <span class="fw-semibold">{{ fb.introduction_id }}</span>
+                                <span class="text-muted">{{ fb.date|date:"j M Y" }}{% if fb.setting %} · {{ fb.setting_label }}{% endif %}</span>
+                                <span class="badge bg-light text-dark">{{ fb.get_went_ahead_display }}</span>
+                                <span class="badge {% if fb.outcome == 'ended_by_client' or fb.outcome == 'ended_by_match' %}bg-light text-muted{% else %}bg-primary-transparent{% endif %}">{{ fb.get_outcome_display }}</span>
+                                {% if fb.flag_severity %}<span class="badge {% if fb.flag_severity == 'serious' or fb.flag_severity == 'high' %}bg-danger-transparent{% else %}bg-warning-transparent{% endif %}">Flag: {{ fb.get_flag_severity_display }}</span>{% endif %}
+                            </a>
+                        {% empty %}
+                            <p class="fs-12 text-muted mb-0">No feedback yet for {{ p.introduced_on|date:"j M" }}.</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
                 <!-- Actions for this member's matchmaker -->
                 {% if p.is_open %}
                     {% if row.side == "b" and p.approval == "pending" %}
@@ -111,13 +136,77 @@
                     {% endif %}
 
                     {% if p.status == "mutual" %}
-                        <form method="post" action="{% url 'matchmaking:pairing-introduction' p.pk %}" class="pairing-action mt-3 d-flex flex-wrap align-items-center gap-2">
-                            {% csrf_token %}
-                            <strong class="fs-13 text-success">Both said yes.</strong>
-                            <label class="fs-12 text-muted mb-0" for="intro-{{ p.pk }}">Introduction date</label>
-                            <input type="date" name="introduced_on" id="intro-{{ p.pk }}" value="{{ p.introduced_on|date:'Y-m-d' }}" class="form-control form-control-sm" style="max-width: 170px;" required>
-                            <button type="submit" class="btn btn-sm btn-light">Save</button>
-                        </form>
+                        <div class="pairing-action mt-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <p class="fs-13 mb-0">
+                                <strong class="text-success">Both said yes.</strong>
+                                {% if p.introduced_on %}
+                                    Introduction: {{ p.introduced_on|date:"j M Y" }}{% if p.introduction_setting %} · {{ p.introduction_setting_label }}{% endif %}{% if p.introduction_minutes %} · {{ p.introduction_minutes }} min{% endif %}
+                                {% else %}
+                                    Arrange the introduction, then set it here.
+                                {% endif %}
+                            </p>
+                            <button type="button" class="btn btn-sm {% if p.introduced_on %}btn-light{% else %}btn-primary{% endif %}"
+                                    data-bs-toggle="modal" data-bs-target="#introModal-{{ p.pk }}">
+                                {% if p.introduced_on %}Change introduction{% else %}Set introduction{% endif %}
+                            </button>
+                        </div>
+
+                        <!-- Set / change the introduction -->
+                        <div class="modal fade" id="introModal-{{ p.pk }}" tabindex="-1" aria-labelledby="introTitle-{{ p.pk }}" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <form method="post" action="{% url 'matchmaking:pairing-introduction' p.pk %}" class="modal-content">
+                                    {% csrf_token %}
+                                    <div class="modal-header">
+                                        <h6 class="modal-title" id="introTitle-{{ p.pk }}">
+                                            {% if p.introduced_on %}Change the introduction{% else %}Set the introduction{% endif %}:
+                                            {% if row.side == "a" %}{{ member.preferred_name }} + {{ other.preferred_name }}{% else %}{{ other.preferred_name }} + {{ member.preferred_name }}{% endif %}
+                                        </h6>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="row g-3">
+                                            <div class="col-sm-4">
+                                                <label class="form-label fs-13" for="intro-date-{{ p.pk }}">Date</label>
+                                                <input type="date" name="introduced_on" id="intro-date-{{ p.pk }}" value="{{ p.introduced_on|date:'Y-m-d' }}" class="form-control" required>
+                                            </div>
+                                            <div class="col-sm-4">
+                                                <label class="form-label fs-13" for="intro-setting-{{ p.pk }}">Setting</label>
+                                                <select name="setting" id="intro-setting-{{ p.pk }}" class="form-select">
+                                                    <option value="">Choose…</option>
+                                                    {% for value, label in p.Setting.choices %}<option value="{{ value }}" {% if p.introduction_setting == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                                                </select>
+                                                <input type="text" name="setting_other" maxlength="120" value="{{ p.introduction_setting_other }}"
+                                                       placeholder="e.g. Walk in the park" aria-label="Other setting"
+                                                       class="form-control mt-2" data-other-for="setting" {% if p.introduction_setting != "other" %}hidden{% endif %}>
+                                            </div>
+                                            <div class="col-sm-4">
+                                                <label class="form-label fs-13" for="intro-minutes-{{ p.pk }}">Planned length</label>
+                                                <div class="input-group">
+                                                    <input type="number" name="minutes" id="intro-minutes-{{ p.pk }}" min="10" max="600" step="5" placeholder="90" value="{{ p.introduction_minutes|default_if_none:'' }}" class="form-control">
+                                                    <span class="input-group-text">min</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <ul class="text-muted fs-12 mt-3 mb-0 ps-3">
+                                            {% if not p.introduced_on %}
+                                                <li>
+                                                    This counts as an <strong>introduction</strong> for both members.
+                                                    {% if introductions.allowed %}For {{ member.preferred_name }} it's {{ introductions.used|add:1 }} of {{ introductions.allowed }}{% if introductions.used|add:1 >= introductions.allowed %}: <strong class="text-danger">their last one</strong>{% endif %}.{% endif %}
+                                                </li>
+                                                <li>Both members and their matchmakers are reminded if they're close to their limit.</li>
+                                            {% endif %}
+                                            <li>Once it's set, <strong>Add date feedback</strong> appears on this pairing. The setting and length fill in the feedback form.</li>
+                                            {% if p.introduced_on %}<li>Changing it doesn't count as another introduction.</li>{% endif %}
+                                        </ul>
+                                    </div>
+                                    <div class="modal-footer d-flex flex-nowrap gap-2">
+                                        <button type="button" class="btn btn-light flex-fill m-0" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-primary flex-fill m-0">{% if p.introduced_on %}Save changes{% else %}Set introduction{% endif %}</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
                     {% endif %}
 
                     <div class="mt-3 pt-2 border-top d-flex justify-content-end">

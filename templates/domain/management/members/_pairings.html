@@ -72,6 +72,17 @@
 </div>
 
 <script>
+// Introduction modal: "Other" setting shows a box to say what it is
+document.addEventListener('change', function (event) {
+    var select = event.target.closest('select[name="setting"]');
+    if (!select || !select.form) return;
+    var box = select.form.querySelector('[data-other-for="setting"]');
+    if (!box) return;
+    box.hidden = select.value !== 'other';
+    box.required = select.value === 'other';
+    if (!box.hidden) box.focus();
+});
+
 // Open / Closed switch on the Pairings tab (plain buttons, so the page's tab hash isn't touched)
 document.addEventListener('click', function (event) {
     var button = event.target.closest('[data-pairing-list]');

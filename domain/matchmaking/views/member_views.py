@@ -1,39 +1,41 @@
 from urllib.parse import urlencode
 
 from django.contrib import messages
-from django.shortcuts import redirect
+from django.http import FileResponse, Http404, HttpResponse
+from django.shortcuts import get_object_or_404, redirect
 from django.views import View
 from django.views.generic import DetailView, ListView
 from django.views.generic.detail import SingleObjectMixin
 
 from domain.base.mixins import StaffRequiredMixin
 from domain.matchmaking.forms import AssignForm, CancelMembershipForm, RenewMembershipForm, staff_members
+from domain.matchmaking.forms.hold_forms import EndHoldForm, StartHoldForm
+from domain.matchmaking.forms.member_note_forms import CloseNoteForm, DiscrepancyForm, ObservationForm
 from domain.matchmaking.forms.staff_forms import ChangeSignInEmailForm
+from domain.matchmaking.models import ProfilePhoto
 from domain.matchmaking.models.membership_tier import MembershipTier
+from domain.matchmaking.models.pairing import OPEN_PAIRING_LIMIT
+from domain.matchmaking.profile_sections import answers_by_group
+from domain.matchmaking.services.compare_service import compare
 from domain.matchmaking.services.consultation_request_service import InvalidTransitionError
+from domain.matchmaking.services.member_note_service import note_summary, notes_for
 from domain.matchmaking.services.member_service import (
     MEMBER_FILTERS,
-    change_sign_in_email,
-    filter_members,
     cancel_membership,
+    change_sign_in_email,
+    end_hold,
+    filter_members,
+    introduction_status,
     members_visible_to,
     reassign_matchmaker,
     renew_membership,
+    start_hold,
 )
+from domain.matchmaking.services.pairing_service import member_pairing_rows, open_pairing_counts
+from domain.matchmaking.services.profile_pdf import ProfileNotCompleteError, profile_filename, profile_pdf
+from domain.matchmaking.services.profile_service import progress
 from domain.matchmaking.views.consultation_request_views import _first_error
 from notification.services.member_emails import send_sign_in_link
-from django.http import FileResponse, Http404
-from django.shortcuts import get_object_or_404
-from domain.matchmaking.models import ProfilePhoto
-from domain.matchmaking.profile_sections import answers_by_group
-from domain.matchmaking.services.profile_service import progress
-from django.http import HttpResponse
-from domain.matchmaking.services.profile_pdf import ProfileNotCompleteError, profile_filename, profile_pdf
-from domain.matchmaking.forms.member_note_forms import CloseNoteForm, DiscrepancyForm, ObservationForm
-from domain.matchmaking.models.pairing import OPEN_PAIRING_LIMIT
-from domain.matchmaking.services.compare_service import compare
-from domain.matchmaking.services.member_note_service import note_summary, notes_for
-from domain.matchmaking.services.pairing_service import member_pairing_rows, open_pairing_counts
 
 
 class MemberListView(StaffRequiredMixin, ListView):
@@ -72,21 +74,21 @@ NOTE_FILTERS = [
     ("discrepancy", "Discrepancies"),
     ("profile_change", "Profile changes"),
 ]
- 
- 
+
+
 class MemberDetailView(StaffRequiredMixin, DetailView):
     """One member: Overview, Profile, Consultation, Compare, Notes, Pairings, Payments."""
     permission_required = "base.view_members"
     template_name = "domain/management/members/detail.html"
     context_object_name = "member"
- 
+
     def get_queryset(self):
         return members_visible_to(self.request.user).select_related(
             "user", "matchmaker", "consultation_request",
             "consultation_request__consultation", "consultation_request__consultation__conducted_by",
             "membership", "membership__tier",
         )
- 
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         member = self.object
@@ -96,30 +98,34 @@ class MemberDetailView(StaffRequiredMixin, DetailView):
         comparison = compare(member)
         open_rows, closed_rows = member_pairing_rows(self.request.user, member)
         notes_show = self.request.GET.get("notes", "")
- 
+
         context.update(
-            # Overview: membership, payments, matchmaker
+            # Overview: membership, introductions, hold time, payments, matchmaker
             membership=membership,
+            introductions=introduction_status(membership),
+            holds=membership.holds.select_related("started_by", "ended_by") if membership else [],
+            start_hold_form=StartHoldForm(),
+            end_hold_form=EndHoldForm(),
             payments=membership.payments.select_related("recorded_by") if membership else [],
             renew_form=RenewMembershipForm(initial={"tier": membership.tier_id if membership else None}),
             active_tiers=MembershipTier.objects.filter(is_active=True),
             cancel_form=CancelMembershipForm(),
             assign_form=AssignForm(initial={"assigned_to": member.matchmaker_id}),
             details=member.consultation_request,
- 
+
             # Profile
             profile=profile,
             profile_photos=photos,
             profile_groups=answers_by_group(profile, has_photos=bool(photos)) if profile else [],
             profile_progress=progress(profile) if profile else (0, 0),
- 
+
             # Consultation
             consultation=member.consultation,
- 
+
             # Compare
             comparison=comparison,
             comparison_differences=sum(1 for row in comparison if row["differs"]),
- 
+
             # Notes
             notes=notes_for(member, show=notes_show),
             notes_show=notes_show,
@@ -128,7 +134,7 @@ class MemberDetailView(StaffRequiredMixin, DetailView):
             observation_form=ObservationForm(),
             discrepancy_form=DiscrepancyForm(),
             close_form=CloseNoteForm(),
- 
+
             # Pairings
             pairing_rows=open_rows,
             closed_pairing_rows=closed_rows,
@@ -173,7 +179,29 @@ class RenewMembershipView(MemberActionView):
     success_message = "{name}'s membership has been renewed."
 
     def perform(self, member, data):
-        renew_membership(member.membership, by=self.request.user, **data)
+        old_tier = member.membership.tier
+        membership = renew_membership(member.membership, by=self.request.user, **data)
+        if membership.tier_id != old_tier.pk:
+            self.success_message = f"{{name}} has been upgraded from {old_tier.name} to {membership.tier.name}."
+
+
+class StartHoldView(MemberActionView):
+    form_class = StartHoldForm
+    success_message = "{name}'s membership is on hold. They won't appear in Find a match until the hold ends."
+
+    def perform(self, member, data):
+        start_hold(member.membership, by=self.request.user, **data)
+
+
+class EndHoldView(MemberActionView):
+    form_class = EndHoldForm
+
+    def perform(self, member, data):
+        hold = end_hold(member.membership, ended_on=data["ended_on"], by=self.request.user)
+        self.success_message = (
+            f"{{name}} is back from hold. {hold.days_added} day{'s' if hold.days_added != 1 else ''} "
+            f"added to the membership."
+        )
 
 
 class CancelMembershipView(MemberActionView):
@@ -201,6 +229,7 @@ class ReassignMatchmakerView(MemberActionView):
         user = data["assigned_to"]
         reassign_matchmaker(member, to=user, by=self.request.user)
         self.success_message = f"Matchmaker changed to {user.full_name}." if user else "Matchmaker removed."
+
 
 class MemberPhotoView(StaffRequiredMixin, View):
     """A member's private photo, for staff who can see that member (not Finance)."""
@@ -239,6 +268,7 @@ class ChangeSignInEmailView(StaffRequiredMixin, SingleObjectMixin, View):
             except InvalidTransitionError as e:
                 messages.error(request, str(e))
         return redirect("matchmaking:member-detail", member.pk)
+
 
 class MemberProfilePdfView(StaffRequiredMixin, View):
     """The member's completed profile as a PDF (matchmaker and Admin, not Finance)."""

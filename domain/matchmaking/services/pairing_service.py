@@ -5,7 +5,14 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 
-from domain.matchmaking.models import Client, ConsultationRequest, MatchAccessLog, Membership, Pairing
+from domain.matchmaking.models import (
+    Client,
+    ConsultationRequest,
+    MatchAccessLog,
+    Membership,
+    MembershipHold,
+    Pairing,
+)
 from domain.matchmaking.models.pairing import OPEN_PAIRING_LIMIT
 from domain.matchmaking.services.consultation_request_service import InvalidTransitionError
 from domain.matchmaking.services.member_service import members_visible_to
@@ -97,6 +104,8 @@ def candidates_for(client, *, age_min=None, age_max=None, city="", children="", 
         profile__gender=SEEKING_GENDER.get(profile.seeking, "-"),
         profile__seeking=GENDER_SEEKING.get(profile.gender, "-"),
     ).exclude(pk=client.pk)
+    # Members on Hold Time aren't set on any dates
+    qs = qs.exclude(pk__in=MembershipHold.objects.filter(ended_on__isnull=True).values("membership__client_id"))
 
     already = Pairing.objects.exclude(status=P.Status.CLOSED).filter(Q(client_a=client) | Q(client_b=client))
     paired_ids = set(already.values_list("client_a", flat=True)) | set(already.values_list("client_b", flat=True))
@@ -260,14 +269,27 @@ def present_to_b(pairing, *, by, note_for_b, a_profession, a_location):
 
 
 @transaction.atomic
-def record_introduction(pairing, *, by, introduced_on):
+def record_introduction(pairing, *, by, introduced_on, setting="", minutes=None, setting_other=""):
     pairing = _lock(pairing)
     if not (can_manage(by, pairing.client_a) or can_manage(by, pairing.client_b)):
         raise InvalidTransitionError("You can't update this pairing.")
     if pairing.status != P.Status.MUTUAL:
         raise InvalidTransitionError("An introduction can only be recorded after mutual interest.")
+    first_time = pairing.introduced_on is None
     pairing.introduced_on = introduced_on
-    pairing.save(update_fields=["introduced_on", "updated_at"])
+    pairing.introduction_setting = setting or pairing.introduction_setting
+    pairing.introduction_minutes = minutes or pairing.introduction_minutes
+    pairing.introduction_setting_other = setting_other.strip() if pairing.introduction_setting == P.Setting.OTHER else ""
+    pairing.save(update_fields=[
+        "introduced_on", "introduction_setting", "introduction_minutes", "introduction_setting_other", "updated_at",
+    ])
+
+    if first_time:
+        # One more introduction used for each member: remind them (and their matchmaker) near the limit
+        from notification.services import introduction_emails
+
+        for client in (pairing.client_a, pairing.client_b):
+            transaction.on_commit(lambda c=client: introduction_emails.notify_if_near_limit(c))
     return pairing
 
 
@@ -534,7 +556,10 @@ def member_pairing_rows(user, member):
     Open: what's waiting on you first, then what's waiting on others, then introduced; newest activity first.
     Closed: most recently closed first.
     """
+    from domain.matchmaking.services.date_feedback_service import feedback_by_pairing
+
     visible_ids = set(members_visible_to(user).values_list("pk", flat=True))
+    feedback = feedback_by_pairing(member)
     open_rows, closed_rows = [], []
     for p in pairings_for(member).select_related("a_presented_by", "b_presented_by", "closed_by"):
         other = p.other(member)
@@ -542,7 +567,7 @@ def member_pairing_rows(user, member):
         row = {
             "p": p, "other": other, "other_profile": getattr(other, "profile", None),
             "other_is_mine": other.pk in visible_ids, "side": p.side(member),
-            "stands": text, "on_me": on_me,
+            "stands": text, "on_me": on_me, "feedback": feedback.get(p.pk, []),
         }
         (open_rows if p.is_open else closed_rows).append(row)
 

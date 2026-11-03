@@ -47,7 +47,7 @@ class StaffUpdateForm(BootstrapFormMixin, forms.Form):
 class MembershipTierForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = MembershipTier
-        fields = ["name", "price", "currency", "duration_months", "display_order", "is_active"]
+        fields = ["name", "price", "currency", "duration_months", "max_introductions", "display_order", "is_active"]
 
 
 class PrivacyPolicyUploadForm(BootstrapFormMixin, forms.Form):

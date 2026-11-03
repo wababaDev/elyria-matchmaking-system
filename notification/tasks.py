@@ -7,7 +7,10 @@ from django.contrib.auth import get_user_model
 from domain.matchmaking.models import Client, Consultation, ConsultationRequest, Enquiry
 from notification.services import consultation_emails, enquiry_emails, member_emails, profile_emails ,staff_emails
 from domain.matchmaking.models import Pairing
-from notification.services import pairing_emails
+from notification.services import pairing_emails, introduction_emails, feedback_emails
+
+from domain.matchmaking.models.date_feedback import DateFeedback
+
 
 logger = logging.getLogger(__name__)
 
@@ -97,3 +100,16 @@ def send_pairing_staff_email(pairing_id, kind):
 def send_new_introduction_email(client_id):
     if obj := _get(Client, client_id):
         pairing_emails.deliver_new_introduction(obj)
+
+
+@shared_task(**EMAIL_RETRY)
+def send_introductions_email(client_id):
+    if obj := _get(Client, client_id):
+        introduction_emails.deliver_introductions_email(obj)
+
+
+
+@shared_task(**EMAIL_RETRY)
+def send_serious_flag_email(feedback_id):
+    if obj := _get(DateFeedback, feedback_id):
+        feedback_emails.deliver_serious_flag(obj)

@@ -211,15 +211,69 @@
                     {{ membership.start_date|date:"j M Y" }} – {{ membership.end_date|date:"j M Y" }}
                     {% if status == "active" or status == "expiring" %}<br><span class="text-muted">{{ membership.days_left }} day{{ membership.days_left|pluralize }} left</span>{% endif %}
                 </p>
+
+                {# Introductions: different people actually met. Matches are unlimited. #}
+                {% if introductions %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between fs-13 mb-1">
+                            <span class="text-muted">Introductions</span>
+                            <span class="fw-semibold">
+                                {% if introductions.allowed is None %}{{ introductions.used }} · unlimited
+                                {% else %}{{ introductions.used }} of {{ introductions.allowed }} used{% endif %}
+                            </span>
+                        </div>
+                        {% if introductions.allowed %}
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar {% if introductions.state == 'none_left' %}bg-danger{% elif introductions.state == 'last' %}bg-warning{% else %}bg-primary{% endif %}"
+                                     style="width: {% widthratio introductions.used introductions.allowed 100 %}%"></div>
+                            </div>
+                        {% endif %}
+                        {% if introductions.state == "last" %}
+                            <p class="fs-12 text-warning-emphasis mt-1 mb-0">One left: the next introduction is their last. Suggest renewing or upgrading.</p>
+                        {% elif introductions.state == "none_left" %}
+                            <p class="fs-12 text-danger mt-1 mb-0">All introductions used. They can still see matches, but need to renew or upgrade before their next introduction.</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                {# Hold Time #}
+                {% if membership.on_hold %}
+                    {% with hold=membership.current_hold %}
+                        <div class="alert alert-warning fs-13 py-2 mb-3">
+                            <strong>On hold</strong> since {{ hold.started_on|date:"j M Y" }} ({{ hold.days_so_far }} day{{ hold.days_so_far|pluralize }}).<br>
+                            {{ hold.get_reason_display }}{% if hold.note %}: {{ hold.note }}{% endif %}<br>
+                            <span class="text-muted fs-12">Not shown in Find a match. The end date moves forward when the hold ends.</span>
+                        </div>
+                    {% endwith %}
+                {% endif %}
                 {% if status == "cancelled" %}
                     <p class="fs-13 text-muted mb-0">
                         Cancelled {{ membership.cancelled_at|date:"j M Y" }}{% if membership.cancelled_by %} by {{ membership.cancelled_by.full_name }}{% endif %}.<br>{{ membership.cancellation_reason }}
                     </p>
                 {% elif perms.base.manage_client %}
                     <div class="d-grid gap-2">
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#renewModal">Record renewal</button>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#renewModal">Renew or upgrade</button>
+                        {% if membership.on_hold %}
+                            <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#endHoldModal">End hold</button>
+                        {% else %}
+                            <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#startHoldModal">Put on hold</button>
+                        {% endif %}
                         <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelModal">Cancel membership</button>
                     </div>
+                {% endif %}
+
+                {% if holds %}
+                    <details class="mt-3 fs-12">
+                        <summary class="text-muted">Hold history ({{ holds|length }})</summary>
+                        <ul class="list-unstyled mt-2 mb-0">
+                            {% for hold in holds %}
+                                <li class="mb-2">
+                                    {{ hold.started_on|date:"j M Y" }} – {% if hold.ended_on %}{{ hold.ended_on|date:"j M Y" }} · +{{ hold.days_added }} day{{ hold.days_added|pluralize }}{% else %}now{% endif %}<br>
+                                    <span class="text-muted">{{ hold.get_reason_display }}{% if hold.note %}: {{ hold.note }}{% endif %} · by {{ hold.started_by.full_name }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </details>
                 {% endif %}
             </div>
         </div>
@@ -272,7 +326,7 @@
         <form method="post" action="{% url 'matchmaking:member-renew' member.pk %}" class="modal-content">
             {% csrf_token %}
             <div class="modal-header">
-                <h6 class="modal-title" id="renewTitle">Record renewal: {{ member.preferred_name }}</h6>
+                <h6 class="modal-title" id="renewTitle">Renew or upgrade: {{ member.preferred_name }}</h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -281,11 +335,14 @@
                     <select name="tier" class="form-select" required>
                         {% for tier in active_tiers %}
                             <option value="{{ tier.pk }}" {% if tier.pk == membership.tier_id %}selected{% endif %} {% if tier.price is None %}disabled{% endif %}>
-                                {{ tier.name }}{% if tier.price is None %} (set a price in Settings first){% else %} · {{ tier.currency }} {{ tier.price|floatformat:'2g' }} · {{ tier.duration_months }} months{% endif %}
+                                {{ tier.name }}{% if tier.price is None %} (set a price in Settings first){% else %} · {{ tier.currency }} {{ tier.price|floatformat:'2g' }} · {{ tier.duration_months }} months · {% if tier.max_introductions %}{{ tier.max_introductions }} introductions{% else %}unlimited introductions{% endif %}{% endif %}
                             </option>
                         {% endfor %}
                     </select>
-                    <div class="form-text fs-12">Extends from the current end date ({{ membership.end_date|date:"j M Y" }}), or from today if it has already expired.</div>
+                    <div class="form-text fs-12">
+                        Same tier = renewal, another tier = upgrade. Extends from the current end date ({{ membership.end_date|date:"j M Y" }}), or from today if it has already expired.
+                        {% if introductions.left is not None %}The new tier's introductions are added to the {{ introductions.left }} not used yet.{% endif %}
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label fs-13">Payment reference</label>
@@ -296,11 +353,63 @@
             </div>
             <div class="modal-footer d-flex flex-nowrap gap-2">
                 <button type="button" class="btn btn-light flex-fill m-0" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-primary flex-fill m-0">Record renewal</button>
+                <button type="submit" class="btn btn-primary flex-fill m-0">Record payment</button>
             </div>
         </form>
     </div>
 </div>
+
+<!-- Start hold -->
+<div class="modal fade" id="startHoldModal" tabindex="-1" aria-labelledby="startHoldTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" action="{% url 'matchmaking:member-hold-start' member.pk %}" class="modal-content">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h6 class="modal-title" id="startHoldTitle">Put on hold: {{ member.preferred_name }}</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                {% include "partials/management/_field.html" with field=start_hold_form.reason %}
+                {% include "partials/management/_field.html" with field=start_hold_form.note %}
+                {% include "partials/management/_field.html" with field=start_hold_form.started_on %}
+                <p class="text-muted fs-12 mb-0">
+                    Only when {{ member.preferred_name }} has officially asked not to be set on dates.
+                    They won't appear in Find a match. When you end the hold, their end date moves forward by the days it lasted.
+                </p>
+            </div>
+            <div class="modal-footer d-flex flex-nowrap gap-2">
+                <button type="button" class="btn btn-light flex-fill m-0" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-warning flex-fill m-0">Put on hold</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if membership.on_hold %}
+<!-- End hold -->
+<div class="modal fade" id="endHoldModal" tabindex="-1" aria-labelledby="endHoldTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" action="{% url 'matchmaking:member-hold-end' member.pk %}" class="modal-content">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h6 class="modal-title" id="endHoldTitle">End hold: {{ member.preferred_name }}</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                {% include "partials/management/_field.html" with field=end_hold_form.ended_on %}
+                <p class="text-muted fs-12 mb-0">
+                    On hold since {{ membership.current_hold.started_on|date:"j M Y" }}. The days between that and the date above
+                    are added to the end date ({{ membership.end_date|date:"j M Y" }} now).
+                </p>
+            </div>
+            <div class="modal-footer d-flex flex-nowrap gap-2">
+                <button type="button" class="btn btn-light flex-fill m-0" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary flex-fill m-0">End hold</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
 
 <!-- Cancel -->
 <div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelTitle" aria-hidden="true">

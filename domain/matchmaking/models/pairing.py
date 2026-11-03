@@ -38,6 +38,12 @@ class Pairing(TimeStampedModel):
         INTERESTED = "interested", "Interested"
         NOT_INTERESTED = "not_interested", "Not interested"
 
+    class Setting(models.TextChoices):
+        COFFEE = "coffee", "Coffee"
+        MEAL = "meal", "Meal"
+        VIDEO = "video", "Video call"
+        OTHER = "other", "Other"
+
     class Status(models.TextChoices):
         PROPOSED = "proposed", "Proposed"
         PRESENTED_TO_B = "presented_to_b", "Presented to client B"
@@ -80,7 +86,17 @@ class Pairing(TimeStampedModel):
     a_profession = models.CharField("A's profession, as shown to B", max_length=120, blank=True)
     a_location = models.CharField("A's location, as shown to B", max_length=120, blank=True)
 
+    # The first date: set by the matchmaker once both said yes. Later dates live on DateFeedback.
     introduced_on = models.DateField(null=True, blank=True)
+    introduction_setting = models.CharField(max_length=20, choices=Setting.choices, blank=True)
+    introduction_minutes = models.PositiveSmallIntegerField("Planned length (minutes)", null=True, blank=True)
+    introduction_setting_other = models.CharField("Setting (other)", max_length=120, blank=True)
+
+    @property
+    def introduction_setting_label(self):
+        if self.introduction_setting == self.Setting.OTHER and self.introduction_setting_other:
+            return self.introduction_setting_other
+        return self.get_introduction_setting_display()
     closed_at = models.DateTimeField(null=True, blank=True)
     # Staff who closed or declined it. Empty when a member said "not interested".
     closed_by = models.ForeignKey(
