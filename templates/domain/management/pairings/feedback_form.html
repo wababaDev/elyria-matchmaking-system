@@ -1,0 +1,268 @@
+{% extends "layouts/management.html" %}
+{% block title %}Date feedback: {{ member.preferred_name }}{% endblock %}
+{% block page_title %}Date {{ feedback.date_number }} feedback: {{ member.preferred_name }}{% endblock %}
+{% block page_actions %}
+    <a href="{{ back_url }}" class="btn btn-sm btn-light"><i class="fe fe-arrow-left me-1"></i>Back to {{ member.preferred_name }}</a>
+{% endblock %}
+
+{% block content %}
+{# One member's feedback for one date. Only their own matchmaker (and Admin) ever sees this. #}
+<style>
+    .fb-flags { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .25rem 1rem; }
+    .fb-flags label { font-size: .85rem; display: flex; gap: .4rem; align-items: center; }
+    .fb-staff { border-left: 3px solid #f0ad4e; }
+    .fb-savebar { position: sticky; bottom: 0; z-index: 5; box-shadow: 0 -4px 12px rgba(0,0,0,.06); }
+    .fb-tabs .nav-link .badge.is-done { background: #d1f2e0 !important; color: #157347 !important; }
+</style>
+
+<form method="post" novalidate>
+{% csrf_token %}
+<div class="row">
+    <!-- Left: who and which date -->
+    <div class="col-xl-3">
+        <div class="card custom-card">
+            <div class="card-body fs-13">
+                <p class="text-muted fs-12 mb-1">Introduction</p>
+                <p class="fs-5 fw-semibold mb-2">{{ feedback.introduction_id }}</p>
+                <dl class="mb-0">
+                    <dt class="text-muted fw-normal fs-12">Member</dt><dd>{{ member.full_name }}</dd>
+                    <dt class="text-muted fw-normal fs-12">Met</dt>
+                    <dd>{{ other_profile.preferred_name|default:other.preferred_name }}{% if other_profile %} · {{ other_profile.age }} · {{ other_profile.location }}{% endif %}</dd>
+                    <dt class="text-muted fw-normal fs-12">First date</dt><dd class="mb-0">{{ pairing.introduced_on|date:"j M Y" }}</dd>
+                </dl>
+                <p class="text-muted fs-12 border-top pt-2 mt-3 mb-0">
+                    <i class="fe fe-lock me-1"></i>Only you and Admin see this. Anything about the other member is passed on verbally to their matchmaker.
+                </p>
+            </div>
+        </div>
+
+        {% if earlier %}
+            <div class="card custom-card">
+                <div class="card-header"><div class="card-title">Earlier dates</div></div>
+                <div class="card-body fs-13">
+                    {% for fb in earlier %}
+                        <p class="mb-2">
+                            <a href="{% url 'matchmaking:date-feedback-edit' fb.pk %}">Date {{ fb.date_number }}</a>
+                            · {{ fb.date|date:"j M" }} · {{ fb.get_outcome_display }}
+                        </p>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Right: the five sections -->
+    <div class="col-xl-9">
+        <ul class="nav nav-pills gap-1 mb-3 fb-tabs" role="tablist">
+            {% for label in tab_labels %}
+                <li class="nav-item" role="presentation"{% if forloop.counter == 3 %} data-show-when="ahead"{% endif %}>
+                    <button type="button" class="nav-link{% if forloop.first %} active{% endif %}" data-bs-toggle="pill"
+                            data-bs-target="#fb-{{ forloop.counter }}" role="tab" aria-controls="fb-{{ forloop.counter }}">
+                        {{ forloop.counter }}. {{ label }}
+                        <span class="badge bg-light text-dark ms-1" data-count-for="fb-{{ forloop.counter }}"></span>
+                    </button>
+                </li>
+            {% endfor %}
+        </ul>
+        <div class="tab-content">
+
+        <div class="tab-pane fade show active" id="fb-1" role="tabpanel">
+        <div class="card custom-card fb-section">
+            <div class="card-header"><div class="card-title">1. The introduction</div></div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">{% include "partials/management/_field.html" with field=form.date %}</div>
+                    <div class="col-md-4">
+                        {% include "partials/management/_field.html" with field=form.setting %}
+                        <div data-other-for="setting">{% include "partials/management/_field.html" with field=form.setting_other %}</div>
+                    </div>
+                    <div class="col-md-4">{% include "partials/management/_field.html" with field=form.duration_minutes %}</div>
+                </div>
+                {% if feedback.date_number == 1 %}<p class="text-muted fs-12 mb-0">Filled in from when the introduction was set. Correct anything that changed on the day.</p>{% endif %}
+            </div>
+        </div>
+        </div>
+
+        <div class="tab-pane fade" id="fb-2" role="tabpanel">
+        <div class="card custom-card fb-section">
+            <div class="card-header"><div class="card-title">2. Did it go ahead?</div></div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">{% include "partials/management/_field.html" with field=form.went_ahead %}</div>
+                    <div class="col-md-4" data-show-when="not-ahead">{% include "partials/management/_field.html" with field=form.cancelled_by %}</div>
+                </div>
+                <div data-show-when="not-ahead">{% include "partials/management/_field.html" with field=form.cancel_reason %}</div>
+            </div>
+        </div>
+        </div>
+
+        <div class="tab-pane fade" id="fb-3" role="tabpanel">
+        <div class="card custom-card fb-section">
+            <div class="card-header justify-content-between">
+                <div class="card-title">3. What {{ member.preferred_name }} says</div>
+                <span class="text-muted fs-12">Their words, with quotes where possible</span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">{% include "partials/management/_field.html" with field=form.meet_again %}</div>
+                    <div class="col-md-8">{% include "partials/management/_field.html" with field=form.meet_again_why %}</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">{% include "partials/management/_field.html" with field=form.went_well %}</div>
+                    <div class="col-md-6">{% include "partials/management/_field.html" with field=form.concerns %}</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4">{% include "partials/management/_field.html" with field=form.matched_profile %}</div>
+                    <div class="col-md-8">{% include "partials/management/_field.html" with field=form.profile_differed %}</div>
+                </div>
+                {% include "partials/management/_field.html" with field=form.deal_breaker %}
+                <div class="row">
+                    <div class="col-md-4">{% include "partials/management/_field.html" with field=form.felt_respected %}</div>
+                    <div class="col-md-8">{% include "partials/management/_field.html" with field=form.felt_respected_notes %}</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4">{% include "partials/management/_field.html" with field=form.wants_next %}</div>
+                    <div class="col-md-8">{% include "partials/management/_field.html" with field=form.change_next_time %}</div>
+                </div>
+            </div>
+        </div>
+        </div>
+
+        <div class="tab-pane fade" id="fb-4" role="tabpanel">
+        <div class="card custom-card fb-section fb-staff">
+            <div class="card-header justify-content-between">
+                <div class="card-title">4. Your own record</div>
+                <span class="text-muted fs-12">Kept separate from what {{ member.preferred_name }} said</span>
+            </div>
+            <div class="card-body">
+                <label class="form-label fs-13">{{ form.behaviour_flags.label }}</label>
+                <div class="fb-flags mb-2">
+                    {% for box in form.behaviour_flags %}
+                        <label>{{ box.tag }} {{ box.choice_label }}</label>
+                    {% endfor %}
+                </div>
+                {% for error in form.behaviour_flags.errors %}<div class="text-danger fs-12 mb-2">{{ error }}</div>{% endfor %}
+                <div class="row mt-2">
+                    <div class="col-md-4">{% include "partials/management/_field.html" with field=form.flag_severity %}</div>
+                    <div class="col-md-8">{% include "partials/management/_field.html" with field=form.flag_notes %}</div>
+                </div>
+                {% include "partials/management/_field.html" with field=form.profile_vs_report %}
+            </div>
+        </div>
+        </div>
+
+        <div class="tab-pane fade" id="fb-5" role="tabpanel">
+        <div class="card custom-card fb-section">
+            <div class="card-header"><div class="card-title">5. Outcome</div></div>
+            <div class="card-body">
+                <div class="row align-items-end">
+                    <div class="col-md-5">{% include "partials/management/_field.html" with field=form.outcome %}</div>
+                    <div class="col-md-7">
+                        <p class="text-muted fs-12 mb-3">
+                            <strong>Ended by client / Ended by match</strong> closes the pairing.
+                            <strong>Another date</strong>, <strong>Ongoing</strong> and <strong>Pause</strong> keep it open; record the next date's feedback when it happens.
+                        </p>
+                    </div>
+                </div>
+                {% if feedback.pk %}
+                    <p class="text-muted fs-12 mb-3">
+                        Recorded by {{ feedback.recorded_by.full_name }}, {{ feedback.created_at|date:"j M Y" }}{% if feedback.updated_by %} · last edited by {{ feedback.updated_by.full_name }}, {{ feedback.updated_at|date:"j M Y H:i" }}{% endif %}
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+        </div>
+        </div>
+
+        <!-- Always visible: progress, previous / next, save -->
+        <div class="card custom-card fb-savebar">
+            <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-2 py-2">
+                <span class="fs-13 text-muted"><span data-total-count></span> answered</span>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-light" data-step="-1">Previous</button>
+                    <button type="button" class="btn btn-light" data-step="1">Next</button>
+                    <a href="{{ back_url }}" class="btn btn-light">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Save feedback</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</form>
+
+<script>
+// Tabs: answered counters, previous / next, and open the first tab with an error
+(function () {
+    var form = document.querySelector('.fb-tabs').closest('form');
+    var panes = Array.prototype.slice.call(document.querySelectorAll('.tab-pane[id^="fb-"]'));
+
+    function visible(el) { return !el.closest('[hidden]'); }
+    function countPane(pane) {
+        var names = {}, filled = {};
+        pane.querySelectorAll('input, select, textarea').forEach(function (el) {
+            if (!el.name || el.type === 'hidden' || !visible(el)) return;
+            names[el.name] = true;
+            if ((el.type === 'checkbox' && el.checked) || (el.type !== 'checkbox' && el.value.trim() !== '')) filled[el.name] = true;
+        });
+        return [Object.keys(filled).length, Object.keys(names).length];
+    }
+    function update() {
+        var done = 0, total = 0;
+        panes.forEach(function (pane) {
+            var badge = document.querySelector('[data-count-for="' + pane.id + '"]');
+            var tab = badge.closest('[data-show-when]');
+            if (tab && tab.hidden) { badge.textContent = ''; return; }
+            var c = countPane(pane);
+            badge.textContent = c[0] + '/' + c[1];
+            badge.classList.toggle('is-done', c[1] > 0 && c[0] === c[1]);
+            done += c[0]; total += c[1];
+        });
+        document.querySelector('[data-total-count]').textContent = done + ' of ' + total;
+    }
+    form.addEventListener('input', update);
+    form.addEventListener('change', function () { setTimeout(update, 0); });
+
+    function tabs() {
+        return Array.prototype.slice.call(document.querySelectorAll('.fb-tabs .nav-link'))
+            .filter(function (t) { return !t.closest('[hidden]'); });
+    }
+    document.querySelectorAll('[data-step]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var list = tabs(), current = list.findIndex(function (t) { return t.classList.contains('active'); });
+            var next = list[current + parseInt(button.dataset.step, 10)];
+            if (next) { bootstrap.Tab.getOrCreateInstance(next).show(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+        });
+    });
+
+    var error = document.querySelector('.tab-pane .is-invalid, .tab-pane .invalid-feedback, .tab-pane .text-danger');
+    if (error) {
+        var pane = error.closest('.tab-pane');
+        var tab = document.querySelector('[data-bs-target="#' + pane.id + '"]');
+        if (tab && window.bootstrap) bootstrap.Tab.getOrCreateInstance(tab).show();
+    }
+    setTimeout(update, 0);
+})();
+
+// "Other" setting: show the box to say what it was
+document.querySelectorAll('[data-other-for]').forEach(function (box) {
+    var select = box.closest('form').querySelector('[name="' + box.dataset.otherFor + '"]');
+    function update() { box.hidden = select.value !== 'other'; }
+    select.addEventListener('change', update);
+    update();
+});
+
+// Show "who cancelled" when it didn't go ahead, and the client's account only when it did
+(function () {
+    var select = document.querySelector('[name="went_ahead"]');
+    if (!select) return;
+    function update() {
+        var ahead = select.value === 'yes';
+        var notAhead = select.value && !ahead;
+        document.querySelectorAll('[data-show-when="ahead"]').forEach(function (el) { el.hidden = !ahead; });
+        document.querySelectorAll('[data-show-when="not-ahead"]').forEach(function (el) { el.hidden = !notAhead; });
+    }
+    select.addEventListener('change', update);
+    update();
+})();
+</script>
+{% endblock %}

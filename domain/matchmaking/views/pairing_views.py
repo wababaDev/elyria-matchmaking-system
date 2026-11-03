@@ -196,8 +196,9 @@ class IntroductionPairingView(PairingActionView):
     form_class = IntroductionForm
 
     def perform(self, pairing, data):
-        record_introduction(pairing, by=self.request.user, introduced_on=data["introduced_on"])
-        return "Introduction date recorded."
+        record_introduction(pairing, by=self.request.user, introduced_on=data["introduced_on"],
+                            setting=data["setting"], minutes=data["minutes"], setting_other=data["setting_other"])
+        return "Introduction recorded."
 
 
 class ClosePairingView(PairingActionView):

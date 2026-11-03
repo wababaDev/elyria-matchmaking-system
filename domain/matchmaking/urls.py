@@ -6,6 +6,7 @@ from domain.matchmaking.views import settings_views as settings_
 from domain.matchmaking.views import dashboard_views, enquiry_views, member_views as members, payment_views, queue_views
 from domain.matchmaking.views import member_note_views as notes
 from domain.matchmaking.views import pairing_views as pairing
+from domain.matchmaking.views.date_feedback_views import DateFeedbackView
 app_name = "matchmaking"
 
 urlpatterns = [
@@ -44,28 +45,27 @@ urlpatterns = [
     path("members/<int:pk>/resend-link/", members.ResendSignInLinkView.as_view(), name="member-resend-link"),
     path("members/<int:pk>/reassign/", members.ReassignMatchmakerView.as_view(), name="member-reassign"),
     path("members/<int:pk>/notes/observation/", notes.AddObservationView.as_view(), name="member-note-observation"),
-   path("members/<int:pk>/notes/discrepancy/", notes.AddDiscrepancyView.as_view(), name="member-note-discrepancy"),
-   path("members/<int:pk>/notes/<int:note_pk>/edit/", notes.EditNoteView.as_view(), name="member-note-edit"),
-   path("members/<int:pk>/notes/<int:note_pk>/close/", notes.CloseNoteView.as_view(), name="member-note-close"),
+    path("members/<int:pk>/notes/discrepancy/", notes.AddDiscrepancyView.as_view(), name="member-note-discrepancy"),
+    path("members/<int:pk>/notes/<int:note_pk>/edit/", notes.EditNoteView.as_view(), name="member-note-edit"),
+    path("members/<int:pk>/notes/<int:note_pk>/close/", notes.CloseNoteView.as_view(), name="member-note-close"),
+    path("members/<int:pk>/hold/start/", members.StartHoldView.as_view(), name="member-hold-start"),
+    path("members/<int:pk>/hold/end/", members.EndHoldView.as_view(), name="member-hold-end"),
 
 
     # Enquiries
     path("enquiries/", enquiry_views.EnquiryListView.as_view(), name="enquiries"),
     path("enquiries/<int:pk>/", enquiry_views.EnquiryDetailView.as_view(), name="enquiry-detail"),
     path("enquiries/<int:pk>/answered/", enquiry_views.MarkEnquiryAnsweredView.as_view(), name="enquiry-answered"),
-
     path("requests/<int:pk>/edit/", requests.ConsultationRequestEditView.as_view(), name="consultation-request-edit"),
     path("requests/<int:pk>/resend-payment/", requests.ResendPaymentInstructionsView.as_view(), name="consultation-request-resend-payment"),
     path("requests/<int:pk>/undo-paid/", requests.UndoFeePaidView.as_view(), name="consultation-request-undo-paid"),
     path("requests/<int:pk>/record/", consultation_record_views.ConsultationRecordView.as_view(), name="consultation-record"),
-
     path("payments/", payment_views.PaymentListView.as_view(), name="payments"),
     path("members/<int:pk>/photos/<int:photo_pk>/", members.MemberPhotoView.as_view(), name="member-photo"),
-
     path("members/<int:pk>/change-email/", members.ChangeSignInEmailView.as_view(), name="member-change-email"),
     path("members/<int:pk>/profile.pdf", members.MemberProfilePdfView.as_view(), name="member-profile-pdf"),
 
-        # Matching
+    # Matching
     path("members/<int:pk>/find-match/", pairing.FindMatchView.as_view(), name="find-match"),
     path("members/<int:pk>/pairings/propose/", pairing.ProposePairingView.as_view(), name="pairing-propose"),
     path("pairings/<int:pk>/approve/", pairing.ApprovePairingView.as_view(), name="pairing-approve"),
@@ -78,7 +78,9 @@ urlpatterns = [
     path("pairings/<int:pk>/card-photo/<int:client_pk>/", pairing.PairingCardPhotoView.as_view(), name="pairing-card-photo"),
     path("pairings/<int:pk>/profile/<int:client_pk>/", pairing.PairingProfileView.as_view(), name="pairing-profile"),
     path("pairings/<int:pk>/present-a/", pairing.PresentToAPairingView.as_view(), name="pairing-present-a"),
-    
-    path("members/<int:pk>/hold/start/", members.StartHoldView.as_view(), name="member-hold-start"),
-    path("members/<int:pk>/hold/end/", members.EndHoldView.as_view(), name="member-hold-end"),
+
+
+    # Feedback
+    path("pairings/<int:pk>/feedback/<int:client_pk>/add/", DateFeedbackView.as_view(), name="date-feedback-add"),
+    path("feedback/<int:feedback_pk>/", DateFeedbackView.as_view(), name="date-feedback-edit"),
 ]

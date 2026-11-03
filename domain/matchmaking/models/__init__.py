@@ -8,7 +8,7 @@ from .member_note import MemberNote, MemberNoteRevision
 from .pairing import MatchAccessLog, Pairing
 from .client_profile import ClientProfile
 from .profile_photo import ProfilePhoto
-
+from .date_feedback import DateFeedback
 __all__ = [
     "ConsultationRequest",
     "Consultation",
@@ -24,4 +24,5 @@ __all__ = [
     "MemberNote",
     "MemberNoteRevision",
     "MembershipHold",
+    "DateFeedback",
 ]
