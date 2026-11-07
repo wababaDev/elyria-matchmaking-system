@@ -9,6 +9,7 @@ def queue_counts(request):
     - pairings_waiting: pairings waiting on you (red, on Pairings)
     - staff_queue_count: consultation requests in your queue (gold, on My Queue)
     - open_enquiries_count: website enquiries not yet answered (gold, on Enquiries)
+    - elite_review_count: Elite cases waiting for Admin's decision (gold, on Elite cases; Admin only)
     """
     user = getattr(request, "user", None)
     if not user or not user.is_authenticated or not request.path.startswith("/management/"):
@@ -19,4 +20,9 @@ def queue_counts(request):
         counts["pairings_waiting"] = sum(qs.count() for qs in pairing_queue(user).values())
     if user.has_perm("base.manage_consultation_request"):
         counts["staff_queue_count"] = sum(len(s["items"]) for s in queue_for(user))
+    if user.has_perm("base.manage_staff"):
+        from domain.elite.models import EliteCase
+
+        counts["elite_review_count"] = EliteCase.objects.filter(status=EliteCase.Status.UNDER_REVIEW).count()
+        counts["elite_pending_count"] = EliteCase.objects.filter(status=EliteCase.Status.AWAITING_DOCUMENTS).count()
     return counts

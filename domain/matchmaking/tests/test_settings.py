@@ -95,7 +95,7 @@ class SettingsTests(TestCase):
 
     def test_upload_privacy_policy(self):
         pdf = SimpleUploadedFile("policy.pdf", b"%PDF-1.4 test", content_type="application/pdf")
-        self.client.post(reverse("matchmaking:settings-documents"), {"file": pdf})
+        self.client.post(reverse("matchmaking:settings-documents"), {"kind": "privacy_policy", "file": pdf})
         self.assertIsNotNone(SiteDocument.current(SiteDocument.Kind.PRIVACY_POLICY))
 
         response = self.client.get(reverse("website:privacy"))
@@ -103,7 +103,7 @@ class SettingsTests(TestCase):
 
     def test_non_pdf_rejected(self):
         fake = SimpleUploadedFile("policy.pdf", b"not a pdf", content_type="application/pdf")
-        response = self.client.post(reverse("matchmaking:settings-documents"), {"file": fake})
+        response = self.client.post(reverse("matchmaking:settings-documents"), {"kind": "privacy_policy", "file": fake})
         self.assertContains(response, "valid PDF")
         self.assertIsNone(SiteDocument.current(SiteDocument.Kind.PRIVACY_POLICY))
 

@@ -1,0 +1,14 @@
+{% extends "layouts/public.html" %}
+{% block title %}Check your email | Elite Grade | Elyria Matchmaking{% endblock %}
+{% block body_class %}always-show-header page-static{% endblock %}
+
+{% block content %}
+{% include "domain/website/elite/_hero.html" with hero_title="Check your email" %}
+<section class="section-padding">
+    <div class="container text-center" style="max-width: 640px;">
+        <h2 class="section-title">One more step</h2>
+        <p class="section-subtitle">We've sent you an email with a link to confirm your address. It works for 48 hours. If you can't find it, please check your spam folder.</p>
+        <a href="{% url 'website:membership' %}" class="register-submit-btn d-inline-block mt-3">Back to Membership</a>
+    </div>
+</section>
+{% endblock %}

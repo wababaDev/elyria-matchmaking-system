@@ -1,0 +1,15 @@
+{% load static %}
+<section class="page-hero">
+    <div class="page-hero-media"><img src="{% static 'front/assets/image(5).jpg' %}" alt=""></div>
+    <div class="page-hero-overlay"></div>
+    <div class="container">
+        <div class="page-hero-content">
+            <ol class="page-breadcrumb" aria-label="Breadcrumb">
+                <li><a href="{% url 'website:home' %}">Home</a></li>
+                <li><a href="{% url 'website:membership' %}">Membership</a></li>
+                <li><span class="is-current">Elite Grade</span></li>
+            </ol>
+            <h1 class="page-hero-title">{{ hero_title|default:"Elite Grade" }}</h1>
+        </div>
+    </div>
+</section>
