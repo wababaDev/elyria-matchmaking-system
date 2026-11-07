@@ -1,0 +1,11 @@
+
+{% autoescape off %}Dear {{ case.full_name }},
+
+Thank you for your Elite Grade request. Before we can complete our review, we need a little more information:
+
+{{ message }}
+
+Please reply to this email ({{ reply_to }}).
+
+Elyria Matchmaking
+{% endautoescape %}

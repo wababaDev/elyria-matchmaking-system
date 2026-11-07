@@ -56,3 +56,13 @@ class PrivacyPolicyUploadForm(BootstrapFormMixin, forms.Form):
         validators=[validate_pdf],
         widget=forms.ClearableFileInput(attrs={"accept": "application/pdf"}),
     )
+
+class SiteDocumentUploadForm(BootstrapFormMixin, forms.Form):
+    """One upload form, used for every document kind on the Documents page."""
+    kind = forms.ChoiceField(choices=SiteDocument.Kind.choices, widget=forms.HiddenInput)
+    file = forms.FileField(
+        label="PDF file",
+        validators=[validate_pdf],
+        widget=forms.ClearableFileInput(attrs={"accept": "application/pdf"}),
+    )
+ 

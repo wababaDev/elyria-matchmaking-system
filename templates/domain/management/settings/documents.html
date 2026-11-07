@@ -1,7 +1,7 @@
 {% extends 'domain/management/settings/_base.html' %}
 
 {% block settings_content %}
-<div class="card custom-card" style="max-width: 720px;">
+<div class="card custom-card" style="max-width: 820px;">
     <div class="card-header"><div class="card-title">Privacy Policy</div></div>
     <div class="card-body">
         {% if privacy_document %}
@@ -17,12 +17,55 @@
             </div>
         {% endif %}
 
-        <form method="post" enctype="multipart/form-data">
+        <form method="post" enctype="multipart/form-data" class="d-flex flex-wrap gap-2 align-items-center">
             {% csrf_token %}
-            {% include "partials/management/_field.html" with field=form.file %}
-            <p class="text-muted fs-12">PDF only, up to 10 MB. Uploading replaces the current file straight away.</p>
-            <button type="submit" class="btn btn-primary">{% if privacy_document %}Replace{% else %}Upload{% endif %} Privacy Policy</button>
+            <input type="hidden" name="kind" value="privacy_policy">
+            <input type="file" name="file" accept="application/pdf" class="form-control" style="max-width: 360px;" required>
+            <button type="submit" class="btn btn-primary">{% if privacy_document %}Replace{% else %}Upload{% endif %}</button>
         </form>
+        <p class="text-muted fs-12 mt-2 mb-0">PDF only, up to 10 MB. Uploading replaces the current file straight away.</p>
+    </div>
+</div>
+
+<div class="card custom-card" style="max-width: 820px;">
+    <div class="card-header justify-content-between">
+        <div class="card-title">Elite Grade documents</div>
+        <span class="text-muted fs-12">Emailed to applicants, never shown on the website</span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table mb-0 align-middle">
+            <tbody>
+                {% for kind, label, document, emailed in elite_documents %}
+                    <tr {% if failed_kind == kind %}class="table-danger"{% endif %}>
+                        <td style="width: 40%;">
+                            <div class="fw-semibold fs-13">{{ label }}</div>
+                            <div class="text-muted fs-12">
+                                {% if emailed %}Sent when an applicant confirms their email{% elif kind == "elite_indemnity" %}Sent after approval, with the payment request{% else %}For the named person, before the client's identity is shared{% endif %}
+                            </div>
+                        </td>
+                        <td class="fs-12">
+                            {% if document %}
+                                <a href="{{ document.file.url }}" target="_blank" rel="noopener"><i class="fe fe-file-text me-1"></i>Current file</a>
+                                <div class="text-muted">{{ document.updated_at|date:"j M Y" }}{% if document.uploaded_by %} · {{ document.uploaded_by.full_name }}{% endif %}</div>
+                            {% else %}
+                                <span class="badge bg-warning-transparent">Not uploaded</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <form method="post" enctype="multipart/form-data" class="d-flex gap-2 justify-content-end">
+                                {% csrf_token %}
+                                <input type="hidden" name="kind" value="{{ kind }}">
+                                <input type="file" name="file" accept="application/pdf" class="form-control form-control-sm" style="max-width: 220px;" required aria-label="{{ label }} PDF">
+                                <button type="submit" class="btn btn-sm btn-light text-nowrap">{% if document %}Replace{% else %}Upload{% endif %}</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer text-muted fs-12">
+        PDF only, up to 10 MB each. Replacing a document takes effect straight away: the next applicant receives the new version.
     </div>
 </div>
 {% endblock %}

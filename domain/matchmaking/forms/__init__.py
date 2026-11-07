@@ -15,6 +15,7 @@ from .settings_forms import (
     SiteSettingsForm,
     StaffCreateForm,
     StaffUpdateForm,
+    SiteDocumentUploadForm
 )
 from .enquiry_form import AnswerEnquiryForm, EnquiryForm
 
@@ -22,5 +23,5 @@ __all__ = [
     "ConsultationRequestForm", "AssignForm", "BookConsultationForm", "FeePaymentForm", "staff_members",
     "MembershipTierForm", "PrivacyPolicyUploadForm", "SiteSettingsForm",
     "StaffCreateForm", "StaffUpdateForm", "RenewMembershipForm", "CancelMembershipForm",
-    "EnquiryForm", "AnswerEnquiryForm",'ConsultationRequestDetailsForm' ,"UndoFeePaidForm"
+    "EnquiryForm", "AnswerEnquiryForm",'ConsultationRequestDetailsForm' ,"UndoFeePaidForm","SiteDocumentUploadForm",
 ]

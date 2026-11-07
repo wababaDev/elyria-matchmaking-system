@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     "domain.website",
     "domain.matchmaking",
     "domain.portal",
+    "domain.elite",
     "notification",
 ]
 
