@@ -91,6 +91,20 @@
                         </a>
                     </li>
                 {% endif %}
+                {% if elite_link %}
+                    <li class="slide">
+                        <a href="{% url 'elite:cases' %}"
+                           class="side-menu__item {% if request.resolver_match.app_name == 'elite' %}active{% endif %}">
+                            <i class="fe fe-star side-menu__icon"></i>
+                            <span class="side-menu__label">{% if perms.base.manage_staff %}Elite cases{% else %}My Elite cases{% endif %}</span>
+                            <span class="ms-auto d-flex gap-1">
+                                {% if elite_review_count %}<span class="badge bg-elyria-gold" title="Waiting on you">{{ elite_review_count }}</span>{% endif %}
+                                {% if elite_pending_count %}<span class="badge bg-light text-muted"
+      title="Waiting for the applicant's documents">{{ elite_pending_count }}</span>{% endif %}
+                            </span>
+                        </a>
+                    </li>
+                {% endif %}
                 {% if perms.base.view_payments %}
                     <li class="slide">
                         <a href="{% url 'matchmaking:payments' %}"
@@ -101,18 +115,6 @@
                     </li>
                 {% endif %}
                 {% if perms.base.view_all_consultation_requests %}
-                    <li class="slide">
-                        <a href="{% url 'elite:cases' %}"
-                           class="side-menu__item {% if request.resolver_match.app_name == 'elite' %}active{% endif %}">
-                            <i class="fe fe-star side-menu__icon"></i>
-                            <span class="side-menu__label">Elite cases</span>
-                            <span class="ms-auto d-flex gap-1">
-                                {% if elite_review_count %}<span class="badge bg-elyria-gold" title="Waiting for your review">{{ elite_review_count }}</span>{% endif %}
-                                {% if elite_pending_count %}<span class="badge bg-light text-muted"
-      title="Waiting for the applicant's documents">{{ elite_pending_count }}</span>{% endif %}
-                            </span>
-                        </a>
-                    </li>
                     {% if perms.base.manage_staff %}
                         <li class="slide__category"><span class="category-name">Admin</span></li>
                         <li class="slide">

@@ -108,11 +108,11 @@ class ApplyTests(EliteTestCase):
 
 
 class StaffTests(EliteTestCase):
-    def test_admin_only_and_every_view_logged(self):
+    def test_other_staff_see_nothing_and_every_view_logged(self):
         case = self.apply()
-        self.client.force_login(self.matchmaker)
-        self.assertEqual(self.client.get(reverse("elite:cases")).status_code, 403)
-        self.assertEqual(self.client.get(reverse("elite:case-detail", args=[case.pk])).status_code, 403)
+        self.client.force_login(self.matchmaker)                     # not this case's handler
+        self.assertNotContains(self.client.get(reverse("elite:cases")), case.reference)
+        self.assertEqual(self.client.get(reverse("elite:case-detail", args=[case.pk])).status_code, 404)
 
         self.client.force_login(self.admin)
         self.assertEqual(self.client.get(reverse("elite:case-detail", args=[case.pk])).status_code, 200)
@@ -164,3 +164,117 @@ class CleanupTests(EliteTestCase):
         self.assertEqual(delete_abandoned(), 1)
         self.assertFalse(EliteCase.objects.filter(pk=old.pk).exists())
         self.assertFalse(EliteCaseEvent.objects.filter(case_id=old.pk).exists())
+
+
+# ---------------------------------------------------------------- Part 2a
+
+from datetime import date  # noqa: E402
+
+from domain.elite.models import SuppressionEntry  # noqa: E402
+from domain.elite.models.elite_case import EliteDocument  # noqa: E402
+from domain.elite.services import elite_service as svc  # noqa: E402
+
+
+class AfterApprovalTests(EliteTestCase):
+    def setUp(self):
+        from domain.matchmaking.models import MembershipTier
+
+        MembershipTier.objects.update_or_create(name="Elite Grade", defaults={"price": 35000, "is_active": False})
+
+    def approved(self, email="mwila@example.com"):
+        case = self.apply(email)
+        self.confirm(case)
+        case.refresh_from_db()
+        for kind in ("nda", "declaration", "request_form"):
+            svc.add_document(case, kind=kind, file=pdf(f"{kind}.pdf"), by=self.admin)
+        svc.confirm_documents(case, nda=True, declaration=True, request_form=True, by=self.admin)
+        svc.save_checks(case, checks={field: True for field, _ in svc.CHECKS}, by=self.admin)
+        svc.decide(case, decision="approve", by=self.admin)
+        with self.captureOnCommitCallbacks(execute=True):
+            svc.assign_handler(case, handler=self.matchmaker, by=self.admin)
+        case.refresh_from_db()
+        return case
+
+    def paid(self, email="mwila@example.com", contact="+260 977 123456"):
+        case = self.approved(email)
+        svc.record_fee(case, method="bank_transfer", reference="TX1", paid_on=date.today(), by=self.matchmaker)
+        svc.add_document(case, kind=EliteDocument.Kind.INDEMNITY, file=pdf("indemnity.pdf"), by=self.matchmaker)
+        svc.confirm_indemnity(case, by=self.matchmaker)
+        svc.record_person(case, name="Thandi Phiri", contact_type="phone", contact=contact, by=self.matchmaker)
+        case.refresh_from_db()
+        return case
+
+    def test_assigning_handler_emails_payment_request_and_handler_sees_only_her_case(self):
+        case = self.approved()
+        self.assertTrue(any("approved" in m.subject.lower() for m in mail.outbox if case.email in m.to))
+        self.client.force_login(self.matchmaker)
+        self.assertContains(self.client.get(reverse("elite:case-detail", args=[case.pk])), case.reference)
+
+    def test_fee_and_indemnity_unlock_outreach_and_details_are_encrypted(self):
+        case = self.paid()
+        self.assertEqual(case.status, EliteCase.Status.PAID)
+        self.assertEqual(case.fee_amount, 35000)                     # from the tier, not typed in
+        self.assertNotIn("Thandi", case.person_name_enc)
+        self.assertEqual(case.person_name, "Thandi Phiri")
+
+    def test_full_path_to_introduction(self):
+        case = self.paid()
+        svc.record_outreach(case, delivered=True, sent_on=date.today(), by=self.matchmaker)
+        case.refresh_from_db()
+        self.assertEqual(case.reply_due_on, date.today() + timedelta(days=14))
+        with self.assertRaises(svc.EliteError):
+            svc.record_answer(case, answer="no_response", by=self.matchmaker)   # 14 days not over yet
+        SiteDocument.objects.create(kind=SiteDocument.Kind.ELITE_ACKNOWLEDGEMENT, file=pdf("ack-blank.pdf"))
+        mail.outbox.clear()
+        with self.captureOnCommitCallbacks(execute=True):
+            svc.record_answer(case, answer="agreed", person_email="thandi@example.com", by=self.matchmaker)
+        ack_email = next(m for m in mail.outbox if "thandi@example.com" in m.to)
+        self.assertEqual(len(ack_email.attachments), 1)
+        self.assertNotIn("Mwila", ack_email.body)                    # never names the client
+        svc.add_document(case, kind=EliteDocument.Kind.ACKNOWLEDGEMENT, file=pdf("ack.pdf"), by=self.matchmaker)
+        svc.record_acknowledgement(case, signed=True, by=self.matchmaker)
+        case.refresh_from_db()
+        self.assertEqual(case.status, EliteCase.Status.INTRODUCTION)
+        self.assertEqual(case.person_email, "thandi@example.com")
+
+    def test_bounce_does_not_count_and_asks_client_for_another_route(self):
+        case = self.paid()
+        mail.outbox.clear()
+        with self.captureOnCommitCallbacks(execute=True):
+            svc.record_outreach(case, delivered=False, sent_on=date.today(), by=self.matchmaker)
+        case.refresh_from_db()
+        self.assertEqual((case.status, case.outreach_bounces), (EliteCase.Status.PAID, 1))
+        self.assertTrue(any("another way" in m.subject for m in mail.outbox))
+
+    def test_decline_adds_to_register_offers_bronze_and_blocks_a_new_request(self):
+        case = self.paid()
+        svc.record_outreach(case, delivered=True, sent_on=date.today(), by=self.matchmaker)
+        with self.captureOnCommitCallbacks(execute=True):
+            svc.record_answer(case, answer="declined", by=self.matchmaker)
+        case.refresh_from_db()
+        self.assertEqual(case.status, EliteCase.Status.BRONZE_OFFERED)
+        self.assertEqual(SuppressionEntry.objects.count(), 1)
+        self.assertTrue(any("Bronze" in m.body for m in mail.outbox if case.email in m.to))
+
+        # Someone asks for the same person again (same number written differently): refused
+        other = self.approved("other@example.com")
+        svc.record_fee(other, method="bank_transfer", reference="", paid_on=date.today(), by=self.matchmaker)
+        with self.assertRaises(svc.EliteError):
+            svc.record_person(other, name="T. Phiri", contact_type="phone", contact="0977123456", by=self.matchmaker)
+
+        svc.record_bronze_answer(case, accepted=True, by=self.matchmaker)
+        case.refresh_from_db()
+        self.assertEqual(case.status, EliteCase.Status.CLOSED)
+
+    def test_named_person_deleted_30_days_after_closing(self):
+        case = self.paid()
+        svc.record_outreach(case, delivered=True, sent_on=date.today(), by=self.matchmaker)
+        svc.record_answer(case, answer="declined", by=self.matchmaker)
+        svc.record_bronze_answer(case, accepted=False, by=self.matchmaker)
+        EliteCase.objects.filter(pk=case.pk).update(closed_at=timezone.now() - timedelta(days=31))
+        self.assertEqual(svc.wipe_named_person(), 1)
+        case.refresh_from_db()
+        self.assertEqual(case.person_name, "")
+        self.assertFalse(case.documents.filter(kind=EliteDocument.Kind.REQUEST_FORM).exists())
+        self.assertTrue(case.documents.filter(kind=EliteDocument.Kind.NDA).exists())
+        self.assertEqual(SuppressionEntry.objects.count(), 1)   # the fingerprint stays

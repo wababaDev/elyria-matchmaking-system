@@ -1,0 +1,8 @@
+{% autoescape off %}Dear {{ case.full_name }},
+
+We weren't able to reach the person you named through the contact details you gave us. This does not count as our inquiry.
+
+If you have another way we can reach them (for example another phone number, an email address, or a mutual contact), please reply to this email ({{ reply_to }}). Please only share details they have shared with you openly.
+
+Elyria Matchmaking
+{% endautoescape %}

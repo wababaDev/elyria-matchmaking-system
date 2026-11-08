@@ -1,9 +1,9 @@
 {% extends "layouts/management.html" %}
 {% block title %}Elite cases{% endblock %}
-{% block page_title %}Elite cases{% endblock %}
+{% block page_title %}{% if is_admin %}Elite cases{% else %}My Elite cases{% endif %}{% endblock %}
 
 {% block content %}
-{# Admin only. Other matchmakers never see Elite cases. #}
+{# Admin sees every case; a Case Handler only the cases assigned to her. #}
 <ul class="nav nav-pills gap-1 mb-3">
     {% for key, label, count in tabs %}
         <li class="nav-item">
@@ -19,23 +19,36 @@
         <div class="table-responsive">
             <table class="table table-hover mb-0 align-middle">
                 <thead>
-                    <tr><th>Case</th><th>Applicant</th><th>Status</th><th>Documents</th><th>Updated</th><th></th></tr>
+                    <tr><th>Case</th><th>Client</th><th>Status</th><th>Case Handler</th><th>Next</th><th></th></tr>
                 </thead>
                 <tbody>
                     {% for case in cases %}
                         <tr>
                             <td class="fw-semibold">{{ case.reference }}</td>
                             <td>{{ case.full_name }}<div class="text-muted fs-12">{{ case.email }}</div></td>
-                            <td><span class="badge {% if case.status == 'under_review' %}bg-danger-transparent{% elif case.status == 'approved' %}bg-success-transparent{% elif case.status == 'declined' %}bg-light text-muted{% else %}bg-warning-transparent{% endif %}">{{ case.get_status_display }}</span></td>
+                            <td>
+                                <span class="badge {% if case.status == 'under_review' %}bg-danger-transparent{% elif case.status == 'declined' or case.status == 'closed' %}bg-light text-muted{% elif case.status == 'introduction' %}bg-success-transparent{% else %}bg-warning-transparent{% endif %} text-wrap text-start">{{ case.get_status_display }}</span>
+                            </td>
+                            <td class="fs-13">{{ case.handler.full_name|default:"—" }}</td>
                             <td class="fs-12">
                                 {% if case.status == "awaiting_email" %}<span class="text-muted">Email not confirmed</span>
-                                {% else %}
+                                {% elif case.status == "awaiting_documents" %}
                                     {% if case.nda_received %}✓{% else %}·{% endif %} NDA &nbsp;
                                     {% if case.declaration_received %}✓{% else %}·{% endif %} Declaration &nbsp;
                                     {% if case.request_form_received %}✓{% else %}·{% endif %} Request form
-                                {% endif %}
+                                {% elif case.status == "approved" %}
+                                    {% if not case.handler %}Assign a Case Handler{% else %}
+                                        {% if case.fee_recorded %}✓{% else %}·{% endif %} Fee &nbsp;
+                                        {% if case.indemnity_received %}✓{% else %}·{% endif %} Indemnity
+                                    {% endif %}
+                                {% elif case.status == "paid" %}Outreach{% if case.outreach_bounces %} ({{ case.outreach_bounces }} bounced){% endif %}
+                                {% elif case.status == "outreach_sent" %}
+                                    {% if case.reply_overdue %}<span class="badge bg-danger-transparent">Reply window ended {{ case.reply_due_on|date:"j M" }}</span>
+                                    {% else %}Reply due {{ case.reply_due_on|date:"j M Y" }}{% endif %}
+                                {% elif case.status == "agreed" %}Acknowledgement to sign
+                                {% elif case.status == "bronze_offered" %}Bronze answer
+                                {% else %}<span class="text-muted">{{ case.updated_at|date:"j M Y" }}</span>{% endif %}
                             </td>
-                            <td class="fs-13">{{ case.updated_at|date:"j M Y" }}</td>
                             <td class="text-end"><a href="{% url 'elite:case-detail' case.pk %}" class="btn btn-sm btn-light">Open</a></td>
                         </tr>
                     {% empty %}
@@ -45,8 +58,11 @@
             </table>
         </div>
     </div>
-    <div class="card-footer text-muted fs-12">
-        Applications that are never confirmed, or have no documents recorded within 30 days, are deleted automatically.
-    </div>
+    {% if is_admin %}
+        <div class="card-footer text-muted fs-12">
+            Applications never confirmed, or with no documents recorded within 30 days, are deleted automatically.
+            The named person's details are deleted 30 days after a case closes.
+        </div>
+    {% endif %}
 </div>
 {% endblock %}

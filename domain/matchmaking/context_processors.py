@@ -1,3 +1,4 @@
+from domain.elite.models.elite_case import EliteCase
 from domain.matchmaking.models import Enquiry
 from domain.matchmaking.services.pairing_service import pairing_queue
 from domain.matchmaking.services.queue_service import queue_for
@@ -21,8 +22,13 @@ def queue_counts(request):
     if user.has_perm("base.manage_consultation_request"):
         counts["staff_queue_count"] = sum(len(s["items"]) for s in queue_for(user))
     if user.has_perm("base.manage_staff"):
-        from domain.elite.models import EliteCase
-
         counts["elite_review_count"] = EliteCase.objects.filter(status=EliteCase.Status.UNDER_REVIEW).count()
         counts["elite_pending_count"] = EliteCase.objects.filter(status=EliteCase.Status.AWAITING_DOCUMENTS).count()
+        counts["elite_link"] = True
+    elif user.has_perm("base.manage_matching"):
+        mine = EliteCase.objects.filter(handler=user)
+        if mine.exists():
+            # A Case Handler sees the link only once she has a case; the gold number = cases waiting on her
+            counts["elite_link"] = True
+            counts["elite_review_count"] = mine.filter(status__in=EliteCase.HANDLER_STATUSES).count()
     return counts

@@ -1,0 +1,9 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}Your next step to Bronze Membership.{% endblock %}
+{% block heading %}Welcome to Bronze Membership{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">Dear {{ case.full_name }},</p>
+    <p style="margin:0 0 16px;">We're glad you'd like to join Elyria as a Bronze Member. Your first step is the consultation request, which begins the standard membership journey.</p>
+    <p style="margin:0 0 24px;"><a href="{{ link }}" style="display:inline-block;background:#6E1423;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;">Start my consultation request</a></p>
+    <p style="margin:0 0 16px;font-size:13px;color:#777;">Please mention Elite Grade reference {{ case.reference }} when you complete it.</p>
+{% endblock %}

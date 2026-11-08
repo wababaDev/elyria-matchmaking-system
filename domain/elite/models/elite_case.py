@@ -1,7 +1,8 @@
 """
 Elite Grade: a client asks Elyria to discreetly approach one named person.
-Visible to Admin (and, from Part 2, the case's handler) only. Not registered in Django admin,
-and there is no export, by design.
+Visible to Admin and the case's Case Handler only. Not registered in Django admin,
+and there is no export, by design. The named person's details are stored encrypted and wiped
+30 days after the case closes; only a fingerprint stays in the "do not approach" register.
 """
 import secrets
 from datetime import timedelta
@@ -48,8 +49,30 @@ class EliteCase(TimeStampedModel):
         UNDER_REVIEW = "under_review", "Under review"
         DECLINED = "declined", "Declined"
         APPROVED = "approved", "Approved: awaiting payment"
+        PAID = "paid", "Paid: ready for outreach"
+        OUTREACH_SENT = "outreach_sent", "Outreach sent: waiting for reply"
+        AGREED = "agreed", "Agreed to hear more: awaiting acknowledgement"
+        INTRODUCTION = "introduction", "Identity shared: introduction next"
+        BRONZE_OFFERED = "bronze_offered", "Not proceeding: Bronze offered"
+        CLOSED = "closed", "Closed"
 
-    OPEN_STATUSES = [Status.AWAITING_EMAIL, Status.AWAITING_DOCUMENTS, Status.UNDER_REVIEW, Status.APPROVED]
+    OPEN_STATUSES = [
+        Status.AWAITING_EMAIL, Status.AWAITING_DOCUMENTS, Status.UNDER_REVIEW, Status.APPROVED,
+        Status.PAID, Status.OUTREACH_SENT, Status.AGREED, Status.INTRODUCTION, Status.BRONZE_OFFERED,
+    ]
+    # Cases where the Case Handler has the next step
+    HANDLER_STATUSES = [Status.APPROVED, Status.PAID, Status.OUTREACH_SENT, Status.AGREED, Status.BRONZE_OFFERED]
+
+    class ContactType(models.TextChoices):
+        PHONE = "phone", "Phone / WhatsApp"
+        EMAIL = "email", "Email"
+        MUTUAL = "mutual", "Through a mutual contact"
+        OTHER = "other", "Other"
+
+    class Outcome(models.TextChoices):
+        DECLINED = "declined", "The person declined"
+        NO_RESPONSE = "no_response", "No response within 14 days"
+        NOT_SIGNED = "not_signed", "Agreed, but didn't sign the acknowledgement"
 
     # The client (applicant)
     full_name = models.CharField(max_length=150)
@@ -83,6 +106,40 @@ class EliteCase(TimeStampedModel):
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="elite_cases_decided"
     )
 
+    # E6: Case Handler, fee and Indemnity Notice
+    handler = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="elite_cases_handled"
+    )
+    handler_assigned_at = models.DateTimeField(null=True, blank=True)
+    fee_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    fee_currency = models.CharField(max_length=3, blank=True)
+    fee_method = models.CharField(max_length=20, blank=True)
+    fee_reference = models.CharField(max_length=100, blank=True)
+    fee_paid_on = models.DateField(null=True, blank=True)
+    fee_recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="elite_fees_recorded"
+    )
+    indemnity_received = models.BooleanField(default=False)
+
+    # E7: the named person (encrypted; wiped 30 days after closing)
+    person_name_enc = models.TextField(blank=True)
+    person_contact_type = models.CharField(max_length=20, choices=ContactType.choices, blank=True)
+    person_contact_enc = models.TextField(blank=True)
+    person_email_enc = models.TextField(blank=True)  # given with consent once they agree (for introduction alerts)
+    person_details_wiped_at = models.DateTimeField(null=True, blank=True)
+
+    # E7/E8: outreach
+    outreach_bounces = models.PositiveSmallIntegerField(default=0)
+    outreach_delivered_on = models.DateField(null=True, blank=True)
+    reply_due_on = models.DateField(null=True, blank=True)
+    acknowledgement_received = models.BooleanField(default=False)
+    outcome = models.CharField(max_length=20, choices=Outcome.choices, blank=True)
+
+    # E11: Bronze offer and closing
+    bronze_offered_at = models.DateTimeField(null=True, blank=True)
+    bronze_accepted = models.BooleanField(null=True, blank=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         ordering = ["-created_at"]
 
@@ -106,6 +163,36 @@ class EliteCase(TimeStampedModel):
         return self.nda_received and self.declaration_received and self.request_form_received
 
     @property
+    def person_name(self):
+        from domain.elite.crypto import decrypt
+        return decrypt(self.person_name_enc)
+
+    @property
+    def person_contact(self):
+        from domain.elite.crypto import decrypt
+        return decrypt(self.person_contact_enc)
+
+    @property
+    def person_email(self):
+        from domain.elite.crypto import decrypt
+        return decrypt(self.person_email_enc)
+
+    @property
+    def has_person(self):
+        return bool(self.person_name_enc)
+
+    @property
+    def fee_recorded(self):
+        return self.fee_paid_on is not None
+
+    @property
+    def reply_overdue(self):
+        return (
+            self.status == self.Status.OUTREACH_SENT and self.reply_due_on is not None
+            and timezone.localdate() > self.reply_due_on
+        )
+
+    @property
     def all_checks_done(self):
         return all([
             self.check_known_to_client, self.check_no_prior_rejection, self.check_no_power_imbalance,
@@ -120,7 +207,12 @@ class EliteDocument(TimeStampedModel):
         NDA = "nda", "NDA"
         DECLARATION = "declaration", "Declaration of Respectful Intent"
         REQUEST_FORM = "request_form", "Confidential Introduction Request Form"
+        INDEMNITY = "indemnity", "Indemnity Notice"
+        ACKNOWLEDGEMENT = "acknowledgement", "Introduction Acknowledgement"
         OTHER = "other", "Other"
+
+    # Contain the named person's details: deleted with them, 30 days after the case closes
+    NAMED_PERSON_KINDS = [Kind.REQUEST_FORM, Kind.ACKNOWLEDGEMENT, Kind.OTHER]
 
     case = models.ForeignKey(EliteCase, on_delete=models.CASCADE, related_name="documents")
     kind = models.CharField(max_length=20, choices=Kind.choices)
@@ -170,3 +262,19 @@ class EliteAccessLog(models.Model):
 
     class Meta:
         ordering = ["-at"]
+
+
+class SuppressionEntry(models.Model):
+    """
+    "Do not approach again": a person who declined, didn't respond, or didn't sign.
+    Only keyed fingerprints of their name and contact are kept, never the details themselves.
+    """
+    name_fingerprint = models.CharField(max_length=64, db_index=True)
+    contact_fingerprint = models.CharField(max_length=64, blank=True, db_index=True)
+    reason = models.CharField(max_length=20, choices=EliteCase.Outcome.choices)
+    case_reference = models.CharField(max_length=20)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name_plural = "suppression entries"

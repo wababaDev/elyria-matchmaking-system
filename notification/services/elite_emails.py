@@ -49,14 +49,39 @@ def notify_more_info(case, message):
     enqueue(tasks.send_elite_email, case.pk, "more_info", message)
 
 
+def notify_acknowledgement(case):
+    from notification import tasks
+    enqueue(tasks.send_elite_email, case.pk, "acknowledgement")
+
+
+def notify_payment_request(case):
+    from notification import tasks
+    enqueue(tasks.send_elite_email, case.pk, "payment_request")
+
+
+def notify_new_route_needed(case):
+    from notification import tasks
+    enqueue(tasks.send_elite_email, case.pk, "new_route")
+
+
+def notify_not_proceeding_bronze(case):
+    from notification import tasks
+    enqueue(tasks.send_elite_email, case.pk, "bronze_offer")
+
+
+def notify_bronze_start(case):
+    from notification import tasks
+    enqueue(tasks.send_elite_email, case.pk, "bronze_start")
+
+
 # ---------- Delivery (worker)
 
-def elite_attachments():
+def elite_attachments(kinds=None):
     """(filename, bytes, mimetype) for each Elite document Admin has uploaded. Missing ones are skipped."""
     from domain.website.models import SiteDocument
 
     files = []
-    for kind in SiteDocument.ELITE_EMAIL_KINDS:
+    for kind in kinds or SiteDocument.ELITE_EMAIL_KINDS:
         document = SiteDocument.current(kind)
         if document is None:
             logger.warning("Elite email sent without %s: not uploaded in Settings → Documents", kind)
@@ -103,6 +128,61 @@ def deliver_elite_email(case, kind, message=""):
             subject="Your Elite Grade request | Elyria Matchmaking",
             template="notification/email/elite_declined",
             context={"case": case},
+            to=[case.email],
+        )
+    elif kind == "payment_request":
+        from domain.elite.services.elite_service import elite_fee
+        from domain.website.models import SiteDocument, SiteSettings
+
+        amount, currency = elite_fee()
+
+        send_templated_email(
+            subject="Your Elite Grade request has been approved | Elyria Matchmaking",
+            template="notification/email/elite_payment_request",
+            context={
+                "case": case, "fee": f"{currency} {amount:,.0f}", "reply_to": reply_to_address(),
+                "bank_details": getattr(SiteSettings.load(), "bank_details", ""),
+            },
+            to=[case.email],
+            attachments=elite_attachments([SiteDocument.Kind.ELITE_INDEMNITY]),
+            reply_to=[reply_to_address()],
+        )
+    elif kind == "acknowledgement":
+        # To the NAMED PERSON. Never names the client: that only happens once this is signed.
+        from domain.website.models import SiteDocument
+
+        if not case.person_email:
+            logger.warning("Acknowledgement for %s not sent: no email for the person", case.reference)
+            return
+        send_templated_email(
+            subject="Your introduction: one document to sign | Elyria Matchmaking",
+            template="notification/email/elite_acknowledgement",
+            context={"reply_to": reply_to_address()},
+            to=[case.person_email],
+            attachments=elite_attachments([SiteDocument.Kind.ELITE_ACKNOWLEDGEMENT]),
+            reply_to=[reply_to_address()],
+        )
+    elif kind == "new_route":
+        send_templated_email(
+            subject="Your Elite Grade request: another way to reach them | Elyria Matchmaking",
+            template="notification/email/elite_new_route",
+            context={"case": case, "reply_to": reply_to_address()},
+            to=[case.email],
+            reply_to=[reply_to_address()],
+        )
+    elif kind == "bronze_offer":
+        send_templated_email(
+            subject="Your Elite Grade request | Elyria Matchmaking",
+            template="notification/email/elite_bronze_offer",
+            context={"case": case, "reply_to": reply_to_address()},
+            to=[case.email],
+            reply_to=[reply_to_address()],
+        )
+    elif kind == "bronze_start":
+        send_templated_email(
+            subject="Welcome to Bronze Membership: your next step | Elyria Matchmaking",
+            template="notification/email/elite_bronze_start",
+            context={"case": case, "link": _url(reverse("website:consultation-request"))},
             to=[case.email],
         )
     elif kind == "more_info":

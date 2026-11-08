@@ -6,38 +6,60 @@
 {% endblock %}
 
 {% block content %}
-{# Admin only. Every visit to this page and every document opened is logged. Nothing here can be exported. #}
+{# Admin and this case's Case Handler only. Every visit and every document opened is logged. Nothing here can be exported. #}
 
-{% if missing_documents %}
+{% if missing_documents and is_admin %}
     <div class="alert alert-warning fs-13">
         <strong>Not uploaded in Settings → Documents:</strong> {{ missing_documents|join:", " }}.
-        The Elite email is sent without them until you upload them.
+        Emails that need them are sent without them until you upload them.
         <a href="{% url 'matchmaking:settings-documents' %}">Upload now</a>
     </div>
 {% endif %}
 
 {% if just_uploaded %}
     <div class="alert alert-info fs-13">
-        <i class="fe fe-trash-2 me-1"></i><strong>Documents saved to the case.</strong>
+        <i class="fe fe-trash-2 me-1"></i><strong>Saved to the case.</strong>
         Now delete the email and its attachments from info@, so the named person's details aren't kept in the inbox.
     </div>
 {% endif %}
 
 <div class="row">
-    <!-- Left: the applicant and the timeline -->
+    <!-- ===== Left: who, the named person, timeline ===== -->
     <div class="col-xl-4">
         <div class="card custom-card">
             <div class="card-body fs-13">
-                <span class="badge {% if case.status == 'under_review' %}bg-danger-transparent{% elif case.status == 'approved' %}bg-success-transparent{% elif case.status == 'declined' %}bg-light text-muted{% else %}bg-warning-transparent{% endif %} mb-2">{{ case.get_status_display }}</span>
+                <span class="badge {% if case.status == 'under_review' %}bg-danger-transparent{% elif case.status == 'declined' or case.status == 'closed' %}bg-light text-muted{% elif case.status == 'introduction' %}bg-success-transparent{% else %}bg-warning-transparent{% endif %} mb-2 text-wrap text-start">{{ case.get_status_display }}</span>
                 <dl class="mb-0">
-                    <dt class="text-muted fw-normal fs-12">Applicant</dt><dd>{{ case.full_name }}</dd>
+                    <dt class="text-muted fw-normal fs-12">Client</dt><dd>{{ case.full_name }}</dd>
                     <dt class="text-muted fw-normal fs-12">Email</dt><dd>{{ case.email }}</dd>
                     <dt class="text-muted fw-normal fs-12">Phone</dt><dd>{{ case.phone|default:"—" }}</dd>
-                    <dt class="text-muted fw-normal fs-12">Applied</dt><dd>{{ case.created_at|date:"j M Y, H:i" }}</dd>
-                    <dt class="text-muted fw-normal fs-12">Email confirmed</dt><dd class="mb-0">{{ case.email_verified_at|date:"j M Y, H:i"|default:"Not yet" }}</dd>
+                    <dt class="text-muted fw-normal fs-12">Applied</dt><dd>{{ case.created_at|date:"j M Y" }}</dd>
+                    <dt class="text-muted fw-normal fs-12">Case Handler</dt><dd>{{ case.handler.full_name|default:"Not assigned yet" }}</dd>
+                    {% if case.fee_recorded %}
+                        <dt class="text-muted fw-normal fs-12">Fee</dt>
+                        <dd class="mb-0">{{ case.fee_currency }} {{ case.fee_amount|floatformat:"2g" }} · paid {{ case.fee_paid_on|date:"j M Y" }}<br><span class="text-muted fs-12">recorded by {{ case.fee_recorded_by.full_name }}</span></dd>
+                    {% endif %}
                 </dl>
             </div>
         </div>
+
+        {% if case.has_person or case.person_details_wiped_at %}
+            <div class="card custom-card">
+                <div class="card-header"><div class="card-title">The named person</div></div>
+                <div class="card-body fs-13">
+                    {% if case.person_details_wiped_at %}
+                        <p class="text-muted mb-0">Deleted {{ case.person_details_wiped_at|date:"j M Y" }}, 30 days after closing. Only the "do not approach" entry is kept, if there is one.</p>
+                    {% else %}
+                        <dl class="mb-2">
+                            <dt class="text-muted fw-normal fs-12">Name</dt><dd>{{ case.person_name }}</dd>
+                            <dt class="text-muted fw-normal fs-12">{{ case.get_person_contact_type_display }}</dt><dd>{{ case.person_contact }}</dd>
+                            {% if case.person_email %}<dt class="text-muted fw-normal fs-12">Email (given with consent)</dt><dd>{{ case.person_email }}</dd>{% endif %}
+                        </dl>
+                        <p class="text-muted fs-12 mb-0"><i class="fe fe-lock me-1"></i>Stored encrypted. Deleted 30 days after the case closes.</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
 
         <div class="card custom-card">
             <div class="card-header"><div class="card-title">Timeline</div></div>
@@ -54,21 +76,23 @@
             </div>
         </div>
 
-        <details class="fs-12 text-muted mb-4">
-            <summary>Who opened this case (last 20)</summary>
-            <ul class="list-unstyled mt-2">
-                {% for entry in access %}<li>{{ entry.at|date:"j M, H:i" }} · {{ entry.user.full_name }} · {{ entry.get_action_display }}{% if entry.detail %}: {{ entry.detail }}{% endif %}</li>{% endfor %}
-            </ul>
-        </details>
+        {% if is_admin %}
+            <details class="fs-12 text-muted mb-4">
+                <summary>Who opened this case (last 20)</summary>
+                <ul class="list-unstyled mt-2">
+                    {% for entry in access %}<li>{{ entry.at|date:"j M, H:i" }} · {{ entry.user.full_name }} · {{ entry.get_action_display }}{% if entry.detail %}: {{ entry.detail }}{% endif %}</li>{% endfor %}
+                </ul>
+            </details>
+        {% endif %}
     </div>
 
-    <!-- Right: documents, review, decision -->
+    <!-- ===== Right: the steps ===== -->
     <div class="col-xl-8">
 
-        <!-- Documents the client emailed back -->
+        <!-- Documents (all steps) -->
         <div class="card custom-card">
             <div class="card-header justify-content-between">
-                <div class="card-title">1. Signed documents</div>
+                <div class="card-title">Documents</div>
                 <span class="text-muted fs-12">Returned by email to info@</span>
             </div>
             <div class="card-body">
@@ -82,23 +106,23 @@
                             </li>
                         {% endfor %}
                     </ul>
-                {% elif case.status == "awaiting_documents" %}
-                    <p class="text-muted fs-13">Nothing uploaded yet. When the client replies with the signed documents, upload them here.</p>
                 {% elif case.status == "awaiting_email" %}
                     <p class="text-muted fs-13 mb-0">The applicant hasn't confirmed their email yet, so the documents haven't been sent.</p>
+                {% else %}
+                    <p class="text-muted fs-13">Nothing uploaded yet. When the client replies with signed documents, upload them here.</p>
                 {% endif %}
 
-                {% if case.status == "awaiting_documents" or case.status == "under_review" %}
-                    <form method="post" action="{% url 'elite:case-upload' case.pk %}" enctype="multipart/form-data" class="row g-2 align-items-end mb-3">
+                {% if case.is_open and case.status != "awaiting_email" %}{% if is_admin or can_handle %}
+                    <form method="post" action="{% url 'elite:case-upload' case.pk %}" enctype="multipart/form-data" class="row g-2 align-items-end">
                         {% csrf_token %}
                         <div class="col-md-4"><label class="form-label fs-13">Document</label>{{ upload_form.kind }}</div>
                         <div class="col-md-6"><label class="form-label fs-13">File (PDF, Word or photo, up to 15 MB)</label>{{ upload_form.file }}</div>
                         <div class="col-md-2 d-grid"><button type="submit" class="btn btn-light">Upload</button></div>
                     </form>
-                {% endif %}
+                {% endif %}{% endif %}
 
-                {% if case.status == "awaiting_documents" %}
-                    <form method="post" action="{% url 'elite:case-received' case.pk %}" class="border-top pt-3">
+                {% if case.status == "awaiting_documents" and is_admin %}
+                    <form method="post" action="{% url 'elite:case-received' case.pk %}" class="border-top pt-3 mt-3">
                         {% csrf_token %}
                         <p class="fs-13 mb-2">Tick what has come back signed. When all three are ticked, the case moves to review.</p>
                         {% for field in received_form %}
@@ -106,60 +130,285 @@
                         {% endfor %}
                         <button type="submit" class="btn btn-primary btn-sm mt-2">Save</button>
                     </form>
-                {% elif case.documents_confirmed_at %}
-                    <p class="fs-12 text-muted mb-0">All documents confirmed {{ case.documents_confirmed_at|date:"j M Y" }} by {{ case.documents_confirmed_by.full_name }}.</p>
                 {% endif %}
             </div>
         </div>
 
-        {% if case.status == "under_review" or case.decided_at %}
-        <!-- Admin's review -->
-        <div class="card custom-card">
-            <div class="card-header"><div class="card-title">2. Review</div></div>
-            <div class="card-body">
-                <form method="post" action="{% url 'elite:case-checks' case.pk %}">
-                    {% csrf_token %}
-                    <div class="row">
-                        {% for field in checks_form %}
-                            <div class="col-md-6">
-                                <div class="form-check fs-13 mb-1">
-                                    <input type="checkbox" name="{{ field.html_name }}" id="{{ field.id_for_label }}" class="form-check-input" {% if field.value %}checked{% endif %} {% if case.status != "under_review" %}disabled{% endif %}>
-                                    <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        <!-- Review and decision (Admin) -->
+        {% if is_admin %}{% if case.status == "under_review" or case.decided_at %}
+            <div class="card custom-card">
+                <div class="card-header"><div class="card-title">Review</div></div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'elite:case-checks' case.pk %}">
+                        {% csrf_token %}
+                        <div class="row">
+                            {% for field in checks_form %}
+                                <div class="col-md-6">
+                                    <div class="form-check fs-13 mb-1">
+                                        <input type="checkbox" name="{{ field.html_name }}" id="{{ field.id_for_label }}" class="form-check-input" {% if field.value %}checked{% endif %} {% if case.status != "under_review" %}disabled{% endif %}>
+                                        <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                    </div>
                                 </div>
+                            {% endfor %}
+                        </div>
+                        {% if case.status == "under_review" %}<button type="submit" class="btn btn-light btn-sm mt-2">Save checks</button>{% endif %}
+                    </form>
+
+                    {% if case.status == "under_review" %}
+                        <form method="post" action="{% url 'elite:case-decide' case.pk %}" class="border-top pt-3 mt-3">
+                            {% csrf_token %}
+                            <label class="form-label fs-13" for="decision-note">Note</label>
+                            <textarea name="note" id="decision-note" rows="2" class="form-control mb-2"
+                                      placeholder="Optional for Approve / Decline (staff only). For More information, this is the question emailed to the client."></textarea>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="submit" name="decision" value="approve" class="btn btn-success"
+                                        {% if not case.all_checks_done %}disabled title="Tick and save all the checks first"{% endif %}
+                                        data-confirm-title="Approve {{ case.reference }}?" data-confirm="Next you'll assign the Case Handler, which emails the K35,000 payment request." data-confirm-button="Approve">Approve</button>
+                                <button type="submit" name="decision" value="more_info" class="btn btn-light"
+                                        data-confirm-title="Ask for more information?" data-confirm="The note above is emailed to the client. The case stays under review." data-confirm-button="Send">More information needed</button>
+                                <button type="submit" name="decision" value="decline" class="btn btn-outline-danger"
+                                        data-confirm-title="Decline {{ case.reference }}?" data-confirm="The client gets the standard 'not proceeding' message, with no reason. No fee, no Bronze offer. This closes the case." data-confirm-button="Decline" data-confirm-variant="danger">Decline</button>
                             </div>
-                        {% endfor %}
-                    </div>
-                    {% if case.status == "under_review" %}<button type="submit" class="btn btn-light btn-sm mt-2">Save checks</button>{% endif %}
-                </form>
+                            {% if not case.all_checks_done %}<p class="text-muted fs-12 mt-2 mb-0">Approve unlocks once all five checks are ticked and saved.</p>{% endif %}
+                        </form>
+                    {% elif case.decided_at %}
+                        <p class="fs-12 text-muted border-top pt-2 mt-3 mb-0">Decided {{ case.decided_at|date:"j M Y" }} by {{ case.decided_by.full_name }}.</p>
+                    {% endif %}
+                </div>
             </div>
-        </div>
+        {% endif %}{% endif %}
+
+        <!-- Case Handler, fee, Indemnity Notice -->
+        {% if case.status == "approved" or case.handler %}
+            <div class="card custom-card">
+                <div class="card-header"><div class="card-title">Case Handler and payment</div></div>
+                <div class="card-body">
+                    {% if is_admin and case.is_open %}
+                        <form method="post" action="{% url 'elite:case-handler' case.pk %}" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+                            {% csrf_token %}
+                            <div style="min-width: 240px;"><label class="form-label fs-13">Case Handler</label>{{ handler_form.handler }}</div>
+                            <button type="submit" class="btn {% if case.handler %}btn-light{% else %}btn-primary{% endif %}"
+                                    {% if not case.handler %}data-confirm-title="Assign the Case Handler?" data-confirm="The client will be emailed the K35,000 payment request with the Indemnity Notice attached." data-confirm-button="Assign"{% endif %}>
+                                {% if case.handler %}Change handler{% else %}Assign and send payment request{% endif %}
+                            </button>
+                        </form>
+                    {% elif not case.handler %}
+                        <p class="text-muted fs-13">Waiting for Admin to assign a Case Handler.</p>
+                    {% endif %}
+
+                    {% if case.handler %}
+                        <div class="row g-3">
+                            <!-- Fee -->
+                            <div class="col-md-6">
+                                <p class="fs-13 fw-semibold mb-2">{% if case.fee_recorded %}✓{% else %}·{% endif %} Elite Grade fee</p>
+                                {% if case.fee_recorded %}
+                                    <p class="fs-12 text-muted mb-0">{{ case.fee_currency }} {{ case.fee_amount|floatformat:"2g" }} paid {{ case.fee_paid_on|date:"j M Y" }}. Non-refundable.</p>
+                                {% elif can_handle and case.status == "approved" %}
+                                    {% if elite_price %}
+                                        <form method="post" action="{% url 'elite:case-fee' case.pk %}">
+                                            {% csrf_token %}
+                                            <p class="fs-13 mb-2">Amount: <strong>{{ elite_price.1 }} {{ elite_price.0|floatformat:"2g" }}</strong> <span class="text-muted fs-12">(set in Settings → Membership tiers)</span></p>
+                                            <div class="row g-2">
+                                                <div class="col-6"><label class="form-label fs-12 mb-1" for="{{ fee_form.paid_on.id_for_label }}">Paid on</label>{{ fee_form.paid_on }}</div>
+                                                <div class="col-6"><label class="form-label fs-12 mb-1" for="{{ fee_form.method.id_for_label }}">Paid by</label>{{ fee_form.method }}</div>
+                                                <div class="col-12"><label class="form-label fs-12 mb-1" for="{{ fee_form.reference.id_for_label }}">Transaction reference <span class="text-muted">(optional)</span></label>{{ fee_form.reference }}</div>
+                                            </div>
+                                            <button type="submit" class="btn btn-sm btn-primary mt-2"
+                                                    data-confirm-title="Record the fee?" data-confirm="{{ elite_price.1 }} {{ elite_price.0|floatformat:'2g' }}, non-refundable. It shows on the Payments page and can't be changed here afterwards." data-confirm-button="Record">Record fee</button>
+                                        </form>
+                                    {% else %}
+                                        <p class="fs-12 text-danger mb-0">Set the Elite Grade price in Settings → Membership tiers first.</p>
+                                    {% endif %}
+                                {% else %}
+                                    <p class="fs-12 text-muted mb-0">Not recorded yet.</p>
+                                {% endif %}
+                            </div>
+                            <!-- Indemnity -->
+                            <div class="col-md-6">
+                                <p class="fs-13 fw-semibold mb-2">{% if case.indemnity_received %}✓{% else %}·{% endif %} Signed Indemnity Notice</p>
+                                {% if case.indemnity_received %}
+                                    <p class="fs-12 text-muted mb-0">Received.</p>
+                                {% elif can_handle and case.status == "approved" %}
+                                    {% if has_indemnity_file %}
+                                        <form method="post" action="{% url 'elite:case-indemnity' case.pk %}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-primary">Mark as received</button>
+                                        </form>
+                                    {% else %}
+                                        <p class="fs-12 text-muted mb-0">When it comes back, upload it under Documents (choose "Indemnity Notice"), then mark it here.</p>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% if case.status == "approved" %}<p class="text-muted fs-12 border-top pt-2 mt-3 mb-0">Outreach unlocks once both are in.</p>{% endif %}
+                    {% endif %}
+                </div>
+            </div>
         {% endif %}
 
-        {% if case.status == "under_review" %}
-        <!-- Decision -->
-        <div class="card custom-card">
-            <div class="card-header"><div class="card-title">3. Decision</div></div>
-            <div class="card-body">
-                <form method="post" action="{% url 'elite:case-decide' case.pk %}">
-                    {% csrf_token %}
-                    <label class="form-label fs-13" for="decision-note">Note</label>
-                    <textarea name="note" id="decision-note" rows="2" class="form-control mb-2"
-                              placeholder="Optional for Approve / Decline (staff only). For More information, this is the question emailed to the client."></textarea>
-                    <div class="d-flex flex-wrap gap-2">
-                        <button type="submit" name="decision" value="approve" class="btn btn-success"
-                                {% if not case.all_checks_done %}disabled title="Tick and save all the checks first"{% endif %}
-                                data-confirm-title="Approve {{ case.reference }}?" data-confirm="The next step is assigning a Case Handler and requesting the K35,000 payment." data-confirm-button="Approve">Approve</button>
-                        <button type="submit" name="decision" value="more_info" class="btn btn-light"
-                                data-confirm-title="Ask for more information?" data-confirm="The note above is emailed to the client. The case stays under review." data-confirm-button="Send">More information needed</button>
-                        <button type="submit" name="decision" value="decline" class="btn btn-outline-danger"
-                                data-confirm-title="Decline {{ case.reference }}?" data-confirm="The client gets the standard 'not proceeding' message, with no reason. No fee. This closes the case." data-confirm-button="Decline" data-confirm-variant="danger">Decline</button>
-                    </div>
-                    {% if not case.all_checks_done %}<p class="text-muted fs-12 mt-2 mb-0">Approve unlocks once all five checks are ticked and saved.</p>{% endif %}
-                </form>
+        <!-- The named person and outreach -->
+        {% if case.status == "paid" or case.status == "outreach_sent" or case.has_person and case.status == "approved" %}
+            <div class="card custom-card">
+                <div class="card-header justify-content-between">
+                    <div class="card-title">The named person and outreach</div>
+                    <span class="text-muted fs-12">One discreet inquiry. Never name the client.</span>
+                </div>
+                <div class="card-body">
+                    {% if can_handle and case.status != "outreach_sent" %}
+                        <form method="post" action="{% url 'elite:case-person' case.pk %}" class="mb-3">
+                            {% csrf_token %}
+                            <div class="row g-2">
+                                <div class="col-md-5"><label class="form-label fs-13">{{ person_form.name.label }}</label>{{ person_form.name }}</div>
+                                <div class="col-md-3"><label class="form-label fs-13">{{ person_form.contact_type.label }}</label>{{ person_form.contact_type }}</div>
+                                <div class="col-md-4"><label class="form-label fs-13">{{ person_form.contact.label }}</label>{{ person_form.contact }}</div>
+                            </div>
+                            <p class="text-muted fs-12 mt-1 mb-2">Use only what the client gave you on the request form. Elyria never searches for the person. Checked against the "do not approach" list when saved.</p>
+                            <button type="submit" class="btn btn-sm btn-light">{% if case.has_person %}Update details{% else %}Save details{% endif %}</button>
+                        </form>
+                    {% endif %}
+
+                    {% if case.status == "paid" and can_handle %}
+                        {% if case.has_person %}
+                            <form method="post" action="{% url 'elite:case-outreach' case.pk %}" class="border-top pt-3">
+                                {% csrf_token %}
+                                <p class="fs-13 mb-2">
+                                    After you've sent the discreet message, record it here.
+                                    {% if case.outreach_bounces %}<span class="text-muted">({{ case.outreach_bounces }} earlier attempt{{ case.outreach_bounces|pluralize }} bounced, not counted.)</span>{% endif %}
+                                </p>
+                                <div class="d-flex flex-wrap gap-2 align-items-end">
+                                    <div><label class="form-label fs-13" for="{{ outreach_form.sent_on.id_for_label }}">Sent on</label>{{ outreach_form.sent_on }}</div>
+                                    <button type="submit" name="delivered" value="yes" class="btn btn-primary"
+                                            data-confirm-title="Record the outreach as delivered?" data-confirm="This is the one inquiry. The 14-day reply window starts from the date above." data-confirm-button="Record">Delivered</button>
+                                    <button type="submit" name="delivered" value="no" class="btn btn-light"
+                                            data-confirm-title="Record as bounced?" data-confirm="It doesn't count as the inquiry. The client is emailed to ask for another way to reach them." data-confirm-button="Record">Bounced</button>
+                                </div>
+                            </form>
+                        {% else %}
+                            <p class="text-muted fs-13 mb-0">Save the person's details first.</p>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if case.status == "outreach_sent" %}
+                        <p class="fs-13">
+                            Delivered {{ case.outreach_delivered_on|date:"j M Y" }}.
+                            {% if case.reply_overdue %}<span class="badge bg-danger-transparent">The 14 days ended {{ case.reply_due_on|date:"j M Y" }}</span>
+                            {% else %}Reply window ends <strong>{{ case.reply_due_on|date:"j M Y" }}</strong>.{% endif %}
+                        </p>
+                        {% if can_handle %}
+                            <form method="post" action="{% url 'elite:case-answer' case.pk %}" class="border rounded p-3 mb-3">
+                                {% csrf_token %}
+                                <input type="hidden" name="answer" value="agreed">
+                                <p class="fs-13 fw-semibold mb-2">They'd like to hear more</p>
+                                <div class="d-flex flex-wrap gap-2 align-items-end">
+                                    <div style="min-width: 280px;">
+                                        <label class="form-label fs-12 mb-1" for="agreed-email">Their email (optional)</label>
+                                        <input type="email" name="person_email" id="agreed-email" class="form-control" placeholder="name@example.com">
+                                    </div>
+                                    <button type="submit" class="btn btn-success"
+                                            data-confirm-title="They agreed to hear more?" data-confirm="If you entered their email, the Introduction Acknowledgement is emailed to them now. Don't share the client's identity until it's signed." data-confirm-button="Record">Agreed to hear more</button>
+                                </div>
+                                <p class="text-muted fs-12 mt-1 mb-0">With an email, the system sends them the Introduction Acknowledgement. Without one, you can download it on the next step and send it yourself.</p>
+                            </form>
+                            <form method="post" action="{% url 'elite:case-answer' case.pk %}" class="d-flex flex-wrap gap-2">
+                                {% csrf_token %}
+                                <button type="submit" name="answer" value="declined" class="btn btn-outline-danger"
+                                        data-confirm-title="They declined?" data-confirm="The case closes, they go on the 'do not approach' list, and the client is offered Bronze. This can't be undone." data-confirm-button="Record" data-confirm-variant="danger">Declined</button>
+                                <button type="submit" name="answer" value="no_response" class="btn btn-outline-secondary"
+                                        {% if not case.reply_overdue %}disabled title="Available after {{ case.reply_due_on|date:'j M Y' }}"{% endif %}
+                                        data-confirm-title="No response in 14 days?" data-confirm="The case closes, they go on the 'do not approach' list, and the client is offered Bronze. This can't be undone." data-confirm-button="Record" data-confirm-variant="danger">No response</button>
+                            </form>
+                        {% endif %}
+                    {% endif %}
+                </div>
             </div>
-        </div>
-        {% elif case.decided_at %}
-            <p class="fs-13 text-muted">{{ case.get_status_display }} on {{ case.decided_at|date:"j M Y" }} by {{ case.decided_by.full_name }}.</p>
+        {% endif %}
+
+        <!-- Introduction Acknowledgement -->
+        {% if case.status == "agreed" %}
+            <div class="card custom-card">
+                <div class="card-header"><div class="card-title">Introduction Acknowledgement</div></div>
+                <div class="card-body">
+                    <p class="fs-13 mb-2">
+                        {% if case.person_email %}
+                            Emailed to <strong>{{ case.person_email }}</strong>. Replies come to info@.
+                        {% else %}
+                            Not emailed: no email address for them yet.
+                        {% endif %}
+                        When it comes back signed, upload it under Documents (choose "Introduction Acknowledgement").
+                        <strong>Only after it's signed</strong> may you share the client's identity.
+                    </p>
+
+                    {% if can_handle %}
+                        <div class="d-flex flex-wrap gap-3 align-items-end border-top pt-3 mb-3">
+                            <form method="post" action="{% url 'elite:case-acknowledgement-send' case.pk %}" class="d-flex flex-wrap gap-2 align-items-end">
+                                {% csrf_token %}
+                                <div style="min-width: 260px;">
+                                    <label class="form-label fs-12 mb-1" for="ack-send-email">{% if case.person_email %}Send again to{% else %}Email it to{% endif %}</label>
+                                    <input type="email" name="person_email" id="ack-send-email" value="{{ case.person_email }}" class="form-control" required>
+                                </div>
+                                <button type="submit" class="btn btn-light">{% if case.person_email %}Resend{% else %}Send{% endif %}</button>
+                            </form>
+                            {% if acknowledgement_blank %}
+                                <a href="{{ acknowledgement_blank.file.url }}" target="_blank" rel="noopener" class="btn btn-light">
+                                    <i class="fe fe-download me-1"></i>Download the blank to send another way
+                                </a>
+                            {% else %}
+                                <span class="text-danger fs-12">The blank Acknowledgement isn't uploaded in Settings → Documents yet.</span>
+                            {% endif %}
+                        </div>
+
+                        <form method="post" action="{% url 'elite:case-acknowledgement' case.pk %}" class="border-top pt-3">
+                            {% csrf_token %}
+                            {% if not case.person_email %}
+                                <div class="mb-2" style="max-width: 380px;"><label class="form-label fs-12 mb-1">{{ ack_form.person_email.label }}</label>{{ ack_form.person_email }}</div>
+                            {% endif %}
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="submit" name="signed" value="yes" class="btn btn-success"
+                                        {% if not has_ack_file %}disabled title="Upload the signed acknowledgement first"{% endif %}>Signed: share the client's identity</button>
+                                <button type="submit" name="signed" value="no" class="btn btn-outline-danger"
+                                        data-confirm-title="Not signed?" data-confirm="Treated as no response: the case closes, they go on the 'do not approach' list, and the client is offered Bronze." data-confirm-button="Record" data-confirm-variant="danger">Not signed</button>
+                            </div>
+                            {% if not has_ack_file %}<p class="text-muted fs-12 mt-1 mb-0">"Signed" unlocks once the signed copy is uploaded.</p>{% endif %}
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Introduction (Part 2b) -->
+        {% if case.status == "introduction" %}
+            <div class="card custom-card">
+                <div class="card-header"><div class="card-title">Introduction</div></div>
+                <div class="card-body fs-13">
+                    <p class="mb-0">Both have agreed and the acknowledgement is signed. Scheduling the introduction, alerts and Elite feedback come in the next update.</p>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Bronze offer -->
+        {% if case.status == "bronze_offered" %}
+            <div class="card custom-card">
+                <div class="card-header"><div class="card-title">Bronze offer</div></div>
+                <div class="card-body">
+                    <p class="fs-13">{{ case.get_outcome_display }}. The client was told the request isn't proceeding and offered Bronze Membership on {{ case.bronze_offered_at|date:"j M Y" }}. Record their answer when they reply.</p>
+                    {% if can_handle %}
+                        <form method="post" action="{% url 'elite:case-bronze' case.pk %}" class="d-flex flex-wrap gap-2">
+                            {% csrf_token %}
+                            <button type="submit" name="accepted" value="yes" class="btn btn-primary"
+                                    data-confirm-title="They accepted Bronze?" data-confirm="They're emailed the link to start the consultation request, and this case closes." data-confirm-button="Record">Accepted</button>
+                            <button type="submit" name="accepted" value="no" class="btn btn-light"
+                                    data-confirm-title="They declined Bronze?" data-confirm="This case closes." data-confirm-button="Record">Declined</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if case.status == "closed" %}
+            <p class="fs-13 text-muted">
+                Closed {{ case.closed_at|date:"j M Y" }}{% if case.outcome %} · {{ case.get_outcome_display }}{% endif %}
+                {% if case.bronze_accepted %} · Bronze accepted{% elif case.bronze_accepted is False %} · Bronze declined{% endif %}.
+            </p>
         {% endif %}
     </div>
 </div>

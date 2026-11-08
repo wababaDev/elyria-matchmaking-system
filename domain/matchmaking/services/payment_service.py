@@ -1,10 +1,11 @@
 """
 Read-only view of every payment the system records, for Finance and Admin.
 
-Payments live in two places and stay there:
+Payments live in three places and stay there:
 - consultation fees, on ConsultationRequest (fee_* fields)
 - membership payments (new, renewals and upgrades), in MembershipPayment
-This module reads both and returns one combined, filtered list.
+- Elite Grade fees, on EliteCase (fee_* fields)
+This module reads all three and returns one combined, filtered list.
 """
 
 from collections import defaultdict
@@ -23,6 +24,7 @@ KIND_FEE = "fee"
 KIND_NEW = "new"
 KIND_RENEWAL = "renewal"
 KIND_UPGRADE = "upgrade"
+KIND_ELITE = "elite"
 MEMBERSHIP_KINDS = (KIND_NEW, KIND_RENEWAL, KIND_UPGRADE)
 
 KIND_CHOICES = [
@@ -31,9 +33,19 @@ KIND_CHOICES = [
     (KIND_NEW, "New memberships"),
     (KIND_RENEWAL, "Renewals"),
     (KIND_UPGRADE, "Upgrades"),
+    (KIND_ELITE, "Elite Grade fees"),
 ]
 
 KIND_LABELS = dict(KIND_CHOICES)
+
+# Which column each kind counts towards in the per-staff summary
+STAFF_COLUMN = {
+    KIND_FEE: "fees",
+    KIND_NEW: "new",
+    KIND_RENEWAL: "renewals",
+    KIND_UPGRADE: "renewals",
+    KIND_ELITE: "elite",
+}
 
 
 @dataclass
@@ -56,6 +68,7 @@ class PaymentRow:
             KIND_NEW: "New membership",
             KIND_RENEWAL: "Renewal",
             KIND_UPGRADE: "Upgrade",
+            KIND_ELITE: "Elite Grade fee",
         }.get(self.kind, self.kind.title())
 
 
@@ -129,6 +142,40 @@ def _membership_rows(*, kind, q, staff, date_from, date_to):
         )
 
 
+def _elite_rows(*, q, staff, date_from, date_to):
+    """
+    Elite Grade fees. Only the client's name, the case reference and the payment itself:
+    nothing about the named person. The link opens the case, which only Admin and the
+    Case Handler can see (Finance gets "not found", by design).
+    """
+    from domain.elite.models import EliteCase
+
+    qs = EliteCase.objects.filter(fee_paid_on__isnull=False).select_related("fee_recorded_by")
+    if q:
+        qs = qs.filter(Q(full_name__icontains=q) | Q(fee_reference__icontains=q) | Q(email__icontains=q))
+    if staff:
+        qs = qs.filter(fee_recorded_by=staff)
+    if date_from:
+        qs = qs.filter(fee_paid_on__gte=date_from)
+    if date_to:
+        qs = qs.filter(fee_paid_on__lte=date_to)
+
+    methods = dict(ConsultationRequest.PaymentMethod.choices)
+    for case in qs:
+        yield PaymentRow(
+            paid_on=case.fee_paid_on,
+            kind=KIND_ELITE,
+            person=case.full_name,
+            payment_reference=case.reference,
+            amount=case.fee_amount or Decimal("0"),
+            currency=case.fee_currency,
+            method=methods.get(case.fee_method, case.fee_method),
+            transaction_ref=case.fee_reference,
+            recorded_by=case.fee_recorded_by,
+            link=reverse("elite:case-detail", args=[case.pk]),
+        )
+
+
 def payment_rows(*, kind="", q="", staff=None, date_from=None, date_to=None):
     """Every payment matching the filters, newest first."""
     q = (q or "").strip()
@@ -136,9 +183,9 @@ def payment_rows(*, kind="", q="", staff=None, date_from=None, date_to=None):
     if kind in ("", KIND_FEE):
         rows += _fee_rows(q=q, staff=staff, date_from=date_from, date_to=date_to)
     if kind in ("",) + MEMBERSHIP_KINDS:
-        rows += _membership_rows(
-            kind=kind, q=q, staff=staff, date_from=date_from, date_to=date_to
-        )
+        rows += _membership_rows(kind=kind, q=q, staff=staff, date_from=date_from, date_to=date_to)
+    if kind in ("", KIND_ELITE):
+        rows += _elite_rows(q=q, staff=staff, date_from=date_from, date_to=date_to)
     return sorted(rows, key=lambda r: r.paid_on, reverse=True)
 
 
@@ -157,9 +204,8 @@ def payment_summary(rows):
         "all": totals_by_currency(rows),
         "this_month": totals_by_currency(r for r in rows if r.paid_on >= month_start),
         "fees": totals_by_currency(r for r in rows if r.kind == KIND_FEE),
-        "memberships": totals_by_currency(
-            r for r in rows if r.kind in MEMBERSHIP_KINDS
-        ),
+        "memberships": totals_by_currency(r for r in rows if r.kind in MEMBERSHIP_KINDS),
+        "elite": totals_by_currency(r for r in rows if r.kind == KIND_ELITE),
         "count": len(rows),
     }
 
@@ -176,6 +222,7 @@ def staff_summary(rows, *, date_from=None, date_to=None):
                 "fees": 0,
                 "new": 0,
                 "renewals": 0,
+                "elite": 0,
                 "cancelled": 0,
                 "totals": defaultdict(Decimal),
             }
@@ -183,14 +230,7 @@ def staff_summary(rows, *, date_from=None, date_to=None):
 
     for row in rows:
         e = entry(row.recorded_by)
-        e[
-            {
-                KIND_FEE: "fees",
-                KIND_NEW: "new",
-                KIND_RENEWAL: "renewals",
-                KIND_UPGRADE: "renewals",
-            }[row.kind]
-        ] += 1
+        e[STAFF_COLUMN.get(row.kind, "fees")] += 1
         e["totals"][row.currency] += row.amount
 
     cancelled = Membership.objects.filter(

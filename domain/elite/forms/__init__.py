@@ -1,6 +1,7 @@
 from django import forms
+from django.utils import timezone
 
-from domain.elite.models import EliteDocument
+from domain.elite.models import EliteCase, EliteDocument
 from domain.elite.models.elite_case import validate_document
 from domain.elite.services.elite_service import CHECKS
 
@@ -43,3 +44,87 @@ class ChecksForm(forms.Form):
 class DecisionForm(forms.Form):
     decision = forms.ChoiceField(choices=[("approve", "Approve"), ("decline", "Decline"), ("more_info", "More information needed")])
     note = forms.CharField(required=False, max_length=2000)
+
+
+# ---------------------------------------------------------------- Part 2a
+
+def handler_choices():
+    from django.contrib.auth import get_user_model
+
+    from domain.base.models import Groups
+
+    return (
+        get_user_model().objects.filter(is_active=True, groups__name__in=[Groups.MATCHMAKER, Groups.ADMIN])
+        .distinct().order_by("first_name", "last_name")
+    )
+
+
+class HandlerChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, user):
+        return user.full_name or user.email
+
+
+class AssignHandlerForm(forms.Form):
+    handler = HandlerChoiceField(queryset=None, label="Case Handler", widget=forms.Select(attrs={"class": "form-select"}))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["handler"].queryset = handler_choices()
+
+
+DATE_INPUT = {"type": "date", "class": "form-control"}
+
+
+class FeeForm(forms.Form):
+    """The amount isn't a field: it's the Elite Grade price from Settings → Membership tiers."""
+
+    def __init__(self, *args, **kwargs):
+        from domain.matchmaking.models import ConsultationRequest
+
+        super().__init__(*args, **kwargs)
+        self.fields["method"] = forms.ChoiceField(
+            label="Paid by", choices=ConsultationRequest.PaymentMethod.choices, widget=forms.Select(attrs={"class": "form-select"}),
+        )
+        self.fields["reference"] = forms.CharField(
+            label="Transaction reference", required=False, max_length=100, widget=forms.TextInput(attrs={"class": "form-control"}),
+        )
+        self.fields["paid_on"] = forms.DateField(
+            label="Paid on", initial=timezone.localdate, widget=forms.DateInput(attrs=DATE_INPUT, format="%Y-%m-%d"),
+        )
+
+
+class PersonForm(forms.Form):
+    name = forms.CharField(label="Their full name, as on the request form", max_length=150,
+                           widget=forms.TextInput(attrs={"class": "form-control"}))
+    contact_type = forms.ChoiceField(label="Contact route", choices=EliteCase.ContactType.choices,
+                                     widget=forms.Select(attrs={"class": "form-select"}))
+    contact = forms.CharField(label="Contact details the client gave", max_length=200,
+                              widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. +260 97…, name@…, or the mutual contact"}))
+
+
+class OutreachForm(forms.Form):
+    delivered = forms.ChoiceField(choices=[("yes", "Delivered"), ("no", "Bounced / didn't reach them")])
+    sent_on = forms.DateField(initial=timezone.localdate, widget=forms.DateInput(attrs=DATE_INPUT, format="%Y-%m-%d"))
+
+
+class AnswerForm(forms.Form):
+    answer = forms.ChoiceField(choices=[("agreed", "Agreed to hear more"), ("declined", "Declined"), ("no_response", "No response")])
+    person_email = forms.EmailField(required=False, widget=forms.EmailInput(attrs={"class": "form-control"}))
+
+
+class SendAcknowledgementForm(forms.Form):
+    person_email = forms.EmailField(label="Their email", widget=forms.EmailInput(attrs={"class": "form-control"}))
+
+
+class AcknowledgementForm(forms.Form):
+    signed = forms.ChoiceField(choices=[("yes", "Signed"), ("no", "Not signed")])
+    person_email = forms.EmailField(required=False, label="Their email, if you don't have it yet (for introduction alerts)",
+                                    widget=forms.EmailInput(attrs={"class": "form-control"}))
+
+
+class ConfirmForm(forms.Form):
+    """For buttons that only confirm a step."""
+
+
+class BronzeAnswerForm(forms.Form):
+    accepted = forms.ChoiceField(choices=[("yes", "Accepted"), ("no", "Declined")])

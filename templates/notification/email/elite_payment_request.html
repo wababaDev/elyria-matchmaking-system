@@ -1,0 +1,12 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}Your Elite Grade request has been approved.{% endblock %}
+{% block heading %}Your request has been approved{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">Dear {{ case.full_name }},</p>
+    <p style="margin:0 0 12px;">Your Elite Grade request has been approved. To proceed, please:</p>
+    <ol style="margin:0 0 16px;padding-left:20px;">
+        <li style="margin-bottom:8px;">Pay the Elite Grade fee of <strong>{{ fee }}</strong>.{% if bank_details %}<br><span style="color:#555;">{{ bank_details }}</span>{% endif %}<br>Use <strong>{{ case.reference }}</strong> as the payment reference.</li>
+        <li>Sign the attached <strong>Indemnity Notice</strong> and send it back as a reply to this email ({{ reply_to }}).</li>
+    </ol>
+    <p style="margin:0 0 16px;font-size:13px;color:#777;">The fee is non-refundable once paid and does not depend on the response of the person you named. We will make the discreet inquiry once we have received both.</p>
+{% endblock %}
