@@ -147,6 +147,8 @@ def deliver_elite_email(case, kind, message=""):
             attachments=elite_attachments([SiteDocument.Kind.ELITE_INDEMNITY]),
             reply_to=[reply_to_address()],
         )
+    elif kind in ("intro_alerts", "intro_alerts_updated"):
+        deliver_intro_alerts(case, updated=kind == "intro_alerts_updated")
     elif kind == "acknowledgement":
         # To the NAMED PERSON. Never names the client: that only happens once this is signed.
         from domain.website.models import SiteDocument
@@ -193,3 +195,110 @@ def deliver_elite_email(case, kind, message=""):
             to=[case.email],
             reply_to=[reply_to_address()],
         )
+
+
+# ---------------------------------------------------------------- Part 2b: introduction, feedback, reminders
+
+def admin_emails():
+    from django.contrib.auth import get_user_model
+
+    from domain.base.models import Groups
+
+    found = list(
+        get_user_model().objects.filter(groups__name=Groups.ADMIN, is_active=True)
+        .exclude(email="").values_list("email", flat=True).distinct()
+    )
+    return found or [settings.TEAM_INBOX_EMAIL]
+
+
+def notify_intro_alerts(case, updated=False):
+    from notification import tasks
+    enqueue(tasks.send_elite_email, case.pk, "intro_alerts_updated" if updated else "intro_alerts")
+
+
+def notify_feedback_alert(feedback, kind):
+    from notification import tasks
+    enqueue(tasks.send_elite_feedback_email, feedback.pk, kind)
+
+
+def deliver_intro_alerts(case, updated=False):
+    """Both people get the date, time and place. No names: just 'your introduction'."""
+    from django.utils import timezone
+
+    context = {
+        "when": timezone.localtime(case.intro_at),
+        "venue": case.intro_venue,
+        "video_link": case.intro_video_link,
+        "updated": updated,
+        "reply_to": reply_to_address(),
+    }
+    subject = ("Updated: your introduction" if updated else "Your introduction") + " | Elyria Matchmaking"
+    recipients = [case.email] + ([case.person_email] if case.person_email else [])
+    for address in recipients:
+        send_templated_email(
+            subject=subject, template="notification/email/elite_intro_alert",
+            context=context, to=[address], reply_to=[reply_to_address()],
+        )
+
+
+def deliver_feedback_email(feedback, kind):
+    """
+    invite / reminder: to the person, saying only that Elyria would value their feedback (no names, no details).
+    red_flag / lead: to Admin.
+    """
+    case = feedback.case
+    if kind in ("invite", "reminder"):
+        to = case.person_email if feedback.form == "B" else case.email
+        if not to:
+            logger.warning("Form %s for %s not sent: no email", feedback.form, case.reference)
+            return
+        send_templated_email(
+            subject="Elyria would value your feedback" + (" (reminder)" if kind == "reminder" else ""),
+            template="notification/email/elite_feedback_invite",
+            context={"link": _url(reverse("elite:feedback", args=[feedback.token])), "closes_on": feedback.closes_on,
+                     "reminder": kind == "reminder"},
+            to=[to],
+        )
+    elif kind in ("red_flag", "lead"):
+        if kind == "red_flag":
+            heading = f"Red flag on Elite feedback: {case.reference}"
+            message = (f"Form {feedback.form} ({feedback.completed_by}) raised a red flag: "
+                       + "; ".join(feedback.red_flag_reasons) + ". Please review the case.")
+        else:
+            heading = f"Referral lead from Elite feedback: {case.reference}"
+            message = (f"{case.full_name} rated Elite Grade highly and agreed to be contacted about a referral. "
+                       f"Nothing has been sent to anyone they might refer.")
+        send_templated_email(
+            subject=heading, template="notification/email/pairing_update",
+            context={"heading": heading, "message": message, "link": _url(reverse("elite:case-detail", args=[case.pk]))},
+            to=admin_emails(),
+        )
+
+
+def deliver_handler_reminder(case, kind):
+    if not case.handler or not case.handler.email:
+        return
+    if kind == "reply_soon":
+        heading = f"{case.reference}: reply window ends {case.reply_due_on:%d %b %Y}"
+        message = ("The 14-day window for the named person's reply ends soon. If they've answered, record it on "
+                   "the case; if there's a good reason, you can extend the window.")
+    else:
+        heading = f"{case.reference}: the reply window has ended"
+        message = (f"The window ended on {case.reply_due_on:%d %b %Y}. Record 'No response' on the case, "
+                   "or extend the window if there's a good reason.")
+    send_templated_email(
+        subject=heading, template="notification/email/pairing_update",
+        context={"heading": heading, "message": message, "link": _url(reverse("elite:case-detail", args=[case.pk]))},
+        to=[case.handler.email],
+    )
+
+
+def deliver_deletion_reminder(count):
+    heading = f"Elite Grade: {count} record{'s' if count != 1 else ''} due for deletion"
+    message = ("Some Elite applications or closed cases are past their 30 days. Elyria has promised to delete "
+               "the named person's details when a case ends. Open 'Due for deletion' and delete them.")
+    send_templated_email(
+        subject=heading, template="notification/email/pairing_update",
+        context={"heading": heading, "message": message, "link": _url(reverse("elite:cases") + "?show=deletion")},
+        to=admin_emails(),
+    )

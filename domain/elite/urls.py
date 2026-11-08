@@ -30,4 +30,17 @@ urlpatterns = [
     path("management/elite/<int:pk>/acknowledgement/send/", staff.SendAcknowledgementView.as_view(), name="case-acknowledgement-send"),
     path("management/elite/<int:pk>/acknowledgement/", staff.RecordAcknowledgementView.as_view(), name="case-acknowledgement"),
     path("management/elite/<int:pk>/bronze/", staff.RecordBronzeAnswerView.as_view(), name="case-bronze"),
+    path("management/elite/<int:pk>/reply-window/", staff.ExtendWindowView.as_view(), name="case-extend-window"),
+
+    # Part 2b: the introduction, feedback, deletion
+    path("management/elite/<int:pk>/introduction/", staff.ScheduleIntroductionView.as_view(), name="case-introduction"),
+    path("management/elite/<int:pk>/preparation/", staff.PreparationView.as_view(), name="case-preparation"),
+    path("management/elite/<int:pk>/introduction/result/", staff.IntroResultView.as_view(), name="case-intro-result"),
+    path("management/elite/<int:pk>/close/", staff.CloseCaseView.as_view(), name="case-close"),
+    path("management/elite/<int:pk>/feedback/extend/", staff.ExtendFeedbackView.as_view(), name="case-feedback-extend"),
+    path("management/elite/<int:pk>/feedback/note/", staff.FeedbackNoteView.as_view(), name="case-feedback-note"),
+    path("management/elite/<int:pk>/delete-now/", staff.DeleteNowView.as_view(), name="case-delete-now"),
+
+    # Feedback forms (the person's private link; no login)
+    path("elite/feedback/<str:token>/", public.FeedbackView.as_view(), name="feedback"),
 ]

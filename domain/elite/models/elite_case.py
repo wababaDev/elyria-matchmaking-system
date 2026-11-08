@@ -53,15 +53,20 @@ class EliteCase(TimeStampedModel):
         OUTREACH_SENT = "outreach_sent", "Outreach sent: waiting for reply"
         AGREED = "agreed", "Agreed to hear more: awaiting acknowledgement"
         INTRODUCTION = "introduction", "Identity shared: introduction next"
+        INTRODUCED = "introduced", "Introduced: feedback"
         BRONZE_OFFERED = "bronze_offered", "Not proceeding: Bronze offered"
         CLOSED = "closed", "Closed"
 
     OPEN_STATUSES = [
         Status.AWAITING_EMAIL, Status.AWAITING_DOCUMENTS, Status.UNDER_REVIEW, Status.APPROVED,
-        Status.PAID, Status.OUTREACH_SENT, Status.AGREED, Status.INTRODUCTION, Status.BRONZE_OFFERED,
+        Status.PAID, Status.OUTREACH_SENT, Status.AGREED, Status.INTRODUCTION, Status.INTRODUCED,
+        Status.BRONZE_OFFERED,
     ]
     # Cases where the Case Handler has the next step
-    HANDLER_STATUSES = [Status.APPROVED, Status.PAID, Status.OUTREACH_SENT, Status.AGREED, Status.BRONZE_OFFERED]
+    HANDLER_STATUSES = [
+        Status.APPROVED, Status.PAID, Status.OUTREACH_SENT, Status.AGREED, Status.INTRODUCTION, Status.INTRODUCED,
+        Status.BRONZE_OFFERED,
+    ]
 
     class ContactType(models.TextChoices):
         PHONE = "phone", "Phone / WhatsApp"
@@ -73,6 +78,16 @@ class EliteCase(TimeStampedModel):
         DECLINED = "declined", "The person declined"
         NO_RESPONSE = "no_response", "No response within 14 days"
         NOT_SIGNED = "not_signed", "Agreed, but didn't sign the acknowledgement"
+
+    class IntroResult(models.TextChoices):
+        TOOK_PLACE = "took_place", "Took place"
+        CANCELLED = "cancelled", "Cancelled"
+        NO_SHOW = "no_show", "No-show"
+
+    class ClosingOutcome(models.TextChoices):
+        CONTINUING = "continuing", "Connection continuing"
+        NOT_CONTINUING = "not_continuing", "Not continuing"
+        DID_NOT_HAPPEN = "did_not_happen", "Introduction didn't happen"
 
     # The client (applicant)
     full_name = models.CharField(max_length=150)
@@ -132,8 +147,23 @@ class EliteCase(TimeStampedModel):
     outreach_bounces = models.PositiveSmallIntegerField(default=0)
     outreach_delivered_on = models.DateField(null=True, blank=True)
     reply_due_on = models.DateField(null=True, blank=True)
+    reply_reminder_sent = models.BooleanField(default=False)
+    reply_ended_notice_sent = models.BooleanField(default=False)
     acknowledgement_received = models.BooleanField(default=False)
     outcome = models.CharField(max_length=20, choices=Outcome.choices, blank=True)
+
+    # E10: the introduction (stays in the case: neither person becomes a member)
+    intro_at = models.DateTimeField("Date and time", null=True, blank=True)
+    intro_venue = models.CharField("Venue", max_length=200, blank=True)
+    intro_video_link = models.URLField("Video link", blank=True)
+    intro_alerts_sent_at = models.DateTimeField(null=True, blank=True)
+    coached_client = models.BooleanField("Client coached on dating etiquette", default=False)
+    guidelines_client = models.BooleanField("Guidelines read to the client", default=False)
+    coached_person = models.BooleanField("Named person coached on dating etiquette", default=False)
+    guidelines_person = models.BooleanField("Guidelines read to the named person", default=False)
+    intro_result = models.CharField(max_length=20, choices=IntroResult.choices, blank=True)
+    intro_took_place_on = models.DateField(null=True, blank=True)
+    closing_outcome = models.CharField(max_length=20, choices=ClosingOutcome.choices, blank=True)
 
     # E11: Bronze offer and closing
     bronze_offered_at = models.DateTimeField(null=True, blank=True)
@@ -278,3 +308,71 @@ class SuppressionEntry(models.Model):
     class Meta:
         ordering = ["-created_at"]
         verbose_name_plural = "suppression entries"
+
+
+class EliteFeedback(models.Model):
+    """
+    One feedback form for one person: A (client after the introduction), B (named person after the
+    introduction), C (client, case closed without an introduction). Sent by a private one-time link.
+    Answers are staff-only (Admin and the Case Handler) and are never edited.
+    """
+
+    class Form(models.TextChoices):
+        A = "A", "Form A: client, after the introduction"
+        B = "B", "Form B: named person, after the introduction"
+        C = "C", "Form C: client, closed without an introduction"
+
+    case = models.ForeignKey(EliteCase, on_delete=models.CASCADE, related_name="feedback")
+    form = models.CharField(max_length=1, choices=Form.choices)
+    token = models.CharField(max_length=64, unique=True, default=new_token)
+    send_on = models.DateField()
+    remind_on = models.DateField()
+    closes_on = models.DateField()
+    sent_at = models.DateTimeField(null=True, blank=True)
+    reminded_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    completed_by = models.CharField(max_length=20, blank=True)  # "client" / "named person"
+    answers = models.JSONField(default=dict, blank=True)
+    red_flag = models.BooleanField(default=False)
+    red_flag_reasons = models.JSONField(default=list, blank=True)
+    referral_lead = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["case", "form"]
+        constraints = [models.UniqueConstraint(fields=["case", "form"], name="one_elite_form_per_case")]
+
+    def __str__(self):
+        return f"{self.case.reference} Form {self.form}"
+
+    @property
+    def is_open(self):
+        return self.completed_at is None and timezone.localdate() <= self.closes_on
+
+    @property
+    def state(self):
+        if self.completed_at:
+            return "completed"
+        if timezone.localdate() > self.closes_on:
+            return "closed"
+        if self.sent_at:
+            return "sent"
+        return "scheduled"
+
+
+class EliteFeedbackNote(models.Model):
+    """Admin's dated note on a feedback form. Append-only, like the timeline."""
+    feedback = models.ForeignKey(EliteFeedback, on_delete=models.CASCADE, related_name="notes")
+    by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    at = models.DateTimeField(default=timezone.now)
+    text = models.TextField()
+
+    class Meta:
+        ordering = ["at"]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError("Notes can't be changed.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Notes can't be deleted.")

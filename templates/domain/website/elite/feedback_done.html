@@ -1,0 +1,13 @@
+{% extends "layouts/public.html" %}
+{% block title %}Your feedback | Elyria Matchmaking{% endblock %}
+{% block body_class %}always-show-header page-static{% endblock %}
+
+{% block content %}
+{% include "domain/website/elite/_hero.html" with hero_title="Your feedback" %}
+<section class="section-padding">
+    <div class="container text-center" style="max-width: 640px;">
+        <p class="section-subtitle">{{ message }}</p>
+        <a href="{% url 'website:home' %}" class="register-submit-btn d-inline-block mt-3">Back to Home</a>
+    </div>
+</section>
+{% endblock %}

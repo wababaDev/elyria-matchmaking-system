@@ -5,8 +5,9 @@ from domain.elite.services.elite_service import abandoned_cases, cases_to_wipe, 
 
 class Command(BaseCommand):
     help = (
-        "Elite Grade clean-up: delete applications abandoned for 30 days, and delete the named person's "
-        "details 30 days after a case closes. Run daily."
+        "Elite Grade clean-up, run on purpose (never scheduled): delete applications abandoned for 30 days, "
+        "and the named person's details on cases closed 30+ days ago. Admin normally does this from "
+        "'Due for deletion' on the Elite cases page."
     )
 
     def add_arguments(self, parser):

@@ -175,7 +175,9 @@ from domain.elite.models.elite_case import EliteDocument  # noqa: E402
 from domain.elite.services import elite_service as svc  # noqa: E402
 
 
-class AfterApprovalTests(EliteTestCase):
+class AfterApprovalBase(EliteTestCase):
+    """Helpers to walk a case forward. No tests of its own."""
+
     def setUp(self):
         from domain.matchmaking.models import MembershipTier
 
@@ -204,6 +206,7 @@ class AfterApprovalTests(EliteTestCase):
         case.refresh_from_db()
         return case
 
+class AfterApprovalTests(AfterApprovalBase):
     def test_assigning_handler_emails_payment_request_and_handler_sees_only_her_case(self):
         case = self.approved()
         self.assertTrue(any("approved" in m.subject.lower() for m in mail.outbox if case.email in m.to))
@@ -278,3 +281,128 @@ class AfterApprovalTests(EliteTestCase):
         self.assertFalse(case.documents.filter(kind=EliteDocument.Kind.REQUEST_FORM).exists())
         self.assertTrue(case.documents.filter(kind=EliteDocument.Kind.NDA).exists())
         self.assertEqual(SuppressionEntry.objects.count(), 1)   # the fingerprint stays
+
+
+# ---------------------------------------------------------------- Part 2b
+
+from datetime import datetime  # noqa: E402
+
+from domain.elite.models import EliteFeedback  # noqa: E402
+from domain.elite.services import introduction_service as intro  # noqa: E402
+
+GOOD_A = {
+    "discreet": "5", "approach_respectful": "5", "handler_clear": "4", "prepared": "5", "expectations": "above",
+    "fee_worth": "yes", "recommend_elite": "10", "recommend_elyria": "yes", "referral_contact": "yes",
+}
+
+
+class IntroductionTests(AfterApprovalBase):
+    def at_introduction(self):
+        case = self.paid()
+        svc.record_outreach(case, delivered=True, sent_on=date.today(), by=self.matchmaker)
+        svc.record_answer(case, answer="agreed", person_email="thandi@example.com", by=self.matchmaker)
+        svc.add_document(case, kind=EliteDocument.Kind.ACKNOWLEDGEMENT, file=pdf("ack.pdf"), by=self.matchmaker)
+        svc.record_acknowledgement(case, signed=True, by=self.matchmaker)
+        case.refresh_from_db()
+        return case
+
+    def introduced(self):
+        case = self.at_introduction()
+        when = timezone.make_aware(datetime.combine(date.today(), datetime.min.time())) + timedelta(hours=18)
+        with self.captureOnCommitCallbacks(execute=True):
+            intro.schedule_introduction(case, intro_at=when, venue="The Deli, Lusaka", by=self.matchmaker)
+        intro.record_intro_result(case, result="took_place", on=date.today(), by=self.matchmaker)
+        case.refresh_from_db()
+        return case
+
+    def test_alerts_go_to_both(self):
+        case = self.at_introduction()
+        mail.outbox.clear()
+        when = timezone.now() + timedelta(days=3)
+        with self.captureOnCommitCallbacks(execute=True):
+            intro.schedule_introduction(case, intro_at=when, venue="The Deli, Lusaka", by=self.matchmaker)
+        recipients = {address for m in mail.outbox for address in m.to}
+        self.assertTrue({"mwila@example.com", "thandi@example.com"} <= recipients)
+
+    def test_took_place_schedules_forms_a_and_b_for_day_3(self):
+        case = self.introduced()
+        self.assertEqual(case.status, EliteCase.Status.INTRODUCED)
+        forms = {f.form: f for f in case.feedback.all()}
+        self.assertEqual(set(forms), {"A", "B"})
+        self.assertEqual(forms["A"].send_on, date.today() + timedelta(days=3))
+        self.assertEqual(forms["A"].closes_on, date.today() + timedelta(days=14))
+
+    def test_daily_run_sends_reminds_and_never_deletes(self):
+        case = self.introduced()
+        mail.outbox.clear()
+        intro.daily_run(today=date.today() + timedelta(days=3))
+        invites = [m for m in mail.outbox if m.subject == "Elyria would value your feedback"]
+        self.assertEqual(len(invites), 2)
+        self.assertNotIn("Mwila", invites[0].body)                     # no names, no details
+        intro.daily_run(today=date.today() + timedelta(days=7))
+        self.assertEqual(EliteFeedback.objects.filter(reminded_at__isnull=False).count(), 2)
+        self.assertTrue(EliteCase.objects.filter(pk=case.pk).exists())
+
+    def test_submitting_form_a_with_low_rating_flags_and_lead(self):
+        case = self.introduced()
+        intro.daily_run(today=date.today() + timedelta(days=3))
+        form_a = case.feedback.get(form="A")
+        mail.outbox.clear()
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(reverse("elite:feedback", args=[form_a.token]), {**GOOD_A, "prepared": "2"})
+        self.assertContains(response, "Thank you")
+        form_a.refresh_from_db()
+        self.assertTrue(form_a.red_flag)
+        self.assertTrue(form_a.referral_lead)
+        self.assertEqual(form_a.answers["testimonial"], "no")          # default is No
+        self.assertTrue(any("Red flag" in m.subject for m in mail.outbox))
+        # one time only
+        response = self.client.post(reverse("elite:feedback", args=[form_a.token]), GOOD_A)
+        self.assertContains(response, "already been completed")
+
+    def test_form_b_intrusive_needs_details_and_flags(self):
+        case = self.introduced()
+        intro.daily_run(today=date.today() + timedelta(days=3))
+        form_b = case.feedback.get(form="B")
+        answers = {"comfortable": "4", "first_contact_respectful": "4", "acknowledgement_clear": "4",
+                   "free_to_decline": "yes", "prepared": "4", "intrusive": "yes", "open_to_joining": "maybe",
+                   "recommend_approach": "yes", "contact_referral": "no"}
+        response = self.client.post(reverse("elite:feedback", args=[form_b.token]), answers)
+        self.assertEqual(response.status_code, 400)                    # details are required when Yes
+        self.client.post(reverse("elite:feedback", args=[form_b.token]), {**answers, "intrusive_details": "Too many calls"})
+        form_b.refresh_from_db()
+        self.assertTrue(form_b.red_flag)
+
+    def test_closed_link_and_reopen(self):
+        case = self.introduced()
+        intro.daily_run(today=date.today() + timedelta(days=3))
+        form_a = case.feedback.get(form="A")
+        EliteFeedback.objects.filter(pk=form_a.pk).update(closes_on=date.today() - timedelta(days=1))
+        self.assertContains(self.client.get(reverse("elite:feedback", args=[form_a.token])), "has closed")
+        intro.extend_feedback(form_a, days=7, by=self.matchmaker)
+        self.assertContains(self.client.get(reverse("elite:feedback", args=[form_a.token])), "Send my feedback")
+
+    def test_form_c_after_closing_without_introduction(self):
+        case = self.paid()
+        svc.record_outreach(case, delivered=True, sent_on=date.today(), by=self.matchmaker)
+        svc.record_answer(case, answer="declined", by=self.matchmaker)
+        self.assertEqual(case.feedback.get().form, "C")
+
+    def test_extend_reply_window(self):
+        case = self.paid()
+        svc.record_outreach(case, delivered=True, sent_on=date.today(), by=self.matchmaker)
+        case = intro.extend_reply_window(case, days=7, reason="Travelling", by=self.matchmaker)
+        self.assertEqual(case.reply_due_on, date.today() + timedelta(days=21))
+
+    def test_deletion_is_manual_and_admin_only(self):
+        case = self.introduced()
+        intro.close_case(case, outcome="continuing", by=self.matchmaker)
+        EliteCase.objects.filter(pk=case.pk).update(closed_at=timezone.now() - timedelta(days=31))
+        intro.daily_run(today=date.today())
+        case.refresh_from_db()
+        self.assertEqual(case.person_name, "Thandi Phiri")             # the daily job never deletes
+        with self.assertRaises(svc.EliteError):
+            intro.delete_now(case, by=self.matchmaker)
+        intro.delete_now(case, by=self.admin)
+        case.refresh_from_db()
+        self.assertEqual(case.person_name, "")

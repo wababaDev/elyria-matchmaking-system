@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from celery.schedules import crontab
 import environ
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent  # base.py → settings/ → config/ → project root
@@ -117,5 +118,17 @@ CELERY_TASK_IGNORE_RESULT = True          # we never read task results
 CELERY_TASK_ACKS_LATE = True              # a task isn't lost if the worker restarts mid-send
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+
+CELERY_BEAT_SCHEDULE = {
+    # Elite: send feedback forms / reminders, remind Case Handlers, Monday deletion reminder. Never deletes.
+    "elite-daily": {
+        "task": "domain.elite.tasks.elite_daily",
+        "schedule": crontab(hour=7, minute=43),   # 07:43 Lusaka time (CELERY_TIMEZONE)
+    },
+}
+ 
+
+
 # If Redis is down, give up queuing quickly instead of hanging the request
 CELERY_TASK_PUBLISH_RETRY_POLICY = {"max_retries": 2, "interval_start": 0, "interval_step": 0.5, "interval_max": 1}

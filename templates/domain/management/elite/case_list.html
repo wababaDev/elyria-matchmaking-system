@@ -46,10 +46,17 @@
                                     {% if case.reply_overdue %}<span class="badge bg-danger-transparent">Reply window ended {{ case.reply_due_on|date:"j M" }}</span>
                                     {% else %}Reply due {{ case.reply_due_on|date:"j M Y" }}{% endif %}
                                 {% elif case.status == "agreed" %}Acknowledgement to sign
+                                {% elif case.status == "introduction" %}{% if case.intro_at %}Introduction {{ case.intro_at|date:"j M" }}{% else %}Set the introduction{% endif %}
+                                {% elif case.status == "introduced" %}Feedback · close the case
                                 {% elif case.status == "bronze_offered" %}Bronze answer
                                 {% else %}<span class="text-muted">{{ case.updated_at|date:"j M Y" }}</span>{% endif %}
                             </td>
-                            <td class="text-end"><a href="{% url 'elite:case-detail' case.pk %}" class="btn btn-sm btn-light">Open</a></td>
+                            <td class="text-end">
+                                {% if deletion_view %}
+                                    <span class="badge bg-danger-transparent me-1">{% if case.pk in abandoned_ids %}Abandoned application{% else %}Named person's details{% endif %}</span>
+                                {% endif %}
+                                <a href="{% url 'elite:case-detail' case.pk %}" class="btn btn-sm btn-light">Open</a>
+                            </td>
                         </tr>
                     {% empty %}
                         <tr><td colspan="6" class="text-center text-muted py-5">No cases here.</td></tr>
@@ -60,8 +67,9 @@
     </div>
     {% if is_admin %}
         <div class="card-footer text-muted fs-12">
-            Applications never confirmed, or with no documents recorded within 30 days, are deleted automatically.
-            The named person's details are deleted 30 days after a case closes.
+            Nothing is deleted automatically. Abandoned applications (30 days) and the named person's details on cases
+            closed 30+ days ago appear under <a href="?show=deletion">Due for deletion</a>; open one and click Delete now.
+            You're reminded by email on Mondays while anything is due.
         </div>
     {% endif %}
 </div>

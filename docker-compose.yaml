@@ -6,6 +6,7 @@ services:
       - "127.0.0.1:${APP_PORT}:8000"     # only Caddy on the same machine can reach it
     volumes:
       - ${MEDIA_DIR}:/app/media
+      - ${PRIVATE_MEDIA_DIR}:/app/private_media
     extra_hosts:
       - "host.docker.internal:host-gateway"   # PostgreSQL and Redis on the server
     restart: unless-stopped
@@ -16,8 +17,19 @@ services:
     entrypoint: ["celery", "-A", "config", "worker", "--loglevel=INFO", "--concurrency=2"]
     volumes:
       - ${MEDIA_DIR}:/app/media
+      - ${PRIVATE_MEDIA_DIR}:/app/private_media
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       - web          # web runs the migrations first
+    restart: unless-stopped
+
+  beat:
+    image: ${IMAGE}
+    env_file: .env
+    entrypoint: ["celery", "-A", "config", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - web
     restart: unless-stopped

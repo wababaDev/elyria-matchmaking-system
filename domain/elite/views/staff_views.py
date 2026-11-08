@@ -1,34 +1,47 @@
 from django.contrib import messages
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
 from django.views import View
+from django.utils import timezone
 from django.views.generic import TemplateView
 
 from domain.base.mixins import StaffRequiredMixin
+from domain.elite.forms import feedback_forms
 from domain.elite.forms import (
     AcknowledgementForm,
     AnswerForm,
     AssignHandlerForm,
     BronzeAnswerForm,
     ChecksForm,
+    CloseCaseForm,
     ConfirmForm,
     DecisionForm,
     DocumentsReceivedForm,
     DocumentUploadForm,
+    ExtendFeedbackForm,
+    ExtendWindowForm,
+    FeedbackNoteForm,
     FeeForm,
+    IntroductionForm,
+    IntroResultForm,
     OutreachForm,
     PersonForm,
+    PreparationForm,
     SendAcknowledgementForm,
 )
 from domain.elite.models import EliteAccessLog, EliteCase, EliteDocument
 from domain.elite.services import elite_service as svc
+from domain.elite.services import introduction_service as intro
 
 S = EliteCase.Status
 
 LIST_TABS = [
     ("review", "Under review", [S.UNDER_REVIEW]),
     ("awaiting", "Awaiting documents", [S.AWAITING_DOCUMENTS, S.AWAITING_EMAIL]),
-    ("in_progress", "In progress", [S.APPROVED, S.PAID, S.OUTREACH_SENT, S.AGREED, S.INTRODUCTION, S.BRONZE_OFFERED]),
+    ("in_progress", "In progress", [
+        S.APPROVED, S.PAID, S.OUTREACH_SENT, S.AGREED, S.INTRODUCTION, S.INTRODUCED, S.BRONZE_OFFERED,
+    ]),
     ("closed", "Closed", [S.DECLINED, S.CLOSED]),
     ("all", "All", None),
 ]
@@ -51,7 +64,18 @@ class CaseListView(EliteStaffMixin, TemplateView):
         admin = svc.is_admin(self.request.user)
         tabs = [t for t in LIST_TABS if admin or t[0] in ("in_progress", "closed", "all")]
         by_key = {key: statuses for key, _, statuses in tabs}
+        abandoned, closed_due = intro.due_for_deletion() if admin else (EliteCase.objects.none(), EliteCase.objects.none())
+        due_ids = set(abandoned.values_list("pk", flat=True)) | set(closed_due.values_list("pk", flat=True))
         show = self.request.GET.get("show")
+        if admin and show == "deletion":
+            context.update(
+                cases=EliteCase.objects.filter(pk__in=due_ids).select_related("handler").order_by("updated_at"),
+                show=show, is_admin=admin, deletion_view=True,
+                abandoned_ids=set(abandoned.values_list("pk", flat=True)),
+                tabs=[(key, label, base.count() if st is None else base.filter(status__in=st).count()) for key, label, st in tabs]
+                + [("deletion", "Due for deletion", len(due_ids))],
+            )
+            return context
         if show not in by_key:
             show = "review" if admin and base.filter(status=S.UNDER_REVIEW).exists() else (
                 "awaiting" if admin and not base.exclude(status__in=[S.AWAITING_EMAIL, S.AWAITING_DOCUMENTS]).exists()
@@ -62,7 +86,8 @@ class CaseListView(EliteStaffMixin, TemplateView):
             cases=qs.select_related("handler").order_by("-updated_at"),
             show=show,
             is_admin=admin,
-            tabs=[(key, label, base.count() if st is None else base.filter(status__in=st).count()) for key, label, st in tabs],
+            tabs=[(key, label, base.count() if st is None else base.filter(status__in=st).count()) for key, label, st in tabs]
+            + ([("deletion", "Due for deletion", len(due_ids))] if admin else []),
         )
         return context
 
@@ -105,6 +130,20 @@ class CaseDetailView(EliteStaffMixin, TemplateView):
             has_ack_file=case.documents.filter(kind=EliteDocument.Kind.ACKNOWLEDGEMENT).exists(),
             missing_documents=missing,
             just_uploaded=self.request.GET.get("uploaded") == "1",
+            # Part 2b
+            intro_form=IntroductionForm(initial={
+                "intro_at": timezone.localtime(case.intro_at) if case.intro_at else None,
+                "venue": case.intro_venue, "video_link": case.intro_video_link,
+            }),
+            prep_form=PreparationForm(initial={field: getattr(case, field) for field, _ in intro.PREP_FIELDS}),
+            result_form=IntroResultForm(),
+            close_form=CloseCaseForm(initial={"outcome": "did_not_happen" if case.status == S.INTRODUCTION else "continuing"}),
+            extend_form=ExtendWindowForm(),
+            feedback_list=[
+                {"f": f, "rows": feedback_forms.readable(f.form, f.answers), "notes": f.notes.select_related("by")}
+                for f in case.feedback.all()
+            ],
+            due_for_deletion=svc.is_admin(user) and any(case.pk in qs.values_list("pk", flat=True) for qs in intro.due_for_deletion()),
         )
         return context
 
@@ -275,6 +314,84 @@ class RecordBronzeAnswerView(CaseActionView):
         svc.record_bronze_answer(case, accepted=accepted, by=self.request.user)
         return ("Closed. The client has been sent the link to start as a Bronze Member." if accepted
                 else "Closed. The client declined the Bronze offer."), ""
+
+
+# ---------- Part 2b
+
+class ScheduleIntroductionView(CaseActionView):
+    form_class = IntroductionForm
+
+    def perform(self, case, data):
+        case = intro.schedule_introduction(case, by=self.request.user, **data)
+        return f"Introduction set for {timezone.localtime(case.intro_at):%d %b %Y, %H:%M}. Both have been emailed.", ""
+
+
+class PreparationView(CaseActionView):
+    form_class = PreparationForm
+
+    def perform(self, case, data):
+        intro.save_preparation(case, ticks=data, by=self.request.user)
+        return "Preparation saved.", ""
+
+
+class IntroResultView(CaseActionView):
+    form_class = IntroResultForm
+
+    def perform(self, case, data):
+        case = intro.record_intro_result(case, by=self.request.user, **data)
+        if case.status == S.INTRODUCED:
+            return "Recorded. The feedback forms go out in 3 days.", ""
+        return "Recorded. Set a new date, or close the case.", ""
+
+
+class CloseCaseView(CaseActionView):
+    form_class = CloseCaseForm
+
+    def perform(self, case, data):
+        intro.close_case(case, by=self.request.user, **data)
+        return "Case closed.", ""
+
+
+class ExtendWindowView(CaseActionView):
+    form_class = ExtendWindowForm
+
+    def perform(self, case, data):
+        case = intro.extend_reply_window(case, by=self.request.user, **data)
+        return f"Reply window extended to {case.reply_due_on:%d %b %Y}.", ""
+
+
+class ExtendFeedbackView(CaseActionView):
+    form_class = ExtendFeedbackForm
+
+    def perform(self, case, data):
+        feedback = get_object_or_404(case.feedback, pk=data["feedback"])
+        feedback = intro.extend_feedback(feedback, days=data["days"], by=self.request.user)
+        return f"Form {feedback.form} now closes on {feedback.closes_on:%d %b %Y}.", ""
+
+
+class FeedbackNoteView(CaseActionView):
+    form_class = FeedbackNoteForm
+
+    def perform(self, case, data):
+        feedback = get_object_or_404(case.feedback, pk=data["feedback"])
+        intro.add_feedback_note(feedback, text=data["text"], by=self.request.user)
+        return "Note added.", ""
+
+
+class DeleteNowView(CaseActionView):
+    form_class = ConfirmForm
+
+    def post(self, request, pk):
+        case = get_object_or_404(self.visible_cases(), pk=pk)
+        try:
+            message = intro.delete_now(case, by=request.user)
+        except svc.EliteError as error:
+            messages.error(request, str(error))
+            return redirect("elite:case-detail", case.pk)
+        messages.success(request, message)
+        if EliteCase.objects.filter(pk=pk).exists():
+            return redirect("elite:case-detail", pk)
+        return redirect(reverse("elite:cases") + "?show=deletion")
 
 
 class DocumentFileView(EliteStaffMixin, View):

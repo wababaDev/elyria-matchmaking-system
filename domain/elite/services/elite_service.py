@@ -436,6 +436,10 @@ def _close_without_introduction(case, *, outcome, by):
     log_event(case, f"{EliteCase.Outcome(outcome).label}. Added to the 'do not approach' list. "
                     f"Client told it isn't proceeding and offered Bronze Membership.", by)
     transaction.on_commit(lambda: _emails().notify_not_proceeding_bronze(case))
+
+    from domain.elite.services.introduction_service import create_feedback
+
+    create_feedback(case, "C", timezone.localdate())  # sent 3 days after, reminded day 7, closes day 14
     return case
 
 
@@ -460,41 +464,32 @@ def record_bronze_answer(case, *, accepted, by):
 
 
 # ---------------------------------------------------------------- clean-up
+# Deletion is decided by Admin: see due_for_deletion() / delete_now() in introduction_service.
+# These remain for the manual `cleanup_elite` command (run on purpose, never scheduled).
 
 def abandoned_cases(now=None):
-    """
-    Never confirmed within 30 days of applying, or confirmed but no signed documents recorded
-    within 30 days of confirming.
-    """
-    cutoff = (now or timezone.now()) - timedelta(days=ABANDONED_AFTER_DAYS)
-    return EliteCase.objects.filter(
-        Q(status=S.AWAITING_EMAIL, verify_sent_at__lt=cutoff)
-        | Q(status=S.AWAITING_DOCUMENTS, email_verified_at__lt=cutoff)
-    )
+    from domain.elite.services.introduction_service import due_for_deletion
+
+    return due_for_deletion(now)[0]
+
+
+def cases_to_wipe(now=None):
+    from domain.elite.services.introduction_service import due_for_deletion
+
+    return due_for_deletion(now)[1]
 
 
 def delete_abandoned(now=None):
-    """Delete abandoned applications, including their files. Returns how many were deleted."""
     count = 0
     for case in abandoned_cases(now):
         for document in case.documents.all():
             document.file.delete(save=False)
-        case.delete()  # its timeline and access log go with it (bulk delete, not entry by entry)
+        case.delete()
         count += 1
     return count
 
 
-def cases_to_wipe(now=None):
-    """Closed (or declined) for 30 days, named person's details not yet wiped."""
-    cutoff = (now or timezone.now()) - timedelta(days=WIPE_AFTER_DAYS)
-    return EliteCase.objects.filter(closed_at__lt=cutoff, person_details_wiped_at__isnull=True)
-
-
 def wipe_named_person(now=None):
-    """
-    Delete the named person's details and the documents that contain them (request form, acknowledgement,
-    other). The NDA, Declaration and Indemnity Notice stay; the 'do not approach' fingerprint stays.
-    """
     count = 0
     for case in cases_to_wipe(now):
         for document in case.documents.filter(kind__in=EliteDocument.NAMED_PERSON_KINDS):
@@ -503,6 +498,6 @@ def wipe_named_person(now=None):
         case.person_name_enc = case.person_contact_enc = case.person_email_enc = ""
         case.person_details_wiped_at = timezone.now()
         case.save()
-        log_event(case, "Named person's details and related documents deleted (30 days after closing).")
+        log_event(case, "Named person's details and related documents deleted.")
         count += 1
     return count
