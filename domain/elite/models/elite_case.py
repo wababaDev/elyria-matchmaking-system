@@ -312,67 +312,29 @@ class SuppressionEntry(models.Model):
 
 class EliteFeedback(models.Model):
     """
-    One feedback form for one person: A (client after the introduction), B (named person after the
-    introduction), C (client, case closed without an introduction). Sent by a private one-time link.
-    Answers are staff-only (Admin and the Case Handler) and are never edited.
+    Answers to one of the client's feedback forms, asked by the Case Handler on a call and typed in here.
+    A: the client after the introduction. B: the named person after the introduction.
+    C: the client when the case closed without an introduction. Staff only; every save goes on the timeline.
     """
-
+ 
     class Form(models.TextChoices):
         A = "A", "Form A: client, after the introduction"
         B = "B", "Form B: named person, after the introduction"
         C = "C", "Form C: client, closed without an introduction"
-
+ 
     case = models.ForeignKey(EliteCase, on_delete=models.CASCADE, related_name="feedback")
     form = models.CharField(max_length=1, choices=Form.choices)
-    token = models.CharField(max_length=64, unique=True, default=new_token)
-    send_on = models.DateField()
-    remind_on = models.DateField()
-    closes_on = models.DateField()
-    sent_at = models.DateTimeField(null=True, blank=True)
-    reminded_at = models.DateTimeField(null=True, blank=True)
-    completed_at = models.DateTimeField(null=True, blank=True)
-    completed_by = models.CharField(max_length=20, blank=True)  # "client" / "named person"
     answers = models.JSONField(default=dict, blank=True)
     red_flag = models.BooleanField(default=False)
     red_flag_reasons = models.JSONField(default=list, blank=True)
     referral_lead = models.BooleanField(default=False)
-
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")  # last saved by
+    recorded_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+ 
     class Meta:
         ordering = ["case", "form"]
         constraints = [models.UniqueConstraint(fields=["case", "form"], name="one_elite_form_per_case")]
-
+ 
     def __str__(self):
         return f"{self.case.reference} Form {self.form}"
-
-    @property
-    def is_open(self):
-        return self.completed_at is None and timezone.localdate() <= self.closes_on
-
-    @property
-    def state(self):
-        if self.completed_at:
-            return "completed"
-        if timezone.localdate() > self.closes_on:
-            return "closed"
-        if self.sent_at:
-            return "sent"
-        return "scheduled"
-
-
-class EliteFeedbackNote(models.Model):
-    """Admin's dated note on a feedback form. Append-only, like the timeline."""
-    feedback = models.ForeignKey(EliteFeedback, on_delete=models.CASCADE, related_name="notes")
-    by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
-    at = models.DateTimeField(default=timezone.now)
-    text = models.TextField()
-
-    class Meta:
-        ordering = ["at"]
-
-    def save(self, *args, **kwargs):
-        if self.pk:
-            raise ValidationError("Notes can't be changed.")
-        super().save(*args, **kwargs)
-
-    def delete(self, *args, **kwargs):
-        raise ValidationError("Notes can't be deleted.")

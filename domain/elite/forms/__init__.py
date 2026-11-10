@@ -290,12 +290,19 @@ class ExtendWindowForm(forms.Form):
         ),
     )
 
+class FeedbackSaveForm(forms.Form):
+    """Which form is being saved; the answers themselves are checked by feedback_forms.clean_answers."""
+    form = forms.ChoiceField(choices=[("A", "A"), ("B", "B"), ("C", "C")])
+ 
 
-class ExtendFeedbackForm(forms.Form):
-    feedback = forms.IntegerField(widget=forms.HiddenInput)
-    days = forms.TypedChoiceField(coerce=int, choices=[(7, "7 days"), (14, "14 days")])
-
-
-class FeedbackNoteForm(forms.Form):
-    feedback = forms.IntegerField(widget=forms.HiddenInput)
-    text = forms.CharField(max_length=2000)
+class CaseNoteForm(forms.Form):
+    """Feedback gathered offline (or any other note). Goes on the timeline."""
+    about = forms.ChoiceField(choices=[
+        ("feedback_client", "Feedback from the client"),
+        ("feedback_person", "Feedback from the named person"),
+        ("note", "Note"),
+    ], widget=forms.Select(attrs={"class": "form-select"}))
+    text = forms.CharField(max_length=2000, widget=forms.Textarea(attrs={
+        "class": "form-control", "rows": 4, "required": True,
+        "placeholder": "Only what matters, e.g. 'Both happy, want to meet again. Client felt well prepared.'"}))
+    concern = forms.BooleanField(required=False, widget=forms.CheckboxInput(attrs={"class": "form-check-input"}))

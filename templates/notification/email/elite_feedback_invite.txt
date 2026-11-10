@@ -1,8 +1,0 @@
-{% autoescape off %}Elyria would value your feedback.
-
-{{ link }}
-
-{% if reminder %}This is a gentle reminder. {% endif %}The form closes on {{ closes_on|date:"j F Y" }}. Your answers are seen only by Elyria.
-
-Elyria Matchmaking
-{% endautoescape %}

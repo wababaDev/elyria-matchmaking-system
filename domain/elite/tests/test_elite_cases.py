@@ -287,14 +287,7 @@ class AfterApprovalTests(AfterApprovalBase):
 
 from datetime import datetime  # noqa: E402
 
-from domain.elite.models import EliteFeedback  # noqa: E402
 from domain.elite.services import introduction_service as intro  # noqa: E402
-
-GOOD_A = {
-    "discreet": "5", "approach_respectful": "5", "handler_clear": "4", "prepared": "5", "expectations": "above",
-    "fee_worth": "yes", "recommend_elite": "10", "recommend_elyria": "yes", "referral_contact": "yes",
-}
-
 
 class IntroductionTests(AfterApprovalBase):
     def at_introduction(self):
@@ -324,69 +317,78 @@ class IntroductionTests(AfterApprovalBase):
         recipients = {address for m in mail.outbox for address in m.to}
         self.assertTrue({"mwila@example.com", "thandi@example.com"} <= recipients)
 
-    def test_took_place_schedules_forms_a_and_b_for_day_3(self):
+    def test_took_place_then_feedback_notes_go_on_the_timeline(self):
         case = self.introduced()
         self.assertEqual(case.status, EliteCase.Status.INTRODUCED)
-        forms = {f.form: f for f in case.feedback.all()}
-        self.assertEqual(set(forms), {"A", "B"})
-        self.assertEqual(forms["A"].send_on, date.today() + timedelta(days=3))
-        self.assertEqual(forms["A"].closes_on, date.today() + timedelta(days=14))
-
-    def test_daily_run_sends_reminds_and_never_deletes(self):
-        case = self.introduced()
         mail.outbox.clear()
-        intro.daily_run(today=date.today() + timedelta(days=3))
-        invites = [m for m in mail.outbox if m.subject == "Elyria would value your feedback"]
-        self.assertEqual(len(invites), 2)
-        self.assertNotIn("Mwila", invites[0].body)                     # no names, no details
-        intro.daily_run(today=date.today() + timedelta(days=7))
-        self.assertEqual(EliteFeedback.objects.filter(reminded_at__isnull=False).count(), 2)
-        self.assertTrue(EliteCase.objects.filter(pk=case.pk).exists())
+        intro.add_note(case, about="feedback_client", text="Felt well prepared.", by=self.matchmaker)
+        intro.add_note(case, about="feedback_person", text="Uneasy about the venue.", concern=True, by=self.matchmaker)
+        texts = list(case.events.values_list("text", flat=True))
+        self.assertIn("Feedback from the client: Felt well prepared.", texts)
+        self.assertIn("CONCERN · Feedback from the named person: Uneasy about the venue.", texts)
+        self.assertEqual(mail.outbox, [])                              # nothing is emailed to anyone
 
-    def test_submitting_form_a_with_low_rating_flags_and_lead(self):
+    def test_only_the_handler_or_admin_can_add_notes(self):
         case = self.introduced()
-        intro.daily_run(today=date.today() + timedelta(days=3))
+        with self.assertRaises(svc.EliteError):
+            intro.add_note(case, about="note", text="Hello", by=staff("other@x.com", Groups.MATCHMAKER))
+        intro.add_note(case, about="note", text="Checked in with both.", by=self.admin)
+
+    def test_forms_a_and_b_apply_after_the_introduction(self):
+        case = self.introduced()
+        self.assertEqual(intro.feedback_forms_for(case), ["A", "B"])
+        self.client.force_login(self.matchmaker)
+        response = self.client.get(reverse("elite:case-detail", args=[case.pk]))
+        self.assertContains(response, "How discreet did the process feel?")
+        self.assertContains(response, "How comfortable did you feel being approached?")
+
+    def test_handler_records_form_a_with_flag_and_lead(self):
+        case = self.introduced()
+        self.client.force_login(self.matchmaker)
+        response = self.client.post(reverse("elite:case-feedback", args=[case.pk]), {
+            "form": "A", "discreet": "5", "prepared": "2", "recommend_elite": "10",
+            "recommend_elyria": "yes", "referral_contact": "yes", "worked_best": "Very discreet.",
+        })
+        self.assertEqual(response.status_code, 302)
         form_a = case.feedback.get(form="A")
-        mail.outbox.clear()
-        with self.captureOnCommitCallbacks(execute=True):
-            response = self.client.post(reverse("elite:feedback", args=[form_a.token]), {**GOOD_A, "prepared": "2"})
-        self.assertContains(response, "Thank you")
-        form_a.refresh_from_db()
-        self.assertTrue(form_a.red_flag)
+        self.assertEqual(form_a.answers["discreet"], 5)
+        self.assertTrue(form_a.red_flag)                               # prepared rated 2
         self.assertTrue(form_a.referral_lead)
-        self.assertEqual(form_a.answers["testimonial"], "no")          # default is No
-        self.assertTrue(any("Red flag" in m.subject for m in mail.outbox))
-        # one time only
-        response = self.client.post(reverse("elite:feedback", args=[form_a.token]), GOOD_A)
-        self.assertContains(response, "already been completed")
+        self.assertNotIn("testimonial", form_a.answers)                # not asked, not stored
+        texts = " ".join(case.events.values_list("text", flat=True))
+        self.assertIn("Form A recorded", texts)
+        self.assertIn("CONCERN · Red flag on Form A", texts)
 
-    def test_form_b_intrusive_needs_details_and_flags(self):
+    def test_correcting_form_b_updates_it(self):
         case = self.introduced()
-        intro.daily_run(today=date.today() + timedelta(days=3))
+        intro.save_feedback(case, form="B", data={"intrusive": "yes", "intrusive_details": "Too many calls"}, by=self.matchmaker)
+        intro.save_feedback(case, form="B", data={"intrusive": "no", "intrusive_details": "Too many calls"}, by=self.matchmaker)
         form_b = case.feedback.get(form="B")
-        answers = {"comfortable": "4", "first_contact_respectful": "4", "acknowledgement_clear": "4",
-                   "free_to_decline": "yes", "prepared": "4", "intrusive": "yes", "open_to_joining": "maybe",
-                   "recommend_approach": "yes", "contact_referral": "no"}
-        response = self.client.post(reverse("elite:feedback", args=[form_b.token]), answers)
-        self.assertEqual(response.status_code, 400)                    # details are required when Yes
-        self.client.post(reverse("elite:feedback", args=[form_b.token]), {**answers, "intrusive_details": "Too many calls"})
-        form_b.refresh_from_db()
-        self.assertTrue(form_b.red_flag)
-
-    def test_closed_link_and_reopen(self):
-        case = self.introduced()
-        intro.daily_run(today=date.today() + timedelta(days=3))
-        form_a = case.feedback.get(form="A")
-        EliteFeedback.objects.filter(pk=form_a.pk).update(closes_on=date.today() - timedelta(days=1))
-        self.assertContains(self.client.get(reverse("elite:feedback", args=[form_a.token])), "has closed")
-        intro.extend_feedback(form_a, days=7, by=self.matchmaker)
-        self.assertContains(self.client.get(reverse("elite:feedback", args=[form_a.token])), "Send my feedback")
+        self.assertFalse(form_b.red_flag)
+        self.assertNotIn("intrusive_details", form_b.answers)          # follow-up dropped when they said No
+        self.assertEqual(case.feedback.count(), 1)
 
     def test_form_c_after_closing_without_introduction(self):
         case = self.paid()
         svc.record_outreach(case, delivered=True, sent_on=date.today(), by=self.matchmaker)
         svc.record_answer(case, answer="declined", by=self.matchmaker)
-        self.assertEqual(case.feedback.get().form, "C")
+        case.refresh_from_db()
+        self.assertEqual(intro.feedback_forms_for(case), ["C"])
+        with self.assertRaises(svc.EliteError):
+            intro.save_feedback(case, form="A", data={"discreet": "4"}, by=self.matchmaker)
+        intro.save_feedback(case, form="C", data={"discreet": "4"}, by=self.matchmaker)
+
+    def test_no_feedback_before_the_introduction(self):
+        case = self.at_introduction()
+        self.assertEqual(intro.feedback_forms_for(case), [])
+        with self.assertRaises(svc.EliteError):
+            intro.save_feedback(case, form="A", data={"discreet": "4"}, by=self.matchmaker)
+
+    def test_daily_run_sends_no_feedback_emails(self):
+        self.introduced()
+        mail.outbox.clear()
+        intro.daily_run(today=date.today() + timedelta(days=3))
+        self.assertEqual(mail.outbox, [])
 
     def test_extend_reply_window(self):
         case = self.paid()

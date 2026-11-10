@@ -197,7 +197,7 @@ def deliver_elite_email(case, kind, message=""):
         )
 
 
-# ---------------------------------------------------------------- Part 2b: introduction, feedback, reminders
+# ---------------------------------------------------------------- Part 2b: introduction, reminders
 
 def admin_emails():
     from django.contrib.auth import get_user_model
@@ -214,11 +214,6 @@ def admin_emails():
 def notify_intro_alerts(case, updated=False):
     from notification import tasks
     enqueue(tasks.send_elite_email, case.pk, "intro_alerts_updated" if updated else "intro_alerts")
-
-
-def notify_feedback_alert(feedback, kind):
-    from notification import tasks
-    enqueue(tasks.send_elite_feedback_email, feedback.pk, kind)
 
 
 def deliver_intro_alerts(case, updated=False):
@@ -240,39 +235,6 @@ def deliver_intro_alerts(case, updated=False):
             context=context, to=[address], reply_to=[reply_to_address()],
         )
 
-
-def deliver_feedback_email(feedback, kind):
-    """
-    invite / reminder: to the person, saying only that Elyria would value their feedback (no names, no details).
-    red_flag / lead: to Admin.
-    """
-    case = feedback.case
-    if kind in ("invite", "reminder"):
-        to = case.person_email if feedback.form == "B" else case.email
-        if not to:
-            logger.warning("Form %s for %s not sent: no email", feedback.form, case.reference)
-            return
-        send_templated_email(
-            subject="Elyria would value your feedback" + (" (reminder)" if kind == "reminder" else ""),
-            template="notification/email/elite_feedback_invite",
-            context={"link": _url(reverse("elite:feedback", args=[feedback.token])), "closes_on": feedback.closes_on,
-                     "reminder": kind == "reminder"},
-            to=[to],
-        )
-    elif kind in ("red_flag", "lead"):
-        if kind == "red_flag":
-            heading = f"Red flag on Elite feedback: {case.reference}"
-            message = (f"Form {feedback.form} ({feedback.completed_by}) raised a red flag: "
-                       + "; ".join(feedback.red_flag_reasons) + ". Please review the case.")
-        else:
-            heading = f"Referral lead from Elite feedback: {case.reference}"
-            message = (f"{case.full_name} rated Elite Grade highly and agreed to be contacted about a referral. "
-                       f"Nothing has been sent to anyone they might refer.")
-        send_templated_email(
-            subject=heading, template="notification/email/pairing_update",
-            context={"heading": heading, "message": message, "link": _url(reverse("elite:case-detail", args=[case.pk]))},
-            to=admin_emails(),
-        )
 
 
 def deliver_handler_reminder(case, kind):

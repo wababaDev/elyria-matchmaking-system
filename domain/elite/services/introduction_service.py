@@ -1,6 +1,7 @@
 """
 Elite Grade, Part 2b: the introduction (kept in the case; neither person becomes a member),
-the feedback forms A/B/C, the daily job, and deletion that a person decides on.
+feedback (asked by the Case Handler on a call and typed in), notes, the daily job, and deletion that a person
+decides on.
 """
 import logging
 from datetime import timedelta
@@ -10,7 +11,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from domain.elite.forms import feedback_forms
-from domain.elite.models import EliteCase, EliteDocument, EliteFeedback, EliteFeedbackNote
+from domain.elite.models import EliteCase, EliteDocument, EliteFeedback
 from domain.elite.models.elite_case import ABANDONED_AFTER_DAYS
 from domain.elite.services.elite_service import (
     WIPE_AFTER_DAYS,
@@ -24,7 +25,6 @@ from domain.elite.services.elite_service import (
 
 logger = logging.getLogger(__name__)
 S = EliteCase.Status
-SEND_AFTER_DAYS, REMIND_AFTER_DAYS, CLOSE_AFTER_DAYS = 3, 7, 14
 REPLY_REMINDER_DAYS_BEFORE = 3
 PREP_FIELDS = [
     ("coached_client", "Client coached on dating etiquette"),
@@ -79,7 +79,7 @@ def save_preparation(case, *, ticks, by):
 @transaction.atomic
 def record_intro_result(case, *, result, on, who="", why="", by):
     """
-    took_place: feedback forms A (client) and B (named person) are scheduled for 3 days later.
+    took_place: the Case Handler then asks both the feedback questions (Forms A and B) and records them.
     cancelled / no_show: who and why are recorded; set a new date, or close the case.
     """
     case = _lock(case)
@@ -93,13 +93,7 @@ def record_intro_result(case, *, result, on, who="", why="", by):
         case.intro_took_place_on = on
         case.status = S.INTRODUCED
         case.save()
-        log_event(case, f"The introduction took place on {on:%d %b %Y}. Feedback forms go out on "
-                        f"{on + timedelta(days=SEND_AFTER_DAYS):%d %b %Y}.", by)
-        create_feedback(case, "A", on)
-        if case.person_email:
-            create_feedback(case, "B", on)
-        else:
-            log_event(case, "No email for the named person, so Form B can't be sent.", by)
+        log_event(case, f"The introduction took place on {on:%d %b %Y}.", by)
     else:
         case.save()
         label = EliteCase.IntroResult(result).label
@@ -140,83 +134,88 @@ def extend_reply_window(case, *, days, reason, by):
     return case
 
 
-# ---------------------------------------------------------------- feedback forms
+# ---------------------------------------------------------------- feedback (asked offline, typed in here)
 
-def create_feedback(case, form, base_date):
-    """Schedule a form: sent on day 3, reminded on day 7, closes on day 14 (from base_date)."""
-    feedback, created = EliteFeedback.objects.get_or_create(
-        case=case, form=form,
-        defaults={
-            "send_on": base_date + timedelta(days=SEND_AFTER_DAYS),
-            "remind_on": base_date + timedelta(days=REMIND_AFTER_DAYS),
-            "closes_on": base_date + timedelta(days=CLOSE_AFTER_DAYS),
-        },
-    )
-    if created:
-        log_event(case, f"Form {form} scheduled for {feedback.send_on:%d %b %Y}.")
-    return feedback
+def feedback_forms_for(case):
+    """Which of the client's forms apply: A and B after an introduction, C if it closed without one."""
+    if case.intro_took_place_on:
+        return ["A", "B"]
+    if case.outcome or case.closing_outcome == EliteCase.ClosingOutcome.DID_NOT_HAPPEN:
+        return ["C"]
+    return []
 
 
-@transaction.atomic
-def extend_feedback(feedback, *, days, by):
-    """Reopen or extend a feedback link. If it was never sent, it goes out with the next daily run."""
-    feedback = EliteFeedback.objects.select_for_update().select_related("case").get(pk=feedback.pk)
-    _require_handler(by, feedback.case)
-    if feedback.completed_at:
-        raise EliteError("This form has already been completed.")
-    feedback.closes_on = max(feedback.closes_on, timezone.localdate()) + timedelta(days=days)
-    feedback.save(update_fields=["closes_on"])
-    log_event(feedback.case, f"Form {feedback.form} link extended to {feedback.closes_on:%d %b %Y}.", by)
-    return feedback
+def feedback_cards(case):
+    """Everything the Feedback tab needs, one card per form."""
+    saved = {f.form: f for f in case.feedback.select_related("recorded_by")}
+    return [
+        {
+            "form": form,
+            "title": feedback_forms.TITLES[form],
+            "record": saved.get(form),
+            "questions": feedback_forms.for_display(form, saved[form].answers if form in saved else {}),
+        }
+        for form in feedback_forms_for(case)
+    ]
 
 
 @transaction.atomic
-def add_feedback_note(feedback, *, text, by):
-    if not is_admin(by):
-        raise EliteError("Only Admin can add notes to feedback.")
-    if not text.strip():
-        raise EliteError("Write the note first.")
-    return EliteFeedbackNote.objects.create(feedback=feedback, by=by, text=text.strip())
-
-
-def feedback_for_token(token):
-    return EliteFeedback.objects.select_related("case").filter(token=token).first()
-
-
-@transaction.atomic
-def submit_feedback(token, data):
+def save_feedback(case, *, form, data, by):
     """
-    The person's answers, saved once and never edited. Red flags and referral leads email Admin.
-    Returns (feedback, errors). errors is empty on success.
+    Save (or correct) the answers to one form. Red flags and referral leads go on the timeline so Admin
+    sees them. Returns the EliteFeedback.
     """
-    feedback = EliteFeedback.objects.select_for_update().select_related("case").filter(token=token).first()
-    if feedback is None or not feedback.sent_at:
-        raise EliteError("This link isn't valid.")
-    if feedback.completed_at:
-        raise EliteError("Thank you, this form has already been completed.")
-    if timezone.localdate() > feedback.closes_on:
-        raise EliteError("This form has closed. If you'd still like to share feedback, simply reply to our email.")
-
-    answers, errors = feedback_forms.clean_answers(feedback.form, data)
+    case = _lock(case)
+    _require_handler(by, case)
+    if form not in feedback_forms_for(case):
+        raise EliteError("That feedback form doesn't apply to this case yet.")
+    answers, errors = feedback_forms.clean_answers(form, data)
     if errors:
-        return feedback, errors
+        raise EliteError(next(iter(errors.values())))
+    if not answers:
+        raise EliteError("Nothing to save: answer at least one question.")
 
+    feedback = EliteFeedback.objects.filter(case=case, form=form).first()
+    was_flagged, was_lead = (feedback.red_flag, feedback.referral_lead) if feedback else (False, False)
+    created = feedback is None
+    feedback = feedback or EliteFeedback(case=case, form=form, recorded_by=by)
+    feedback.recorded_by = by  # who saved it last; the timeline keeps every save
     feedback.answers = answers
-    feedback.completed_at = timezone.now()
-    feedback.completed_by = "named person" if feedback.form == "B" else "client"
-    feedback.red_flag_reasons = feedback_forms.red_flag_reasons(feedback.form, answers)
+    feedback.red_flag_reasons = feedback_forms.red_flag_reasons(form, answers)
     feedback.red_flag = bool(feedback.red_flag_reasons)
-    feedback.referral_lead = feedback_forms.is_referral_lead(feedback.form, answers)
+    feedback.referral_lead = feedback_forms.is_referral_lead(form, answers)
     feedback.save()
 
-    log_event(feedback.case, f"Form {feedback.form} completed by the {feedback.completed_by}.")
-    if feedback.red_flag:
-        log_event(feedback.case, f"RED FLAG on Form {feedback.form}: " + "; ".join(feedback.red_flag_reasons) + ". Admin notified.")
-        transaction.on_commit(lambda: _emails().notify_feedback_alert(feedback, "red_flag"))
-    if feedback.referral_lead:
-        log_event(feedback.case, f"Referral lead from Form {feedback.form}. Admin notified.")
-        transaction.on_commit(lambda: _emails().notify_feedback_alert(feedback, "lead"))
-    return feedback, {}
+    log_event(case, f"Form {form} {'recorded' if created else 'updated'} ({len(answers)} answers).", by)
+    if feedback.red_flag and not was_flagged:
+        log_event(case, f"CONCERN · Red flag on Form {form}: " + "; ".join(feedback.red_flag_reasons) + ".", by)
+    if feedback.referral_lead and not was_lead:
+        log_event(case, f"Referral lead from Form {form}: rated Elite Grade highly and agreed to be contacted.", by)
+    return feedback
+
+
+# ---------------------------------------------------------------- notes
+
+NOTE_ABOUT = [
+    ("feedback_client", "Feedback from the client"),
+    ("feedback_person", "Feedback from the named person"),
+    ("note", "Note"),
+]
+
+
+@transaction.atomic
+def add_note(case, *, about, text, concern=False, by):
+    """
+    Feedback is gathered by the Case Handler offline (a call or a message); only what matters is written
+    down here. The note goes on the append-only timeline. A concern is marked so Admin sees it.
+    """
+    case = _lock(case)
+    _require_handler(by, case)
+    if not text.strip():
+        raise EliteError("Write the note first.")
+    label = dict(NOTE_ABOUT)[about]
+    log_event(case, ("CONCERN · " if concern else "") + f"{label}: {text.strip()}", by)
+    return case
 
 
 # ---------------------------------------------------------------- deletion (a person decides)
@@ -268,13 +267,12 @@ def delete_now(case, *, by):
 
 def daily_run(today=None):
     """
-    Run once a day by Celery Beat (domain/elite/tasks.py). Only SENDS things: feedback forms on day 3,
-    reminders on day 7, reminders to the Case Handler about reply windows, and on Mondays a reminder to
-    Admin about anything due for deletion. It never deletes anything.
+    Run once a day by Celery Beat (domain/elite/tasks.py). Only SENDS reminders: to the Case Handler about
+    reply windows, and on Mondays to Admin about anything due for deletion. It never deletes anything.
     """
     today = today or timezone.localdate()
     emails = _emails()
-    summary = {"sent": 0, "reminded": 0, "handler": 0, "deletion": 0, "failed": 0}
+    summary = {"handler": 0, "deletion": 0, "failed": 0}
 
     def send(func, *args):
         """One failed email mustn't stop the rest; it's simply tried again tomorrow."""
@@ -285,25 +283,6 @@ def daily_run(today=None):
             logger.exception("Elite daily run: %s%s failed", func.__name__, args)
             summary["failed"] += 1
             return False
-
-    for feedback in EliteFeedback.objects.filter(sent_at__isnull=True, send_on__lte=today, closes_on__gte=today):
-        if not send(emails.deliver_feedback_email, feedback, "invite"):
-            continue
-        feedback.sent_at = timezone.now()
-        feedback.save(update_fields=["sent_at"])
-        log_event(feedback.case, f"Form {feedback.form} emailed.")
-        summary["sent"] += 1
-
-    for feedback in EliteFeedback.objects.filter(
-        sent_at__isnull=False, reminded_at__isnull=True, completed_at__isnull=True,
-        remind_on__lte=today, closes_on__gte=today,
-    ):
-        if not send(emails.deliver_feedback_email, feedback, "reminder"):
-            continue
-        feedback.reminded_at = timezone.now()
-        feedback.save(update_fields=["reminded_at"])
-        log_event(feedback.case, f"Form {feedback.form} reminder emailed.")
-        summary["reminded"] += 1
 
     open_outreach = EliteCase.objects.filter(status=S.OUTREACH_SENT, handler__isnull=False)
     for case in open_outreach.filter(reply_reminder_sent=False, reply_due_on__lte=today + timedelta(days=REPLY_REMINDER_DAYS_BEFORE),

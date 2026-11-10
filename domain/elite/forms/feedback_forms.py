@@ -1,8 +1,9 @@
 """
-The three Elite feedback forms, exactly as the client specified, plus how answers are checked,
-flagged and turned into referral leads.
+The three Elite feedback forms, exactly as the client specified. The Case Handler asks these on a call
+(or by message) and records the answers on the case; nothing is emailed. Every question is optional,
+because people don't always answer everything.
 
-Question types: rating (1-5), nps (0-10), choice (options), text (free text, never edited).
+Question types: rating (1-5), nps (0-10), choice (options), text (free text).
 """
 
 RATING = "rating"
@@ -14,7 +15,7 @@ YES_NO = [("yes", "Yes"), ("no", "No")]
 YES_NO_LATER = [("yes", "Yes"), ("no", "No"), ("maybe_later", "Maybe later")]
 
 
-def q(key, label, kind, options=None, required=True, show_if=None, default=None):
+def q(key, label, kind, options=None, required=False, show_if=None, default=None):
     return {"key": key, "label": label, "type": kind, "options": options or [], "required": required,
             "show_if": show_if, "default": default}
 
@@ -34,7 +35,7 @@ FORMS = {
         q("recommend_elyria", "Would you be willing to recommend Elyria to someone you know?", CHOICE, YES_NO_LATER),
         q("referral_contact", "May we contact you about a referral?", CHOICE, YES_NO, show_if=("recommend_elyria", "yes")),
         q("testimonial", "May we use any of your comments as a testimonial?", CHOICE,
-          [("no", "No"), ("anonymous", "Yes, anonymously"), ("named", "Yes, with my name")], default="no"),
+          [("no", "No"), ("anonymous", "Yes, anonymously"), ("named", "Yes, with my name")]),
         q("anything_else", "Anything else you want Elyria to know?", TEXT, required=False),
     ],
     "B": [
@@ -44,13 +45,13 @@ FORMS = {
         q("free_to_decline", "Did you feel free to decline at any point?", CHOICE, YES_NO),
         q("prepared", "How well were you prepared for the introduction?", RATING),
         q("intrusive", "Did anything about the process feel intrusive or uncomfortable?", CHOICE, YES_NO),
-        q("intrusive_details", "Please tell us what felt intrusive or uncomfortable.", TEXT, show_if=("intrusive", "yes")),
+        q("intrusive_details", "What felt intrusive or uncomfortable?", TEXT, show_if=("intrusive", "yes")),
         q("open_to_joining", "Would you be open to joining Elyria in future?", CHOICE,
           [("yes", "Yes"), ("no", "No"), ("maybe", "Maybe")]),
         q("recommend_approach", "Would you recommend Elyria's approach to someone you trust?", CHOICE, YES_NO_LATER),
         q("contact_referral", "May we contact you about a referral or membership?", CHOICE, YES_NO),
         q("testimonial", "May we use any of your comments as a testimonial?", CHOICE,
-          [("no", "No"), ("anonymous", "Yes, anonymously")], default="no"),
+          [("no", "No"), ("anonymous", "Yes, anonymously")]),
         q("anything_else", "Anything else you want Elyria to know?", TEXT, required=False),
     ],
     "C": [
@@ -62,6 +63,29 @@ FORMS = {
 }
 
 
+TITLES = {
+    "A": "Form A: the client, after the introduction",
+    "B": "Form B: the named person, after the introduction",
+    "C": "Form C: the client, closed without an introduction",
+}
+
+
+def for_display(form, answers):
+    """Questions with their options as strings and the saved answer, ready for the case page."""
+    out = []
+    for question in FORMS[form]:
+        kind = question["type"]
+        if kind == RATING:
+            choices = [(str(n), str(n)) for n in range(1, 6)]
+        elif kind == NPS:
+            choices = [(str(n), str(n)) for n in range(0, 11)]
+        else:
+            choices = question["options"]
+        saved = answers.get(question["key"], "")
+        out.append({**question, "choices": choices, "current": "" if saved == "" else str(saved)})
+    return out
+
+
 def _shown(question, data):
     if not question["show_if"]:
         return True
@@ -71,8 +95,8 @@ def _shown(question, data):
 
 def clean_answers(form, data):
     """
-    (answers, errors) from posted data. Hidden follow-ups are dropped; required ones must be answered.
-    errors: {key: message}.
+    (answers, errors) from posted data. Unanswered questions are left out; a follow-up is dropped when its
+    question isn't answered that way (e.g. intrusive details when they said No). errors: {key: message}.
     """
     answers, errors = {}, {}
     for question in FORMS[form]:

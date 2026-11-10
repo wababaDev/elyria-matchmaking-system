@@ -3,12 +3,11 @@ from .elite_case import (
     EliteCase,
     EliteCaseEvent,
     EliteDocument,
-    EliteFeedback,
-    EliteFeedbackNote,
     SuppressionEntry,
+    EliteFeedback,
 )
 
 __all__ = [
-    "EliteAccessLog", "EliteCase", "EliteCaseEvent", "EliteDocument", "EliteFeedback", "EliteFeedbackNote",
-    "SuppressionEntry",
+    "EliteAccessLog", "EliteCase", "EliteCaseEvent", "EliteDocument",
+    "SuppressionEntry","EliteFeedback"
 ]

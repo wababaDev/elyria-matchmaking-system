@@ -66,7 +66,7 @@
 
 <ul class="nav nav-pills gap-1 mb-3 flex-nowrap overflow-auto pb-1" id="caseTabs" role="tablist">
     <li class="nav-item" role="presentation">
-        <button type="button" class="nav-link" id="tab-documents" data-bs-toggle="pill" data-bs-target="#pane-documents" data-tab="documents" role="tab" aria-controls="pane-documents">Documents <span class="badge bg-light text-dark ms-1">{{ documents|length }}</span></button>
+        <button type="button" class="nav-link active" aria-selected="true" id="tab-documents" data-bs-toggle="pill" data-bs-target="#pane-documents" data-tab="documents" role="tab" aria-controls="pane-documents">Documents <span class="badge bg-light text-dark ms-1">{{ documents|length }}</span></button>
     </li>
 {% if is_admin and case.status == "under_review" or is_admin and case.decided_at %}
     <li class="nav-item" role="presentation">
@@ -93,9 +93,12 @@
         <button type="button" class="nav-link" id="tab-bronze" data-bs-toggle="pill" data-bs-target="#pane-bronze" data-tab="bronze" role="tab" aria-controls="pane-bronze">Bronze</button>
     </li>
 {% endif %}
-{% if feedback_list %}
+{% if feedback_cards %}
     <li class="nav-item" role="presentation">
-        <button type="button" class="nav-link" id="tab-feedback" data-bs-toggle="pill" data-bs-target="#pane-feedback" data-tab="feedback" role="tab" aria-controls="pane-feedback">Feedback <span class="badge bg-light text-dark ms-1">{{ feedback_list|length }}</span></button>
+        <button type="button" class="nav-link" id="tab-feedback" data-bs-toggle="pill" data-bs-target="#pane-feedback" data-tab="feedback" role="tab" aria-controls="pane-feedback">
+            Feedback
+            {% for card in feedback_cards %}{% if card.record.red_flag %}<span class="badge bg-danger ms-1">Red flag</span>{% endif %}{% endfor %}
+        </button>
     </li>
 {% endif %}
     <li class="nav-item" role="presentation">
@@ -104,7 +107,7 @@
 </ul>
 
 <div class="tab-content">
-    <div class="tab-pane fade" id="pane-documents" role="tabpanel" aria-labelledby="tab-documents" tabindex="0">
+    <div class="tab-pane fade show active" id="pane-documents" role="tabpanel" aria-labelledby="tab-documents" tabindex="0">
         <div class="card custom-card">
             <div class="card-header justify-content-between">
                 <div class="card-title">Documents</div>
@@ -499,7 +502,7 @@
                             <div class="d-flex flex-wrap gap-2 align-items-end mb-2">
                                 <div><label class="form-label fs-12 mb-1">On</label>{{ result_form.on }}</div>
                                 <button type="submit" name="result" value="took_place" class="btn btn-success"
-                                        data-confirm-title="The introduction took place?" data-confirm="Feedback forms go to both of them in 3 days." data-confirm-button="Record">It took place</button>
+                                        data-confirm-title="The introduction took place?" data-confirm="Next, ask both of them the feedback questions and record them on the Feedback tab." data-confirm-button="Record">It took place</button>
                             </div>
                             <details class="fs-13">
                                 <summary class="text-muted">It was cancelled or someone didn't show</summary>
@@ -516,6 +519,13 @@
                         </form>
                     {% endif %}
 
+                    {% if case.status == "introduced" %}
+                        <div class="alert alert-light border fs-13 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <span>Next, call or message both of them and ask the feedback questions (Forms A and B).</span>
+                            <a href="#" class="btn btn-sm btn-primary js-tab-link" data-tab="feedback">Go to Feedback</a>
+                        </div>
+                    {% endif %}
+
                     {% if can_handle %}{% if case.status == "introduction" or case.status == "introduced" %}
                         <form method="post" action="{% url 'elite:case-close' case.pk %}" class="border-top pt-3 mt-3">
                             {% csrf_token %}
@@ -525,7 +535,7 @@
                                 <div class="col-md-8">{{ close_form.note }}</div>
                             </div>
                             <button type="submit" class="btn btn-sm btn-outline-secondary mt-2"
-                                    data-confirm-title="Close {{ case.reference }}?" data-confirm="Feedback forms still go out as scheduled. The named person's details become due for deletion 30 days after closing." data-confirm-button="Close">Close case</button>
+                                    data-confirm-title="Close {{ case.reference }}?" data-confirm="You can still record feedback afterwards. The named person's details become due for deletion 30 days after closing." data-confirm-button="Close">Close case</button>
                         </form>
                     {% endif %}{% endif %}
                 </div>
@@ -554,103 +564,82 @@
         {% endif %}
     </div>
 {% endif %}
-{% if feedback_list %}
+{% if feedback_cards %}
     <div class="tab-pane fade" id="pane-feedback" role="tabpanel" aria-labelledby="tab-feedback" tabindex="0">
-        {% if feedback_list %}
+        <p class="text-muted fs-13">
+            Ask these on a call or by message and record what they say. Every question is optional; skip what they don't answer.
+            Staff only. Each save goes on the timeline.
+        </p>
+        {% for card in feedback_cards %}
             <div class="card custom-card">
-                <div class="card-header justify-content-between">
-                    <div class="card-title">Feedback</div>
-                    <span class="text-muted fs-12">Staff only. Answers are never edited.</span>
+                <div class="card-header justify-content-between flex-wrap gap-2">
+                    <div class="card-title">{{ card.title }}</div>
+                    <div class="fs-12">
+                        {% if card.record %}
+                            <span class="badge bg-success-transparent">Saved {{ card.record.updated_at|date:"j M Y" }} by {{ card.record.recorded_by.full_name }}</span>
+                            {% if card.record.red_flag %}<span class="badge bg-danger ms-1">Red flag</span>{% endif %}
+                            {% if card.record.referral_lead %}<span class="badge bg-elyria-gold ms-1">Referral lead</span>{% endif %}
+                        {% else %}
+                            <span class="badge bg-light text-dark">Not recorded yet</span>
+                        {% endif %}
+                    </div>
                 </div>
                 <div class="card-body">
-                    {% for item in feedback_list %}{% with f=item.f %}
-                        <div class="{% if not forloop.first %}border-top pt-3 mt-3{% endif %}">
-                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                                <div class="fs-13">
-                                    <strong>{{ f.get_form_display }}</strong>
-                                    {% if f.state == "completed" %}<span class="badge bg-success-transparent ms-1">Completed {{ f.completed_at|date:"j M" }}</span>
-                                    {% elif f.state == "sent" %}<span class="badge bg-warning-transparent ms-1">Sent {{ f.sent_at|date:"j M" }}{% if f.reminded_at %} · reminded {{ f.reminded_at|date:"j M" }}{% endif %} · closes {{ f.closes_on|date:"j M" }}</span>
-                                    {% elif f.state == "scheduled" %}<span class="badge bg-light text-dark ms-1">Goes out {{ f.send_on|date:"j M Y" }}</span>
-                                    {% else %}<span class="badge bg-light text-muted ms-1">Closed {{ f.closes_on|date:"j M" }}, not completed</span>{% endif %}
-                                    {% if f.red_flag %}<span class="badge bg-danger ms-1">Red flag</span>{% endif %}
-                                    {% if f.referral_lead %}<span class="badge bg-elyria-gold ms-1">Referral lead</span>{% endif %}
-                                </div>
-                                {% if can_handle and not f.completed_at %}
-                                    <button type="button" class="btn btn-sm btn-light text-nowrap" data-bs-toggle="modal" data-bs-target="#extendFeedbackModal-{{ f.pk }}">
-                                        <i class="fe fe-clock me-1"></i>{% if f.state == "closed" %}Reopen link{% else %}Extend link{% endif %}
-                                    </button>
-
-                                    <div class="modal fade" id="extendFeedbackModal-{{ f.pk }}" tabindex="-1" aria-labelledby="extendFeedbackTitle-{{ f.pk }}" aria-hidden="true">
-                                        <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
-                                            <form method="post" action="{% url 'elite:case-feedback-extend' case.pk %}" class="modal-content">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="feedback" value="{{ f.pk }}">
-                                                <div class="modal-header">
-                                                    <h6 class="modal-title" id="extendFeedbackTitle-{{ f.pk }}">{% if f.state == "closed" %}Reopen{% else %}Extend{% endif %} Form {{ f.form }}</h6>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <p class="fs-13">
-                                                        {% if f.state == "closed" %}The link closed on <strong>{{ f.closes_on|date:"j M Y" }}</strong>. Reopening lets them use the same link again.
-                                                        {% elif f.state == "scheduled" %}The form goes out on {{ f.send_on|date:"j M Y" }} and closes on <strong>{{ f.closes_on|date:"j M Y" }}</strong>.
-                                                        {% else %}The link closes on <strong>{{ f.closes_on|date:"j M Y" }}</strong>.{% endif %}
-                                                        No new email is sent; let them know if needed.
-                                                    </p>
-                                                    <label class="form-label fs-13" for="extend-days-{{ f.pk }}">Keep it open for another</label>
-                                                    <select name="days" id="extend-days-{{ f.pk }}" class="form-select">
-                                                        <option value="7">7 days</option>
-                                                        <option value="14">14 days</option>
-                                                    </select>
-                                                </div>
-                                                <div class="modal-footer d-flex flex-nowrap gap-2">
-                                                    <button type="button" class="btn btn-light flex-fill m-0" data-bs-dismiss="modal">Cancel</button>
-                                                    <button type="submit" class="btn btn-primary flex-fill m-0">{% if f.state == "closed" %}Reopen{% else %}Extend{% endif %}</button>
-                                                </div>
-                                            </form>
+                    {% if card.record.red_flag %}
+                        <div class="alert alert-danger fs-12 py-2">{% for reason in card.record.red_flag_reasons %}{{ reason }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</div>
+                    {% endif %}
+                    <form method="post" action="{% url 'elite:case-feedback' case.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="form" value="{{ card.form }}">
+                        <fieldset {% if not can_handle %}disabled{% endif %}>
+                            {% for q in card.questions %}
+                                <div class="py-3 {% if not forloop.first %}border-top{% endif %}">
+                                    <p class="fs-13 fw-semibold mb-2">
+                                        {{ forloop.counter }}. {{ q.label }}
+                                        {% if q.show_if %}<span class="text-muted fw-normal">(only if they answered "{{ q.show_if.1|capfirst }}" above)</span>{% endif %}
+                                    </p>
+                                    {% if q.type == "text" %}
+                                        <textarea name="{{ q.key }}" rows="2" class="form-control" aria-label="{{ q.label }}">{{ q.current }}</textarea>
+                                    {% else %}
+                                        <div class="d-flex flex-wrap gap-1" role="radiogroup" aria-label="{{ q.label }}">
+                                            {% for value, label in q.choices %}
+                                                <input type="radio" class="btn-check" name="{{ q.key }}" id="fb-{{ card.form }}-{{ q.key }}-{{ value }}" value="{{ value }}" autocomplete="off" {% if q.current == value %}checked{% endif %}>
+                                                <label class="btn btn-sm btn-outline-primary" for="fb-{{ card.form }}-{{ q.key }}-{{ value }}">{{ label }}</label>
+                                            {% endfor %}
                                         </div>
-                                    </div>
-                                {% endif %}
-                            </div>
-
-                            {% if f.red_flag %}
-                                <div class="alert alert-danger fs-12 py-2">{% for reason in f.red_flag_reasons %}{{ reason }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</div>
-                            {% endif %}
-
-                            {% if item.rows %}
-                                <dl class="profile-answers fs-13 mb-2">
-                                    {% for label, value in item.rows %}
-                                        <div><dt>{{ label }}</dt><dd>{{ value|linebreaksbr }}</dd></div>
-                                    {% endfor %}
-                                </dl>
-                            {% endif %}
-
-                            {% for note in item.notes %}
-                                <p class="fs-12 mb-1"><span class="text-muted">{{ note.at|date:"j M Y, H:i" }} · {{ note.by.full_name }}:</span> {{ note.text }}</p>
+                                        {% if q.type == "rating" %}<div class="text-muted fs-11 mt-1">1 = poor · 5 = excellent</div>
+                                        {% elif q.type == "nps" %}<div class="text-muted fs-11 mt-1">0 = not likely · 10 = very likely</div>{% endif %}
+                                    {% endif %}
+                                </div>
                             {% endfor %}
-                            {% if is_admin and f.completed_at %}
-                                <form method="post" action="{% url 'elite:case-feedback-note' case.pk %}" class="d-flex gap-2 mt-2">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="feedback" value="{{ f.pk }}">
-                                    <input type="text" name="text" maxlength="2000" class="form-control form-control-sm" placeholder="Add a dated note (Admin)" required>
-                                    <button type="submit" class="btn btn-sm btn-light text-nowrap">Add note</button>
-                                </form>
-                            {% endif %}
-                        </div>
-                    {% endwith %}{% endfor %}
+                        </fieldset>
+                        {% if can_handle %}
+                            <div class="border-top pt-3">
+                                <button type="submit" class="btn btn-primary">{% if card.record %}Save changes{% else %}Save Form {{ card.form }}{% endif %}</button>
+                            </div>
+                        {% endif %}
+                    </form>
                 </div>
             </div>
-        {% endif %}
+        {% endfor %}
     </div>
 {% endif %}
     <div class="tab-pane fade" id="pane-timeline" role="tabpanel" aria-labelledby="tab-timeline" tabindex="0">
     <div class="card custom-card">
-        <div class="card-header"><div class="card-title">Timeline</div></div>
+        <div class="card-header justify-content-between">
+            <div class="card-title">Timeline</div>
+            {% if can_handle %}
+                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#noteModal">
+                    <i class="fe fe-plus me-1"></i>Add a note
+                </button>
+            {% endif %}
+        </div>
         <div class="card-body fs-13">
             <ul class="list-unstyled mb-0">
                 {% for event in events %}
-                    <li class="mb-3">
+                    <li class="mb-3{% if event.text|slice:':7' == 'CONCERN' %} border-start border-3 border-danger ps-2{% endif %}">
                         <div class="text-muted fs-12">{{ event.at|date:"j M Y, H:i" }}{% if event.by %} · {{ event.by.full_name }}{% endif %}</div>
-                        {{ event.text }}
+                        {{ event.text|linebreaksbr }}
                     </li>
                 {% endfor %}
             </ul>
@@ -669,8 +658,38 @@
     </div>
 </div>
 
+{% if can_handle %}
+<div class="modal fade" id="noteModal" tabindex="-1" aria-labelledby="noteModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 520px;">
+        <form method="post" action="{% url 'elite:case-note' case.pk %}" class="modal-content">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h6 class="modal-title" id="noteModalTitle">Add to the timeline: {{ case.reference }}</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label fs-13" for="{{ note_form.about.id_for_label }}">What is it?</label>
+                {{ note_form.about }}
+                <label class="form-label fs-13 mt-3" for="{{ note_form.text.id_for_label }}">What they said</label>
+                {{ note_form.text }}
+                <div class="form-check fs-13 mt-3">
+                    {{ note_form.concern }}
+                    <label class="form-check-label" for="{{ note_form.concern.id_for_label }}">There's a concern (safety, discretion, respect). Admin should look at this.</label>
+                </div>
+                <p class="text-muted fs-12 mt-2 mb-0"><i class="fe fe-lock me-1"></i>Staff only. Notes can't be edited or deleted afterwards.</p>
+            </div>
+            <div class="modal-footer d-flex flex-nowrap gap-2">
+                <button type="button" class="btn btn-light flex-fill m-0" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary flex-fill m-0">Add</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 <script>
-(function () {
+// Runs after the page (and Bootstrap, which the layout loads at the bottom) has loaded
+window.addEventListener("load", function () {
     // Bootstrap modals must sit directly under <body>, or the page's cards and sticky layout clip them
     document.querySelectorAll('.modal').forEach(function (modal) {
         if (modal.parentElement !== document.body) document.body.appendChild(modal);
@@ -684,9 +703,11 @@
         awaiting_email: "documents", awaiting_documents: "documents",
         under_review: "review", declined: "review",
         approved: "payment", paid: "outreach", outreach_sent: "outreach", agreed: "outreach",
-        introduction: "introduction", introduced: "introduction",
-        bronze_offered: "bronze", closed: "feedback"
+        introduction: "introduction", introduced: "feedback",
+        bronze_offered: "bronze", closed: "timeline"
     };
+
+    if (typeof bootstrap === "undefined") return;  // Documents stays open
 
     function show(key) {
         var button = document.getElementById("tab-" + key);
@@ -715,6 +736,6 @@
             window.scrollTo({top: document.getElementById("caseTabs").offsetTop - 80, behavior: "smooth"});
         });
     });
-})();
+});
 </script>
 {% endblock %}

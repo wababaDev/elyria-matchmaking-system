@@ -1,7 +1,0 @@
-{% extends "notification/email/base.html" %}
-{% block preheader %}Elyria would value your feedback.{% endblock %}
-{% block heading %}Elyria would value your feedback{% endblock %}
-{% block content %}
-    <p style="margin:0 0 24px;"><a href="{{ link }}" style="display:inline-block;background:#6E1423;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;">Share my feedback</a></p>
-    <p style="margin:0 0 16px;font-size:13px;color:#777;">{% if reminder %}This is a gentle reminder. {% endif %}The form closes on {{ closes_on|date:"j F Y" }}. Your answers are seen only by Elyria.</p>
-{% endblock %}

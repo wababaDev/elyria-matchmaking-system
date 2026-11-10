@@ -1,3 +1,5 @@
+from unittest import case
+
 from django.contrib import messages
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
@@ -7,7 +9,6 @@ from django.utils import timezone
 from django.views.generic import TemplateView
 
 from domain.base.mixins import StaffRequiredMixin
-from domain.elite.forms import feedback_forms
 from domain.elite.forms import (
     AcknowledgementForm,
     AnswerForm,
@@ -19,10 +20,11 @@ from domain.elite.forms import (
     DecisionForm,
     DocumentsReceivedForm,
     DocumentUploadForm,
-    ExtendFeedbackForm,
+
     ExtendWindowForm,
-    FeedbackNoteForm,
+   CaseNoteForm,
     FeeForm,
+    FeedbackSaveForm,
     IntroductionForm,
     IntroResultForm,
     OutreachForm,
@@ -139,10 +141,8 @@ class CaseDetailView(EliteStaffMixin, TemplateView):
             result_form=IntroResultForm(),
             close_form=CloseCaseForm(initial={"outcome": "did_not_happen" if case.status == S.INTRODUCTION else "continuing"}),
             extend_form=ExtendWindowForm(),
-            feedback_list=[
-                {"f": f, "rows": feedback_forms.readable(f.form, f.answers), "notes": f.notes.select_related("by")}
-                for f in case.feedback.all()
-            ],
+            note_form=CaseNoteForm(),
+            feedback_cards=intro.feedback_cards(case),
             due_for_deletion=svc.is_admin(user) and any(case.pk in qs.values_list("pk", flat=True) for qs in intro.due_for_deletion()),
         )
         return context
@@ -340,7 +340,7 @@ class IntroResultView(CaseActionView):
     def perform(self, case, data):
         case = intro.record_intro_result(case, by=self.request.user, **data)
         if case.status == S.INTRODUCED:
-            return "Recorded. The feedback forms go out in 3 days.", ""
+           return "Recorded. Next, ask both the feedback questions (Feedback tab), then close the case.", ""
         return "Recorded. Set a new date, or close the case.", ""
 
 
@@ -359,24 +359,22 @@ class ExtendWindowView(CaseActionView):
         case = intro.extend_reply_window(case, by=self.request.user, **data)
         return f"Reply window extended to {case.reply_due_on:%d %b %Y}.", ""
 
-
-class ExtendFeedbackView(CaseActionView):
-    form_class = ExtendFeedbackForm
-
+class SaveFeedbackView(CaseActionView):
+    form_class = FeedbackSaveForm
+ 
     def perform(self, case, data):
-        feedback = get_object_or_404(case.feedback, pk=data["feedback"])
-        feedback = intro.extend_feedback(feedback, days=data["days"], by=self.request.user)
-        return f"Form {feedback.form} now closes on {feedback.closes_on:%d %b %Y}.", ""
+        feedback = intro.save_feedback(case, form=data["form"], data=self.request.POST, by=self.request.user)
+        flag = " Red flag: Admin will see it on the timeline." if feedback.red_flag else ""
+        return f"Form {feedback.form} saved.{flag}", ""
+ 
+ 
 
-
-class FeedbackNoteView(CaseActionView):
-    form_class = FeedbackNoteForm
-
+class CaseNoteView(CaseActionView):
+    form_class = CaseNoteForm
+    
     def perform(self, case, data):
-        feedback = get_object_or_404(case.feedback, pk=data["feedback"])
-        intro.add_feedback_note(feedback, text=data["text"], by=self.request.user)
-        return "Note added.", ""
-
+        intro.add_note(case, by=self.request.user, **data)
+        return "Added to the timeline.", ""
 
 class DeleteNowView(CaseActionView):
     form_class = ConfirmForm

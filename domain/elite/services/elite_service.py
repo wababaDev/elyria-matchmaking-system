@@ -437,9 +437,6 @@ def _close_without_introduction(case, *, outcome, by):
                     f"Client told it isn't proceeding and offered Bronze Membership.", by)
     transaction.on_commit(lambda: _emails().notify_not_proceeding_bronze(case))
 
-    from domain.elite.services.introduction_service import create_feedback
-
-    create_feedback(case, "C", timezone.localdate())  # sent 3 days after, reminded day 7, closes day 14
     return case
 
 
