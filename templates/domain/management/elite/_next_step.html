@@ -1,0 +1,127 @@
+{# "What to do now": one box at the top of the case that says the next step and who does it. #}
+{# Template only: everything comes from the case and the context the detail view already sends. #}
+{% with handler_name=case.handler.full_name|default:"the Case Handler" %}
+<div class="card custom-card border-start border-4 {% if case.status == 'declined' or case.status == 'closed' and not due_for_deletion %}border-secondary{% else %}border-primary{% endif %}">
+    <div class="card-body py-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div class="fs-13" style="max-width: 760px;">
+                <div class="text-muted fs-12 text-uppercase fw-semibold mb-1">What to do now</div>
+
+                {% if case.status == "awaiting_email" %}
+                    <p class="mb-1"><strong>Waiting for the applicant</strong> to confirm their email with the link they were sent.</p>
+                    <p class="text-muted mb-0">Nothing to do yet. Once they confirm, the documents are emailed to them automatically. If they never confirm, the application shows under "Due for deletion" after 30 days.</p>
+
+                {% elif case.status == "awaiting_documents" %}
+                    <p class="mb-1"><strong>Admin:</strong> when the signed documents come back to info@, upload each one here and tick it.</p>
+                    <p class="mb-0">
+                        {% if case.nda_received %}✓{% else %}·{% endif %} NDA &nbsp;
+                        {% if case.declaration_received %}✓{% else %}·{% endif %} Declaration &nbsp;
+                        {% if case.request_form_received %}✓{% else %}·{% endif %} Request form
+                        <span class="text-muted">· all three move it to review</span>
+                    </p>
+
+                {% elif case.status == "under_review" %}
+                    <p class="mb-1"><strong>Admin:</strong> do the five checks, save them, then Approve, ask for more information, or Decline.</p>
+                    <p class="text-muted mb-0">No fee is charged at this stage. Declining sends the standard message with no reason.</p>
+
+                {% elif case.status == "approved" and not case.handler %}
+                    <p class="mb-1"><strong>Admin:</strong> assign a Case Handler.</p>
+                    <p class="text-muted mb-0">That emails the client the payment request with the Indemnity Notice attached.</p>
+
+                {% elif case.status == "approved" %}
+                    <p class="mb-1"><strong>{{ handler_name }}:</strong> record the fee when it's paid, and the signed Indemnity Notice when it comes back.</p>
+                    <p class="mb-0">
+                        {% if case.fee_recorded %}✓{% else %}·{% endif %} Fee &nbsp;
+                        {% if case.indemnity_received %}✓{% else %}·{% endif %} Indemnity Notice
+                        <span class="text-muted">· both unlock outreach</span>
+                    </p>
+
+                {% elif case.status == "paid" and not case.has_person %}
+                    <p class="mb-1"><strong>{{ handler_name }}:</strong> enter the named person's name and contact, exactly as the client gave them on the request form.</p>
+                    <p class="text-muted mb-0">They're checked against the "do not approach" list when you save.</p>
+
+                {% elif case.status == "paid" %}
+                    <p class="mb-1"><strong>{{ handler_name }}:</strong> send the one discreet message (never name the client), then record it as Delivered or Bounced.</p>
+                    <p class="text-muted mb-0">Delivered starts the 14-day reply window. A bounce doesn't count; the client is asked for another way to reach them.</p>
+
+                {% elif case.status == "outreach_sent" and case.reply_overdue %}
+                    <p class="mb-1"><strong>{{ handler_name }}:</strong> the reply window ended on {{ case.reply_due_on|date:"j M Y" }}. Record "No response", or extend it if there's a good reason.</p>
+                    <p class="text-muted mb-0">No response closes the case and offers the client Bronze.</p>
+
+                {% elif case.status == "outreach_sent" %}
+                    <p class="mb-1"><strong>Waiting for the named person</strong> to reply, until <strong>{{ case.reply_due_on|date:"j M Y" }}</strong>.</p>
+                    <p class="text-muted mb-0">When they answer, {{ handler_name }} records it: agreed to hear more, or declined. A reminder is emailed 3 days before the window ends.</p>
+
+                {% elif case.status == "agreed" and not has_ack_file %}
+                    <p class="mb-1"><strong>{{ handler_name }}:</strong> get the Introduction Acknowledgement back signed, then upload it under Documents.</p>
+                    <p class="text-muted mb-0">{% if case.person_email %}It was emailed to {{ case.person_email }}.{% else %}No email for them yet: send it yourself, or add their email and send it from here.{% endif %} Don't share the client's identity until it's signed.</p>
+
+                {% elif case.status == "agreed" %}
+                    <p class="mb-1"><strong>{{ handler_name }}:</strong> the signed Acknowledgement is uploaded. Mark it as Signed to share the client's identity.</p>
+
+                {% elif case.status == "introduction" and not case.intro_at %}
+                    <p class="mb-1"><strong>{{ handler_name }}:</strong> agree a date, time and place with both of them, then set it here.</p>
+                    <p class="text-muted mb-0">Both are emailed the details. Coach them and read the guidelines before the date, and tick Preparation.</p>
+
+                {% elif case.status == "introduction" and case.intro_result %}
+                    <p class="mb-1"><strong>{{ handler_name }}:</strong> the introduction was {{ case.get_intro_result_display|lower }}. Set a new date, or close the case as "didn't happen".</p>
+
+                {% elif case.status == "introduction" %}
+                    <p class="mb-1">Introduction on <strong>{{ case.intro_at|date:"l j M Y, H:i" }}</strong>{% if case.intro_venue %} at {{ case.intro_venue }}{% endif %}.</p>
+                    <p class="text-muted mb-0">Before it: {{ handler_name }} ticks Preparation. After it: record whether it took place.</p>
+
+                {% elif case.status == "introduced" %}
+                    <p class="mb-1"><strong>{{ handler_name }}:</strong>
+                        call or message both of them, ask the feedback questions and record the answers. Then close the case.
+                    </p>
+                    <p class="mb-0">
+                        {% for card in feedback_cards %}{% if card.record %}✓{% else %}·{% endif %} Form {{ card.form }} &nbsp;{% endfor %}
+                    </p>
+
+                {% elif case.status == "bronze_offered" %}
+                    <p class="mb-1"><strong>{{ handler_name }}:</strong> the client was offered Bronze. Record their answer when they reply.</p>
+                    <p class="mb-0">{% for card in feedback_cards %}{% if card.record %}✓{% else %}·{% endif %} Form {{ card.form }} (feedback) &nbsp;{% endfor %}</p>
+
+                {% elif case.status == "declined" %}
+                    <p class="mb-1">Nothing more to do. The application was declined{% if case.decided_at %} on {{ case.decided_at|date:"j M Y" }}{% endif %}.</p>
+
+                {% elif due_for_deletion %}
+                    <p class="mb-1"><strong>Admin:</strong> this case is due for deletion. Use "Delete now" above.</p>
+
+                {% else %}
+                    <p class="mb-1">Nothing more to do. The case is closed.</p>
+                    <p class="text-muted mb-0">
+                        {% if case.person_details_wiped_at %}The named person's details were deleted on {{ case.person_details_wiped_at|date:"j M Y" }}.
+                        {% else %}The named person's details become due for deletion 30 days after closing; Admin is reminded on Mondays.{% endif %}
+                    </p>
+                {% endif %}
+            </div>
+
+            {# Who's up, and a shortcut to the right tab #}
+            <div class="d-flex flex-column align-items-end gap-2">
+                {% if case.status == "awaiting_documents" or case.status == "under_review" or case.status == "approved" and not case.handler or due_for_deletion %}
+                    {% if is_admin %}<span class="badge bg-primary">Your turn</span>{% endif %}
+                {% elif case.status == "approved" or case.status == "paid" or case.status == "agreed" or case.status == "introduced" or case.status == "bronze_offered" or case.status == "outreach_sent" and case.reply_overdue or case.status == "introduction" %}
+                    {% if user.pk == case.handler_id %}<span class="badge bg-primary">Your turn</span>{% elif is_admin %}<span class="badge bg-light text-dark">{{ handler_name }}'s turn</span>{% endif %}
+                {% endif %}
+
+                {% if case.status == "awaiting_documents" or case.status == "agreed" and not has_ack_file %}
+                    <a href="#" class="btn btn-sm btn-light js-tab-link" data-tab="documents">Open Documents</a>
+                {% elif case.status == "under_review" %}
+                    <a href="#" class="btn btn-sm btn-light js-tab-link" data-tab="review">Open Review</a>
+                {% elif case.status == "approved" %}
+                    <a href="#" class="btn btn-sm btn-light js-tab-link" data-tab="payment">Open Handler &amp; payment</a>
+                {% elif case.status == "paid" or case.status == "outreach_sent" or case.status == "agreed" %}
+                    <a href="#" class="btn btn-sm btn-light js-tab-link" data-tab="outreach">Open Named person &amp; outreach</a>
+                {% elif case.status == "introduction" %}
+                    <a href="#" class="btn btn-sm btn-light js-tab-link" data-tab="introduction">Open Introduction</a>
+                {% elif case.status == "introduced" %}
+                    <a href="#" class="btn btn-sm btn-light js-tab-link" data-tab="feedback">Open Feedback</a>
+                {% elif case.status == "bronze_offered" %}
+                    <a href="#" class="btn btn-sm btn-light js-tab-link" data-tab="bronze">Open Bronze</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endwith %}
