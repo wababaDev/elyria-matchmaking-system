@@ -38,73 +38,73 @@
     </div>
 {% endif %}
 
-<div class="row">
-    <!-- ===== Left: who, the named person, timeline ===== -->
-    <div class="col-xl-4">
-        <div class="card custom-card">
-            <div class="card-body fs-13">
-                <span class="badge {% if case.status == 'under_review' %}bg-danger-transparent{% elif case.status == 'declined' or case.status == 'closed' %}bg-light text-muted{% elif case.status == 'introduction' %}bg-success-transparent{% else %}bg-warning-transparent{% endif %} mb-2 text-wrap text-start">{{ case.get_status_display }}</span>
-                <dl class="mb-0">
-                    <dt class="text-muted fw-normal fs-12">Client</dt><dd>{{ case.full_name }}</dd>
-                    <dt class="text-muted fw-normal fs-12">Email</dt><dd>{{ case.email }}</dd>
-                    <dt class="text-muted fw-normal fs-12">Phone</dt><dd>{{ case.phone|default:"—" }}</dd>
-                    <dt class="text-muted fw-normal fs-12">Applied</dt><dd>{{ case.created_at|date:"j M Y" }}</dd>
-                    <dt class="text-muted fw-normal fs-12">Case Handler</dt><dd>{{ case.handler.full_name|default:"Not assigned yet" }}</dd>
-                    {% if case.fee_recorded %}
-                        <dt class="text-muted fw-normal fs-12">Fee</dt>
-                        <dd class="mb-0">{{ case.fee_currency }} {{ case.fee_amount|floatformat:"2g" }} · paid {{ case.fee_paid_on|date:"j M Y" }}<br><span class="text-muted fs-12">recorded by {{ case.fee_recorded_by.full_name }}</span></dd>
-                    {% endif %}
-                </dl>
+<!-- ===== Summary: always visible ===== -->
+<div class="card custom-card">
+    <div class="card-body fs-13">
+        <div class="d-flex flex-wrap align-items-start column-gap-5 row-gap-3">
+            <div>
+                <div class="text-muted fs-12">Status</div>
+                <span class="badge {% if case.status == 'under_review' %}bg-danger-transparent{% elif case.status == 'declined' or case.status == 'closed' %}bg-light text-muted{% elif case.status == 'introduction' %}bg-success-transparent{% else %}bg-warning-transparent{% endif %} text-wrap text-start">{{ case.get_status_display }}</span>
+                {% if case.status == "closed" %}
+                    <div class="text-muted fs-12 mt-1">
+                        {{ case.closed_at|date:"j M Y" }}{% if case.outcome %} · {{ case.get_outcome_display }}{% endif %}{% if case.closing_outcome %} · {{ case.get_closing_outcome_display }}{% endif %}
+                        {% if case.bronze_accepted %} · Bronze accepted{% elif case.bronze_accepted is False %} · Bronze declined{% endif %}
+                    </div>
+                {% endif %}
             </div>
+            <div><div class="text-muted fs-12">Client</div>{{ case.full_name }}</div>
+            <div><div class="text-muted fs-12">Email</div>{{ case.email }}</div>
+            <div><div class="text-muted fs-12">Phone</div>{{ case.phone|default:"—" }}</div>
+            <div><div class="text-muted fs-12">Applied</div>{{ case.created_at|date:"j M Y" }}</div>
+            <div><div class="text-muted fs-12">Case Handler</div>{{ case.handler.full_name|default:"Not assigned yet" }}</div>
+            {% if case.fee_recorded %}
+                <div><div class="text-muted fs-12">Fee</div>{{ case.fee_currency }} {{ case.fee_amount|floatformat:"2g" }} · {{ case.fee_paid_on|date:"j M Y" }}</div>
+            {% endif %}
         </div>
-
-        {% if case.has_person or case.person_details_wiped_at %}
-            <div class="card custom-card">
-                <div class="card-header"><div class="card-title">The named person</div></div>
-                <div class="card-body fs-13">
-                    {% if case.person_details_wiped_at %}
-                        <p class="text-muted mb-0">Deleted {{ case.person_details_wiped_at|date:"j M Y" }}, 30 days after closing. Only the "do not approach" entry is kept, if there is one.</p>
-                    {% else %}
-                        <dl class="mb-2">
-                            <dt class="text-muted fw-normal fs-12">Name</dt><dd>{{ case.person_name }}</dd>
-                            <dt class="text-muted fw-normal fs-12">{{ case.get_person_contact_type_display }}</dt><dd>{{ case.person_contact }}</dd>
-                            {% if case.person_email %}<dt class="text-muted fw-normal fs-12">Email (given with consent)</dt><dd>{{ case.person_email }}</dd>{% endif %}
-                        </dl>
-                        <p class="text-muted fs-12 mb-0"><i class="fe fe-lock me-1"></i>Stored encrypted. Deleted 30 days after the case closes.</p>
-                    {% endif %}
-                </div>
-            </div>
-        {% endif %}
-
-        <div class="card custom-card">
-            <div class="card-header"><div class="card-title">Timeline</div></div>
-            <div class="card-body fs-13">
-                <ul class="list-unstyled mb-0">
-                    {% for event in events %}
-                        <li class="mb-3">
-                            <div class="text-muted fs-12">{{ event.at|date:"j M Y, H:i" }}{% if event.by %} · {{ event.by.full_name }}{% endif %}</div>
-                            {{ event.text }}
-                        </li>
-                    {% endfor %}
-                </ul>
-                <p class="text-muted fs-12 border-top pt-2 mb-0"><i class="fe fe-lock me-1"></i>The timeline can only be added to, never edited.</p>
-            </div>
-        </div>
-
-        {% if is_admin %}
-            <details class="fs-12 text-muted mb-4">
-                <summary>Who opened this case (last 20)</summary>
-                <ul class="list-unstyled mt-2">
-                    {% for entry in access %}<li>{{ entry.at|date:"j M, H:i" }} · {{ entry.user.full_name }} · {{ entry.get_action_display }}{% if entry.detail %}: {{ entry.detail }}{% endif %}</li>{% endfor %}
-                </ul>
-            </details>
-        {% endif %}
     </div>
+</div>
 
-    <!-- ===== Right: the steps ===== -->
-    <div class="col-xl-8">
+<ul class="nav nav-pills gap-1 mb-3 flex-nowrap overflow-auto pb-1" id="caseTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button type="button" class="nav-link" id="tab-documents" data-bs-toggle="pill" data-bs-target="#pane-documents" data-tab="documents" role="tab" aria-controls="pane-documents">Documents <span class="badge bg-light text-dark ms-1">{{ documents|length }}</span></button>
+    </li>
+{% if is_admin and case.status == "under_review" or is_admin and case.decided_at %}
+    <li class="nav-item" role="presentation">
+        <button type="button" class="nav-link" id="tab-review" data-bs-toggle="pill" data-bs-target="#pane-review" data-tab="review" role="tab" aria-controls="pane-review">Review</button>
+    </li>
+{% endif %}
+{% if case.status == "approved" or case.handler %}
+    <li class="nav-item" role="presentation">
+        <button type="button" class="nav-link" id="tab-payment" data-bs-toggle="pill" data-bs-target="#pane-payment" data-tab="payment" role="tab" aria-controls="pane-payment">Handler &amp; payment</button>
+    </li>
+{% endif %}
+{% if case.status == "paid" or case.status == "outreach_sent" or case.status == "agreed" or case.has_person or case.person_details_wiped_at %}
+    <li class="nav-item" role="presentation">
+        <button type="button" class="nav-link" id="tab-outreach" data-bs-toggle="pill" data-bs-target="#pane-outreach" data-tab="outreach" role="tab" aria-controls="pane-outreach">Named person &amp; outreach</button>
+    </li>
+{% endif %}
+{% if case.status == "introduction" or case.status == "introduced" or case.intro_at %}
+    <li class="nav-item" role="presentation">
+        <button type="button" class="nav-link" id="tab-introduction" data-bs-toggle="pill" data-bs-target="#pane-introduction" data-tab="introduction" role="tab" aria-controls="pane-introduction">Introduction</button>
+    </li>
+{% endif %}
+{% if case.status == "bronze_offered" or case.bronze_offered_at %}
+    <li class="nav-item" role="presentation">
+        <button type="button" class="nav-link" id="tab-bronze" data-bs-toggle="pill" data-bs-target="#pane-bronze" data-tab="bronze" role="tab" aria-controls="pane-bronze">Bronze</button>
+    </li>
+{% endif %}
+{% if feedback_list %}
+    <li class="nav-item" role="presentation">
+        <button type="button" class="nav-link" id="tab-feedback" data-bs-toggle="pill" data-bs-target="#pane-feedback" data-tab="feedback" role="tab" aria-controls="pane-feedback">Feedback <span class="badge bg-light text-dark ms-1">{{ feedback_list|length }}</span></button>
+    </li>
+{% endif %}
+    <li class="nav-item" role="presentation">
+        <button type="button" class="nav-link" id="tab-timeline" data-bs-toggle="pill" data-bs-target="#pane-timeline" data-tab="timeline" role="tab" aria-controls="pane-timeline">Timeline <span class="badge bg-light text-dark ms-1">{{ events|length }}</span></button>
+    </li>
+</ul>
 
-        <!-- Documents (all steps) -->
+<div class="tab-content">
+    <div class="tab-pane fade" id="pane-documents" role="tabpanel" aria-labelledby="tab-documents" tabindex="0">
         <div class="card custom-card">
             <div class="card-header justify-content-between">
                 <div class="card-title">Documents</div>
@@ -148,8 +148,9 @@
                 {% endif %}
             </div>
         </div>
-
-        <!-- Review and decision (Admin) -->
+    </div>
+{% if is_admin and case.status == "under_review" or is_admin and case.decided_at %}
+    <div class="tab-pane fade" id="pane-review" role="tabpanel" aria-labelledby="tab-review" tabindex="0">
         {% if is_admin %}{% if case.status == "under_review" or case.decided_at %}
             <div class="card custom-card">
                 <div class="card-header"><div class="card-title">Review</div></div>
@@ -192,8 +193,10 @@
                 </div>
             </div>
         {% endif %}{% endif %}
-
-        <!-- Case Handler, fee, Indemnity Notice -->
+    </div>
+{% endif %}
+{% if case.status == "approved" or case.handler %}
+    <div class="tab-pane fade" id="pane-payment" role="tabpanel" aria-labelledby="tab-payment" tabindex="0">
         {% if case.status == "approved" or case.handler %}
             <div class="card custom-card">
                 <div class="card-header"><div class="card-title">Case Handler and payment</div></div>
@@ -250,7 +253,7 @@
                                             <button type="submit" class="btn btn-sm btn-primary">Mark as received</button>
                                         </form>
                                     {% else %}
-                                        <p class="fs-12 text-muted mb-0">When it comes back, upload it under Documents (choose "Indemnity Notice"), then mark it here.</p>
+                                        <p class="fs-12 text-muted mb-0">When it comes back, upload it under <a href="#" class="js-tab-link" data-tab="documents">Documents</a> (choose "Indemnity Notice"), then mark it here.</p>
                                     {% endif %}
                                 {% endif %}
                             </div>
@@ -260,8 +263,28 @@
                 </div>
             </div>
         {% endif %}
+    </div>
+{% endif %}
+{% if case.status == "paid" or case.status == "outreach_sent" or case.status == "agreed" or case.has_person or case.person_details_wiped_at %}
+    <div class="tab-pane fade" id="pane-outreach" role="tabpanel" aria-labelledby="tab-outreach" tabindex="0">
+    {% if case.has_person or case.person_details_wiped_at %}
+        <div class="card custom-card">
+            <div class="card-header"><div class="card-title">The named person</div></div>
+            <div class="card-body fs-13">
+                {% if case.person_details_wiped_at %}
+                    <p class="text-muted mb-0">Deleted {{ case.person_details_wiped_at|date:"j M Y" }}, 30 days after closing. Only the "do not approach" entry is kept, if there is one.</p>
+                {% else %}
+                    <dl class="mb-2">
+                        <dt class="text-muted fw-normal fs-12">Name</dt><dd>{{ case.person_name }}</dd>
+                        <dt class="text-muted fw-normal fs-12">{{ case.get_person_contact_type_display }}</dt><dd>{{ case.person_contact }}</dd>
+                        {% if case.person_email %}<dt class="text-muted fw-normal fs-12">Email (given with consent)</dt><dd>{{ case.person_email }}</dd>{% endif %}
+                    </dl>
+                    <p class="text-muted fs-12 mb-0"><i class="fe fe-lock me-1"></i>Stored encrypted. Deleted 30 days after the case closes.</p>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
 
-        <!-- The named person and outreach -->
         {% if case.status == "paid" or case.status == "outreach_sent" or case.has_person and case.status == "approved" %}
             <div class="card custom-card">
                 <div class="card-header justify-content-between">
@@ -363,8 +386,10 @@
                 </div>
             </div>
         {% endif %}
+        {% if case.outreach_delivered_on and case.status != "outreach_sent" %}
+            <p class="fs-13 text-muted">Outreach delivered {{ case.outreach_delivered_on|date:"j M Y" }}.</p>
+        {% endif %}
 
-        <!-- Introduction Acknowledgement -->
         {% if case.status == "agreed" %}
             <div class="card custom-card">
                 <div class="card-header"><div class="card-title">Introduction Acknowledgement</div></div>
@@ -375,7 +400,7 @@
                         {% else %}
                             Not emailed: no email address for them yet.
                         {% endif %}
-                        When it comes back signed, upload it under Documents (choose "Introduction Acknowledgement").
+                        When it comes back signed, upload it under <a href="#" class="js-tab-link" data-tab="documents">Documents</a> (choose "Introduction Acknowledgement").
                         <strong>Only after it's signed</strong> may you share the client's identity.
                     </p>
 
@@ -415,8 +440,10 @@
                 </div>
             </div>
         {% endif %}
-
-        <!-- The introduction -->
+    </div>
+{% endif %}
+{% if case.status == "introduction" or case.status == "introduced" or case.intro_at %}
+    <div class="tab-pane fade" id="pane-introduction" role="tabpanel" aria-labelledby="tab-introduction" tabindex="0">
         {% if case.status == "introduction" or case.status == "introduced" or case.intro_at %}
             <div class="card custom-card">
                 <div class="card-header justify-content-between">
@@ -504,8 +531,10 @@
                 </div>
             </div>
         {% endif %}
-
-        <!-- Bronze offer -->
+    </div>
+{% endif %}
+{% if case.status == "bronze_offered" or case.bronze_offered_at %}
+    <div class="tab-pane fade" id="pane-bronze" role="tabpanel" aria-labelledby="tab-bronze" tabindex="0">
         {% if case.status == "bronze_offered" %}
             <div class="card custom-card">
                 <div class="card-header"><div class="card-title">Bronze offer</div></div>
@@ -523,8 +552,10 @@
                 </div>
             </div>
         {% endif %}
-
-        <!-- Feedback forms -->
+    </div>
+{% endif %}
+{% if feedback_list %}
+    <div class="tab-pane fade" id="pane-feedback" role="tabpanel" aria-labelledby="tab-feedback" tabindex="0">
         {% if feedback_list %}
             <div class="card custom-card">
                 <div class="card-header justify-content-between">
@@ -609,19 +640,81 @@
                 </div>
             </div>
         {% endif %}
+    </div>
+{% endif %}
+    <div class="tab-pane fade" id="pane-timeline" role="tabpanel" aria-labelledby="tab-timeline" tabindex="0">
+    <div class="card custom-card">
+        <div class="card-header"><div class="card-title">Timeline</div></div>
+        <div class="card-body fs-13">
+            <ul class="list-unstyled mb-0">
+                {% for event in events %}
+                    <li class="mb-3">
+                        <div class="text-muted fs-12">{{ event.at|date:"j M Y, H:i" }}{% if event.by %} · {{ event.by.full_name }}{% endif %}</div>
+                        {{ event.text }}
+                    </li>
+                {% endfor %}
+            </ul>
+            <p class="text-muted fs-12 border-top pt-2 mb-0"><i class="fe fe-lock me-1"></i>The timeline can only be added to, never edited.</p>
+        </div>
+    </div>
 
-        {% if case.status == "closed" %}
-            <p class="fs-13 text-muted">
-                Closed {{ case.closed_at|date:"j M Y" }}{% if case.outcome %} · {{ case.get_outcome_display }}{% endif %}{% if case.closing_outcome %} · {{ case.get_closing_outcome_display }}{% endif %}
-                {% if case.bronze_accepted %} · Bronze accepted{% elif case.bronze_accepted is False %} · Bronze declined{% endif %}.
-            </p>
-        {% endif %}
+    {% if is_admin %}
+        <details class="fs-12 text-muted mb-4">
+            <summary>Who opened this case (last 20)</summary>
+            <ul class="list-unstyled mt-2">
+                {% for entry in access %}<li>{{ entry.at|date:"j M, H:i" }} · {{ entry.user.full_name }} · {{ entry.get_action_display }}{% if entry.detail %}: {{ entry.detail }}{% endif %}</li>{% endfor %}
+            </ul>
+        </details>
+    {% endif %}
     </div>
 </div>
+
 <script>
-// Bootstrap modals must sit directly under <body>, or the page's cards and sticky layout clip them
-document.querySelectorAll('.modal').forEach(function (modal) {
-    if (modal.parentElement !== document.body) document.body.appendChild(modal);
-});
+(function () {
+    // Bootstrap modals must sit directly under <body>, or the page's cards and sticky layout clip them
+    document.querySelectorAll('.modal').forEach(function (modal) {
+        if (modal.parentElement !== document.body) document.body.appendChild(modal);
+    });
+
+    // Open the tab for the step the case is on. If you were on another tab of this case and the
+    // status hasn't changed since (e.g. you just uploaded a document), go back to that tab instead.
+    var status = "{{ case.status|escapejs }}";
+    var storeKey = "elite-case-tab-{{ case.pk }}";
+    var byStatus = {
+        awaiting_email: "documents", awaiting_documents: "documents",
+        under_review: "review", declined: "review",
+        approved: "payment", paid: "outreach", outreach_sent: "outreach", agreed: "outreach",
+        introduction: "introduction", introduced: "introduction",
+        bronze_offered: "bronze", closed: "feedback"
+    };
+
+    function show(key) {
+        var button = document.getElementById("tab-" + key);
+        if (!button) return false;
+        bootstrap.Tab.getOrCreateInstance(button).show();
+        return true;
+    }
+
+    var saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem(storeKey)); } catch (e) {}
+    var wanted = (location.hash || "").replace("#", "") ||
+                 (saved && saved.status === status ? saved.tab : byStatus[status]);
+    show(wanted) || show("timeline") || show("documents");
+
+    document.querySelectorAll('#caseTabs [data-bs-toggle="pill"]').forEach(function (button) {
+        button.addEventListener("shown.bs.tab", function () {
+            try { sessionStorage.setItem(storeKey, JSON.stringify({tab: button.dataset.tab, status: status})); } catch (e) {}
+        });
+    });
+
+    // "upload it under Documents" links in the steps
+    document.querySelectorAll(".js-tab-link").forEach(function (link) {
+        link.addEventListener("click", function (event) {
+            event.preventDefault();
+            show(link.dataset.tab);
+            window.scrollTo({top: document.getElementById("caseTabs").offsetTop - 80, behavior: "smooth"});
+        });
+    });
+})();
 </script>
 {% endblock %}
