@@ -120,6 +120,7 @@ def deliver_elite_email(case, kind, message=""):
                 "message": f"{case.full_name} confirmed their email and has been sent the Elite Grade documents. "
                            f"When their signed documents arrive, upload them to the case.",
                 "link": _url(reverse("elite:case-detail", args=[case.pk])),
+                "button_label": "Open the case",
             },
             to=[settings.TEAM_INBOX_EMAIL],
         )
@@ -250,7 +251,8 @@ def deliver_handler_reminder(case, kind):
                    "or extend the window if there's a good reason.")
     send_templated_email(
         subject=heading, template="notification/email/pairing_update",
-        context={"heading": heading, "message": message, "link": _url(reverse("elite:case-detail", args=[case.pk]))},
+        context={"heading": heading, "message": message, "link": _url(reverse("elite:case-detail", args=[case.pk])),
+                    "button_label": "Open the case"},
         to=[case.handler.email],
     )
 
@@ -261,6 +263,7 @@ def deliver_deletion_reminder(count):
                "the named person's details when a case ends. Open 'Due for deletion' and delete them.")
     send_templated_email(
         subject=heading, template="notification/email/pairing_update",
-        context={"heading": heading, "message": message, "link": _url(reverse("elite:cases") + "?show=deletion")},
+        context={"heading": heading, "message": message, "link": _url(reverse("elite:cases") + "?show=deletion"),
+                    "button_label": "Open Due for deletion"},
         to=admin_emails(),
     )

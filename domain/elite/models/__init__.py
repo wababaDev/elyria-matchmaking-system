@@ -5,9 +5,10 @@ from .elite_case import (
     EliteDocument,
     SuppressionEntry,
     EliteFeedback,
+     EliteInfoRequest,
 )
 
 __all__ = [
     "EliteAccessLog", "EliteCase", "EliteCaseEvent", "EliteDocument",
-    "SuppressionEntry","EliteFeedback"
+    "SuppressionEntry","EliteFeedback", "EliteInfoRequest"
 ]
