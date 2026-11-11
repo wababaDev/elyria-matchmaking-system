@@ -31,7 +31,8 @@
                             </td>
                             <td class="fs-13">{{ case.handler.full_name|default:"—" }}</td>
                             <td class="fs-12">
-                                {% if case.status == "awaiting_email" %}<span class="text-muted">Email not confirmed</span>
+                                {% if case.status == "under_review" and case.waiting_for_answer %}<span class="badge bg-warning-transparent">Waiting for the client's answer</span>
+                                {% elif case.status == "awaiting_email" %}<span class="text-muted">Email not confirmed</span>
                                 {% elif case.status == "awaiting_documents" %}
                                     {% if case.nda_received %}✓{% else %}·{% endif %} NDA &nbsp;
                                     {% if case.declaration_received %}✓{% else %}·{% endif %} Declaration &nbsp;

@@ -39,6 +39,6 @@ urlpatterns = [
     path("management/elite/<int:pk>/close/", staff.CloseCaseView.as_view(), name="case-close"),
     path("management/elite/<int:pk>/note/", staff.CaseNoteView.as_view(), name="case-note"),
     path("management/elite/<int:pk>/delete-now/", staff.DeleteNowView.as_view(), name="case-delete-now"),
-
+path("management/elite/<int:pk>/more-info/answer/", staff.InfoAnswerView.as_view(), name="case-info-answer"),
      path("management/elite/<int:pk>/feedback/", staff.SaveFeedbackView.as_view(), name="case-feedback"),
 ]

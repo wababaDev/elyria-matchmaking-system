@@ -140,6 +140,7 @@ class EliteCase(TimeStampedModel):
     person_name_enc = models.TextField(blank=True)
     person_contact_type = models.CharField(max_length=20, choices=ContactType.choices, blank=True)
     person_contact_enc = models.TextField(blank=True)
+    person_contact_other_enc = models.TextField(blank=True)
     person_email_enc = models.TextField(blank=True)  # given with consent once they agree (for introduction alerts)
     person_details_wiped_at = models.DateTimeField(null=True, blank=True)
 
@@ -203,6 +204,14 @@ class EliteCase(TimeStampedModel):
         return decrypt(self.person_contact_enc)
 
     @property
+    def person_contact_label(self):
+        """'Phone / WhatsApp', 'Email', ... or, for Other, what the handler typed (e.g. 'Workplace address')."""
+        from domain.elite.crypto import decrypt
+        if self.person_contact_type == self.ContactType.OTHER and self.person_contact_other_enc:
+            return decrypt(self.person_contact_other_enc)
+        return self.get_person_contact_type_display()
+    
+    @property
     def person_email(self):
         from domain.elite.crypto import decrypt
         return decrypt(self.person_email_enc)
@@ -239,10 +248,11 @@ class EliteDocument(TimeStampedModel):
         REQUEST_FORM = "request_form", "Confidential Introduction Request Form"
         INDEMNITY = "indemnity", "Indemnity Notice"
         ACKNOWLEDGEMENT = "acknowledgement", "Introduction Acknowledgement"
+        CLIENT_REPLY = "client_reply", "Client's reply (more information)"
         OTHER = "other", "Other"
 
     # Contain the named person's details: deleted with them, 30 days after the case closes
-    NAMED_PERSON_KINDS = [Kind.REQUEST_FORM, Kind.ACKNOWLEDGEMENT, Kind.OTHER]
+    NAMED_PERSON_KINDS = [Kind.REQUEST_FORM, Kind.ACKNOWLEDGEMENT, Kind.CLIENT_REPLY, Kind.OTHER]
 
     case = models.ForeignKey(EliteCase, on_delete=models.CASCADE, related_name="documents")
     kind = models.CharField(max_length=20, choices=Kind.choices)
@@ -257,6 +267,32 @@ class EliteDocument(TimeStampedModel):
         return f"{self.get_kind_display()} for {self.case.reference}"
 
 
+class EliteInfoRequest(models.Model):
+    """
+    "More information needed" during review: the question emailed to the client, and what came back.
+    The reply arrives at info@; Admin records a short summary here (and can upload the reply itself as a
+    case document). While a question is open, the case can't be approved.
+    """
+ 
+    case = models.ForeignKey(EliteCase, on_delete=models.CASCADE, related_name="info_requests")
+    question = models.TextField()
+    asked_at = models.DateTimeField(default=timezone.now)
+    asked_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    answer = models.TextField(blank=True)  # a short summary; the named person's details go in the uploaded reply
+    no_answer = models.BooleanField(default=False)
+    answered_at = models.DateTimeField(null=True, blank=True)
+    answered_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+ 
+    class Meta:
+        ordering = ["asked_at"]
+ 
+    def __str__(self):
+        return f"{self.case.reference}: question of {self.asked_at:%d %b %Y}"
+ 
+    @property
+    def is_open(self):
+        return self.answered_at is None
+    
 class EliteCaseEvent(models.Model):
     """The case timeline. Append-only: entries can be added, never changed or deleted."""
 

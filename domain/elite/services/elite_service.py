@@ -11,7 +11,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from domain.elite import crypto
-from domain.elite.models import EliteAccessLog, EliteCase, EliteCaseEvent, EliteDocument, SuppressionEntry
+from domain.elite.models import EliteAccessLog, EliteCase, EliteCaseEvent, EliteDocument, SuppressionEntry, EliteInfoRequest
 from domain.elite.models.elite_case import ABANDONED_AFTER_DAYS, new_token
 
 REPLY_WINDOW_DAYS = 14
@@ -193,6 +193,8 @@ def decide(case, *, decision, note="", by):
     if decision == "approve":
         if not case.all_checks_done:
             raise EliteError("Tick all the checks before approving.")
+        if open_info_request(case):
+            raise EliteError("A question to the client is still open. Record their answer (or 'No answer') first.")
         case.status = S.APPROVED
         case.decided_at, case.decided_by = timezone.now(), by
         case.save()
@@ -207,12 +209,50 @@ def decide(case, *, decision, note="", by):
     elif decision == "more_info":
         if not note.strip():
             raise EliteError("Write the message to send to the client.")
+        if open_info_request(case):
+            raise EliteError("A question is already waiting for an answer. Record it before asking another.")
+        EliteInfoRequest.objects.create(case=case, question=note.strip(), asked_by=by)
         log_event(case, f"More information requested from the client: {note.strip()}", by)
         transaction.on_commit(lambda: _emails().notify_more_info(case, note.strip()))
     else:
         raise EliteError("Unknown decision.")
     return case
 
+
+def open_info_request(case):
+    """The question still waiting for the client's answer, if any."""
+    return case.info_requests.filter(answered_at__isnull=True).first()
+ 
+ 
+@transaction.atomic
+def record_info_answer(case, *, answer="", file=None, no_answer=False, by):
+    """
+    The client replied to info@ (or never did). Admin records a short summary of the answer and can
+    upload the reply itself. Approve unlocks again afterwards.
+    """
+    case = _lock(case)
+    if not is_admin(by):
+        raise EliteError("Only Admin can do that.")
+    if case.status != S.UNDER_REVIEW:
+        raise EliteError("Only cases under review have questions to the client.")
+    request = open_info_request(case)
+    if request is None:
+        raise EliteError("There's no open question for this case.")
+    asked = f"{request.asked_at:%d %b %Y}"
+    request.answered_at, request.answered_by = timezone.now(), by
+    if no_answer:
+        request.no_answer = True
+        request.save()
+        log_event(case, f"No answer to the question sent on {asked}. Carried on without it.", by)
+        return request
+    if not answer.strip():
+        raise EliteError("Write a short summary of their answer.")
+    request.answer = answer.strip()
+    request.save()
+    log_event(case, f"Client answered the question sent on {asked}: {request.answer}", by)
+    if file:
+        add_document(case, kind=EliteDocument.Kind.CLIENT_REPLY, file=file, by=by)
+    return request
 
 # ---------------------------------------------------------------- E6: Case Handler, fee, Indemnity Notice
 
@@ -307,7 +347,7 @@ def suppression_matches(name, contact):
 
 
 @transaction.atomic
-def record_person(case, *, name, contact_type, contact, by):
+def record_person(case, *, name, contact_type, contact, contact_other="", by):
     """The person the client named, and the contact route the client gave. Elyria never searches for them."""
     case = _lock(case)
     _require_handler(by, case)
@@ -323,6 +363,7 @@ def record_person(case, *, name, contact_type, contact, by):
     case.person_name_enc = crypto.encrypt(name.strip())
     case.person_contact_type = contact_type
     case.person_contact_enc = crypto.encrypt(contact.strip())
+    case.person_contact_other_enc = crypto.encrypt(contact_other.strip()) if contact_other else ""
     case.save()
     log_event(case, "Named person's details recorded." if first else "Named person's contact route updated.", by)
     if match == "name":

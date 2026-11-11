@@ -142,6 +142,8 @@ class PersonForm(forms.Form):
         choices=EliteCase.ContactType.choices,
         widget=forms.Select(attrs={"class": "form-select"}),
     )
+    contact_other = forms.CharField(label="What kind of contact?", required=False, max_length=60,
+                                    widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. Workplace address"}))
     contact = forms.CharField(
         label="Contact details the client gave",
         max_length=200,
@@ -152,6 +154,15 @@ class PersonForm(forms.Form):
             }
         ),
     )
+    def clean(self):
+        data = super().clean()
+        if data.get("contact_type") == EliteCase.ContactType.OTHER:
+            if not (data.get("contact_other") or "").strip():
+                self.add_error("contact_other", "Say what kind of contact it is, e.g. Workplace address.")
+        else:
+            data["contact_other"] = ""
+        return data
+ 
 
 
 class OutreachForm(forms.Form):
@@ -306,3 +317,15 @@ class CaseNoteForm(forms.Form):
         "class": "form-control", "rows": 4, "required": True,
         "placeholder": "Only what matters, e.g. 'Both happy, want to meet again. Client felt well prepared.'"}))
     concern = forms.BooleanField(required=False, widget=forms.CheckboxInput(attrs={"class": "form-check-input"}))
+
+
+class InfoAnswerForm(forms.Form):
+    """The client's reply to 'More information needed'. 'outcome' is the button pressed."""
+    outcome = forms.ChoiceField(choices=[("answered", "Answer received"), ("no_answer", "No answer")])
+    answer = forms.CharField(required=False, max_length=2000, widget=forms.Textarea(attrs={
+        "class": "form-control", "rows": 3,
+        "placeholder": "e.g. Confirmed they met at a friend's wedding in 2024 and have known each other two years.",
+    }))
+    file = forms.FileField(required=False, validators=[validate_document],
+                           widget=forms.ClearableFileInput(attrs={"class": "form-control"}))
+ 

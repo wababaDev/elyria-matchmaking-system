@@ -137,6 +137,58 @@ class StaffTests(EliteTestCase):
         case.refresh_from_db()
         self.assertEqual(case.status, EliteCase.Status.APPROVED)
 
+    ALL_CHECKS = {
+        "check_known_to_client": "on", "check_no_prior_rejection": "on", "check_no_power_imbalance": "on",
+        "check_identity_verified": "on", "check_suitability": "on",
+    }
+
+    def test_more_info_waits_for_the_answer_before_approving(self):
+        case = self.to_review()
+        self.client.post(reverse("elite:case-checks", args=[case.pk]), self.ALL_CHECKS)
+        self.client.post(reverse("elite:case-decide", args=[case.pk]), {"decision": "more_info", "note": "How do you know them?"})
+        request = case.info_requests.get()
+        self.assertTrue(request.is_open)
+        self.assertContains(self.client.get(reverse("elite:case-detail", args=[case.pk])), "Waiting for the client")
+
+        self.client.post(reverse("elite:case-decide", args=[case.pk]), {"decision": "approve"})
+        case.refresh_from_db()
+        self.assertEqual(case.status, EliteCase.Status.UNDER_REVIEW)              # locked while waiting
+
+        response = self.client.post(reverse("elite:case-info-answer", args=[case.pk]), {
+            "outcome": "answered", "answer": "Colleagues for three years.", "file": pdf("reply.pdf"),
+        })
+        self.assertIn("replied=1", response["Location"])
+        request.refresh_from_db()
+        self.assertEqual(request.answer, "Colleagues for three years.")
+        self.assertTrue(case.documents.filter(kind=EliteDocument.Kind.CLIENT_REPLY).exists())
+        self.assertTrue(case.events.filter(text__startswith="Client answered").exists())
+
+        self.client.post(reverse("elite:case-decide", args=[case.pk]), {"decision": "approve"})
+        case.refresh_from_db()
+        self.assertEqual(case.status, EliteCase.Status.APPROVED)
+
+    def test_no_answer_unlocks_and_only_one_open_question(self):
+        case = self.to_review()
+        self.client.post(reverse("elite:case-decide", args=[case.pk]), {"decision": "more_info", "note": "First question"})
+        self.client.post(reverse("elite:case-decide", args=[case.pk]), {"decision": "more_info", "note": "Second question"})
+        self.assertEqual(case.info_requests.count(), 1)                          # wait for the first answer
+        self.client.post(reverse("elite:case-info-answer", args=[case.pk]), {"outcome": "no_answer"})
+        self.assertTrue(case.info_requests.get().no_answer)
+        self.assertIsNone(svc.open_info_request(case))
+
+    def test_delete_from_inbox_message_only_when_all_documents_are_in(self):
+        case = self.apply()
+        self.confirm(case)
+        self.client.force_login(self.admin)
+        url = reverse("elite:case-detail", args=[case.pk]) + "?uploaded=1"
+        self.client.post(reverse("elite:case-upload", args=[case.pk]), {"kind": "nda", "file": pdf("nda.pdf")})
+        response = self.client.get(url)
+        self.assertContains(response, "Don't delete the email from info@ yet")
+        self.assertNotContains(response, "All the documents for this step are uploaded")
+        for kind in ("declaration", "request_form"):
+            self.client.post(reverse("elite:case-upload", args=[case.pk]), {"kind": kind, "file": pdf(f"{kind}.pdf")})
+        self.assertContains(self.client.get(url), "All the documents for this step are uploaded")
+
     def test_decline_sends_message_without_reason(self):
         case = self.to_review()
         mail.outbox.clear()
@@ -239,6 +291,21 @@ class AfterApprovalTests(AfterApprovalBase):
         case.refresh_from_db()
         self.assertEqual(case.status, EliteCase.Status.INTRODUCTION)
         self.assertEqual(case.person_email, "thandi@example.com")
+
+    def test_other_contact_route_needs_its_kind_and_is_encrypted(self):
+        case = self.paid()
+        self.client.force_login(self.matchmaker)
+        url = reverse("elite:case-person", args=[case.pk])
+        self.client.post(url, {"name": "Thandi Phiri", "contact_type": "other", "contact": "Plot 12, Kabulonga"})
+        case.refresh_from_db()
+        self.assertEqual(case.person_contact_type, "phone")                    # refused: kind missing, unchanged
+        self.client.post(url, {"name": "Thandi Phiri", "contact_type": "other", "contact_other": "Workplace address",
+                               "contact": "Plot 12, Kabulonga"})
+        case.refresh_from_db()
+        self.assertEqual(case.person_contact_label, "Workplace address")
+        self.assertNotIn("Workplace", case.person_contact_other_enc)            # stored encrypted
+        self.assertContains(self.client.get(reverse("elite:case-detail", args=[case.pk])), "Workplace address")
+ 
 
     def test_bounce_does_not_count_and_asks_client_for_another_route(self):
         case = self.paid()

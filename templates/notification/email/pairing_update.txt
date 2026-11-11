@@ -2,6 +2,6 @@
 
 {{ message }}
 
-Open the member's pairings:
+{{ button_label|default:"Open the member's pairing" }}:
 {{ link }}
-{% endautoescape %}
+{% endautoescape %}Open the member's pairings:

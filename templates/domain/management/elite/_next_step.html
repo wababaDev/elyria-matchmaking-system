@@ -20,6 +20,11 @@
                         <span class="text-muted">· all three move it to review</span>
                     </p>
 
+                {% elif case.status == "under_review" and open_info %}
+                    <p class="mb-1"><strong>Waiting for the client's answer</strong> to the question sent on {{ open_info.asked_at|date:"j M Y" }}:</p>
+                    <p class="fst-italic mb-1">"{{ open_info.question|truncatechars:160 }}"</p>
+                    <p class="text-muted mb-0">When they reply to info@, Admin clicks "Answer received" in Review. If they never answer, record that there instead. Approve stays locked until then.</p>
+
                 {% elif case.status == "under_review" %}
                     <p class="mb-1"><strong>Admin:</strong> do the five checks, save them, then Approve, ask for more information, or Decline.</p>
                     <p class="text-muted mb-0">No fee is charged at this stage. Declining sends the standard message with no reason.</p>
@@ -84,16 +89,20 @@
 
                 {% elif case.status == "declined" %}
                     <p class="mb-1">Nothing more to do. The application was declined{% if case.decided_at %} on {{ case.decided_at|date:"j M Y" }}{% endif %}.</p>
+                    <p class="text-muted mb-0">No outreach happened, so there are no details about the named person to delete. The application itself is kept as a record.</p>
 
                 {% elif due_for_deletion %}
                     <p class="mb-1"><strong>Admin:</strong> this case is due for deletion. Use "Delete now" above.</p>
+                    <p class="text-muted mb-0">Kept after that: the case reference, the timeline and the feedback{% if on_register %}, and a "do not approach" entry. That entry is a scrambled fingerprint, not the details, and it catches any future request for the same person{% endif %}.</p>
 
                 {% else %}
-                    <p class="mb-1">Nothing more to do. The case is closed.</p>
-                    <p class="text-muted mb-0">
-                        {% if case.person_details_wiped_at %}The named person's details were deleted on {{ case.person_details_wiped_at|date:"j M Y" }}.
-                        {% else %}The named person's details become due for deletion 30 days after closing; Admin is reminded on Mondays.{% endif %}
-                    </p>
+                    <p class="mb-1"><strong>Case closed on {{ case.closed_at|date:"j M Y" }}</strong>{% if case.closing_outcome %} · {{ case.get_closing_outcome_display }}{% elif case.outcome %} · {{ case.get_outcome_display }}{% endif %}</p>
+                    {% if case.person_details_wiped_at %}
+                        <p class="text-muted mb-1">The named person's details were deleted on {{ case.person_details_wiped_at|date:"j M Y" }}.</p>
+                    {% else %}
+                        <p class="text-muted mb-1">The named person's name, contact, email, and the documents that mention them become <strong>due for deletion on {{ deletion_due_on|date:"j M Y" }}</strong>. Admin deletes them from Elite cases → Due for deletion; nothing is deleted automatically, and Admin gets an email reminder every Monday while anything is due.</p>
+                    {% endif %}
+                    <p class="text-muted mb-0">Kept after that: the case reference, the timeline and the feedback{% if on_register %}, and a "do not approach" entry. That entry is a scrambled fingerprint, not the details, and it catches any future request for the same person{% endif %}.</p>
                 {% endif %}
             </div>
 

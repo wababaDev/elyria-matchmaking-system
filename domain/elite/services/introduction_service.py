@@ -255,7 +255,7 @@ def delete_now(case, *, by):
         for document in case.documents.filter(kind__in=EliteDocument.NAMED_PERSON_KINDS):
             document.file.delete(save=False)
             document.delete()
-        case.person_name_enc = case.person_contact_enc = case.person_email_enc = ""
+        case.person_name_enc = case.person_contact_enc = case.person_email_enc = case.person_contact_other_enc = ""
         case.person_details_wiped_at = timezone.now()
         case.save()
         log_event(case, "Named person's details and related documents deleted.", by)
