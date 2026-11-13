@@ -23,6 +23,14 @@
             </div>
         {% endif %}
 
+         {% if cr.former_elite_case %}
+            <div class="alert fs-13" style="background:#FBF6E6;border-color:#C9A227;">
+                <i class="fe fe-star me-1" style="color:#C9A227;"></i><strong>Former Elite client.</strong>
+                They came to Elyria through Elite Grade, so no automatic payment email was sent.
+                Contact them personally to arrange the consultation, and give them priority attention.
+            </div>
+        {% endif %}
+
         <div class="row">
             <div class="col-xl-8">
 
@@ -184,6 +192,7 @@
                     <div class="card-body">
                         <p class="mb-3">
                             <span class="badge {{ cr.status|status_badge }} fs-12">{{ cr.get_status_display }}</span>
+                            {% include "domain/management/elite/_former_elite_badge.html" with elite_case=cr.former_elite_case %}
                         </p>
                         <ul class="list-unstyled fs-13 mb-4">
                             <li class="mb-2"><span class="text-muted">Submitted:</span> {{ cr.created_at|date:"j M Y, H:i" }}</li>
@@ -226,8 +235,9 @@
                                             class="btn btn-primary"
                                             data-bs-toggle="modal"
                                             data-bs-target="#feePaidModal">Mark fee as paid</button>
-                                    <form method="post"
-                                          action="{% url 'matchmaking:consultation-request-resend-payment' cr.pk %}">
+                                    {% if not cr.former_elite_case_id %}
+<form method="post"
+      action="{% url 'matchmaking:consultation-request-resend-payment' cr.pk %}">
                                         {% csrf_token %}
                                         <button type="submit"
                                                 class="btn btn-light w-100"
@@ -235,6 +245,7 @@
                                                 data-confirm="Send the payment instructions to {{ cr.email }} again?"
                                                 data-confirm-button="Send">Resend payment instructions</button>
                                     </form>
+                                    {% endif %}
                                 {% endif %}
                                 {% if cr.status == "fee_paid" and not consultation and perms.base.undo_payment %}
                                     <button type="button"

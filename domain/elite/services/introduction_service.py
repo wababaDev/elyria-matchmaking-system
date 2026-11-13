@@ -256,6 +256,7 @@ def delete_now(case, *, by):
             document.file.delete(save=False)
             document.delete()
         case.person_name_enc = case.person_contact_enc = case.person_email_enc = case.person_contact_other_enc = ""
+        case.person_met_where_enc = case.person_occupation_enc = ""
         case.person_details_wiped_at = timezone.now()
         case.save()
         log_event(case, "Named person's details and related documents deleted.", by)

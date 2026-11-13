@@ -5,7 +5,6 @@ We're glad you'd like to join Elyria as a Bronze Member.
 Your first step is the consultation request, which begins the standard membership journey:
 {{ link }}
 
-Please mention Elite Grade reference {{ case.reference }} when you complete it.
-
+Please use this same email address ({{ case.email }}) on the form, so we recognise you as an Elite Grade client. Your reference is {{ case.reference }}.
 Elyria Matchmaking
 {% endautoescape %}

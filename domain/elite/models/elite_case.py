@@ -142,6 +142,8 @@ class EliteCase(TimeStampedModel):
     person_contact_enc = models.TextField(blank=True)
     person_contact_other_enc = models.TextField(blank=True)
     person_email_enc = models.TextField(blank=True)  # given with consent once they agree (for introduction alerts)
+    person_met_where_enc = models.TextField(blank=True)  # where the client says they first met (from the request form)
+    person_occupation_enc = models.TextField(blank=True)  # occupation or workplace, if known
     person_details_wiped_at = models.DateTimeField(null=True, blank=True)
 
     # E7/E8: outreach
@@ -211,6 +213,16 @@ class EliteCase(TimeStampedModel):
             return decrypt(self.person_contact_other_enc)
         return self.get_person_contact_type_display()
     
+    @property
+    def person_met_where(self):
+        from domain.elite.crypto import decrypt
+        return decrypt(self.person_met_where_enc)
+ 
+    @property
+    def person_occupation(self):
+        from domain.elite.crypto import decrypt
+        return decrypt(self.person_occupation_enc)
+ 
     @property
     def person_email(self):
         from domain.elite.crypto import decrypt
@@ -332,11 +344,17 @@ class EliteAccessLog(models.Model):
 
 class SuppressionEntry(models.Model):
     """
-    "Do not approach again": a person who declined, didn't respond, or didn't sign.
-    Only keyed fingerprints of their name and contact are kept, never the details themselves.
+    "Do not approach again": a person who declined, didn't respond, or didn't sign (E8, E9, E11).
+    Kept after the named person's other details are deleted. As decided by the Client (D16): only the
+    client's full name, the named person's full name, where they say they first met, and occupation or
+    workplace. No phone or email. Stored encrypted; staff read them normally.
+    The name fingerprint lets a new case with the same name be flagged; it warns, it doesn't block.
     """
     name_fingerprint = models.CharField(max_length=64, db_index=True)
-    contact_fingerprint = models.CharField(max_length=64, blank=True, db_index=True)
+    client_name_enc = models.TextField(blank=True)
+    person_name_enc = models.TextField(blank=True)
+    met_where_enc = models.TextField(blank=True)
+    occupation_enc = models.TextField(blank=True)
     reason = models.CharField(max_length=20, choices=EliteCase.Outcome.choices)
     case_reference = models.CharField(max_length=20)
     created_at = models.DateTimeField(default=timezone.now)
@@ -344,6 +362,26 @@ class SuppressionEntry(models.Model):
     class Meta:
         ordering = ["-created_at"]
         verbose_name_plural = "suppression entries"
+
+    def _read(self, value):
+        from domain.elite.crypto import decrypt
+        return decrypt(value) if value else ""
+ 
+    @property
+    def client_name(self):
+        return self._read(self.client_name_enc)
+ 
+    @property
+    def person_name(self):
+        return self._read(self.person_name_enc)
+ 
+    @property
+    def met_where(self):
+        return self._read(self.met_where_enc)
+ 
+    @property
+    def occupation(self):
+        return self._read(self.occupation_enc)
 
 
 class EliteFeedback(models.Model):

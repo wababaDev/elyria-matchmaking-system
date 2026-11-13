@@ -10,6 +10,10 @@ from domain.matchmaking.models.consultation_request import NOT_ELIGIBLE_MESSAGE
 from notification.services.consultation_emails import notify_new_consultation_request
 from django.db.models import Q
 from domain.website.models import SiteSettings
+from notification.services.consultation_emails import (
+    notify_new_consultation_request,
+    notify_new_former_elite_request,
+)
 
 RATE_LIMIT_ATTEMPTS = 5          # per address...
 RATE_LIMIT_WINDOW = 60 * 60      # ...per hour
@@ -53,9 +57,16 @@ def submit_consultation_request(candidate: ConsultationRequest) -> SubmissionRes
         existing.save(update_fields=["resubmission_count", "last_resubmitted_at", "updated_at"])
         return SubmissionResult(existing, created=False)
 
+    from domain.elite.services.elite_service import former_elite_case_for, note_bronze_request
     candidate.status = ConsultationRequest.Status.AWAITING_PAYMENT
+    candidate.former_elite_case = former_elite_case_for(candidate.email)
     candidate.save()
-    transaction.on_commit(lambda: notify_new_consultation_request(candidate))
+    if candidate.former_elite_case:
+        # Came through Elite Grade: no automatic payment email; their matchmaker arranges it
+        note_bronze_request(candidate.former_elite_case, candidate)
+        transaction.on_commit(lambda: notify_new_former_elite_request(candidate))
+    else:
+        transaction.on_commit(lambda: notify_new_consultation_request(candidate))
     return SubmissionResult(candidate, created=True)
 
 
@@ -96,7 +107,7 @@ CLOSED_STATUSES = [
 
 
 def filter_consultation_requests(status: str = "open", query: str = "", assigned: str = ""):
-    qs = ConsultationRequest.objects.select_related("assigned_to")
+    qs = ConsultationRequest.objects.select_related("assigned_to", "former_elite_case")
     if status == "open":
         qs = qs.open()
     elif status == "closed":

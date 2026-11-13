@@ -129,4 +129,7 @@ def send_elite_email(case_id, kind, message=""):
     if obj := _get(EliteCase, case_id):
         elite_emails.deliver_elite_email(obj, kind, message)
  
- 
+@shared_task(**EMAIL_RETRY)
+def send_former_elite_welcome_email(consultation_id):
+    if obj := _get(ConsultationRequest, consultation_id):
+        consultation_emails.deliver_former_elite_welcome(obj)

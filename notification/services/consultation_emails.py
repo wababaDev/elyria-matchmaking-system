@@ -19,13 +19,21 @@ def deliver_team_alert(consultation):
     link = settings.SITE_URL.rstrip("/") + reverse(
         "matchmaking:consultation-request-detail", args=[consultation.pk]
     )
+    prefix = "New consultation request (former Elite client)" if consultation.former_elite_case_id else "New consultation request"
     send_templated_email(
-        subject=f"New consultation request: {consultation.full_name}",
+        subject=f"{prefix}: {consultation.full_name}",
         template="notification/email/consultation_team_alert",
         context={"consultation": consultation, "link": link},
         to=[settings.TEAM_INBOX_EMAIL],
     )
 
+def deliver_former_elite_welcome(consultation):
+    send_templated_email(
+        subject="Your private consultation with Elyria Matchmaking",
+        template="notification/email/consultation_former_elite",
+        context={"consultation": consultation},
+        to=[consultation.email],
+    )
 
 def deliver_consultation_booked(consultation, rebooked=False):
     applicant = consultation.request
@@ -47,6 +55,13 @@ def notify_new_consultation_request(consultation):
     enqueue(tasks.send_team_alert_email, consultation.pk)
 
 
+def notify_new_former_elite_request(consultation):
+    from notification import tasks
+ 
+    enqueue(tasks.send_former_elite_welcome_email, consultation.pk)
+    enqueue(tasks.send_team_alert_email, consultation.pk)
+ 
+ 
 def notify_consultation_booked(consultation, *, rebooked=False):
     from notification import tasks
 

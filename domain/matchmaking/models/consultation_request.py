@@ -103,6 +103,11 @@ class ConsultationRequest(TimeStampedModel):
         blank=True,
         related_name="assigned_consultation_requests",
     )
+     # Set automatically when the email matches an Elite case whose client accepted Bronze
+    former_elite_case = models.ForeignKey(
+        "Elite.EliteCase", on_delete=models.SET_NULL, null=True, blank=True, related_name="bronze_requests",
+    )
+
     resubmission_count = models.PositiveIntegerField(
         default=0, help_text="Times the same email submitted again while this request was open."
     )

@@ -81,6 +81,7 @@ class ConsultationRequestDetailView(StaffRequiredMixin, DetailView):
         return requests_visible_to(self.request.user).select_related(
             "assigned_to",
             "fee_marked_paid_by",
+            "former_elite_case",
             "consultation",
             "consultation__conducted_by",
         )
@@ -269,6 +270,8 @@ class ResendPaymentInstructionsView(ConsultationRequestActionView):
     def perform(self, consultation_request, data):
         if consultation_request.status != ConsultationRequest.Status.AWAITING_PAYMENT:
             raise InvalidTransitionError("Payment instructions can only be resent while awaiting payment.")
+        if consultation_request.former_elite_case_id:
+            raise InvalidTransitionError("Former Elite clients don't get the payment email; contact them personally.")
         resend_payment_instructions(consultation_request)
 
 

@@ -1,0 +1,8 @@
+{% autoescape off %}Thank you, {{ consultation.display_name }}
+
+We've received your request for a private consultation.
+
+Because you came to us through Elite Grade, your matchmaker will contact you personally to arrange your consultation and the next steps. There's nothing you need to do in the meantime.
+
+Your reference is {{ consultation.payment_reference }}. Please quote it if you contact us.
+{% endautoescape %}
