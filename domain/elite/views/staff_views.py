@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.contrib import messages
 from django.db.models import Exists, OuterRef
 from django.http import FileResponse, Http404
@@ -6,7 +8,6 @@ from django.urls import reverse
 from django.views import View
 from django.utils import timezone
 from django.views.generic import TemplateView
-from datetime import timedelta
 
 from domain.base.mixins import StaffRequiredMixin
 from domain.elite.forms import (
@@ -32,8 +33,7 @@ from domain.elite.forms import (
     PreparationForm,
     SendAcknowledgementForm,
 )
-from domain.elite.models import EliteAccessLog, EliteCase, EliteDocument, EliteInfoRequest
-from domain.elite.models.elite_case import SuppressionEntry
+from domain.elite.models import EliteAccessLog, EliteCase, EliteDocument, EliteInfoRequest, SuppressionEntry
 from domain.elite.services import elite_service as svc
 from domain.elite.services import introduction_service as intro
 
@@ -77,13 +77,27 @@ class CaseListView(EliteStaffMixin, TemplateView):
         abandoned, closed_due = intro.due_for_deletion() if admin else (EliteCase.objects.none(), EliteCase.objects.none())
         due_ids = set(abandoned.values_list("pk", flat=True)) | set(closed_due.values_list("pk", flat=True))
         show = self.request.GET.get("show")
+        tab_counts = [(key, label, base.count() if st is None else base.filter(status__in=st).count()) for key, label, st in tabs]
+        admin_tabs = [("deletion", "Due for deletion", len(due_ids)),
+                      ("register", "Do not approach", SuppressionEntry.objects.count())] if admin else []
+        if admin and show == "register":
+            entries = list(SuppressionEntry.objects.all())
+            # The reference is "ELT-0004" (built from the case id), so the id is the number after the dash
+            ref_ids = {e.case_reference: int(e.case_reference.split("-")[-1])
+                       for e in entries if e.case_reference.split("-")[-1].isdigit()}
+            existing = set(EliteCase.objects.filter(pk__in=ref_ids.values()).values_list("pk", flat=True))
+            case_ids = {ref: pk for ref, pk in ref_ids.items() if pk in existing}
+            context.update(
+                show=show, is_admin=admin, register_view=True, tabs=tab_counts + admin_tabs,
+                entries=[{"entry": e, "case_pk": case_ids.get(e.case_reference)} for e in entries],
+            )
+            return context
         if admin and show == "deletion":
             context.update(
                 cases=EliteCase.objects.filter(pk__in=due_ids).select_related("handler").order_by("updated_at"),
                 show=show, is_admin=admin, deletion_view=True,
                 abandoned_ids=set(abandoned.values_list("pk", flat=True)),
-                tabs=[(key, label, base.count() if st is None else base.filter(status__in=st).count()) for key, label, st in tabs]
-                + [("deletion", "Due for deletion", len(due_ids))],
+                tabs=tab_counts + admin_tabs,
             )
             return context
         if show not in by_key:
@@ -97,8 +111,7 @@ class CaseListView(EliteStaffMixin, TemplateView):
             cases=qs.select_related("handler").annotate(waiting_for_answer=Exists(waiting)).order_by("-updated_at"),
             show=show,
             is_admin=admin,
-            tabs=[(key, label, base.count() if st is None else base.filter(status__in=st).count()) for key, label, st in tabs]
-            + ([("deletion", "Due for deletion", len(due_ids))] if admin else []),
+            tabs=tab_counts + admin_tabs,
         )
         return context
 
@@ -135,6 +148,7 @@ class CaseDetailView(EliteStaffMixin, TemplateView):
             person_form=PersonForm(initial={
                 "name": case.person_name, "contact_type": case.person_contact_type, "contact": case.person_contact,
                 "contact_other": case.person_contact_label if case.person_contact_type == EliteCase.ContactType.OTHER else "",
+                "met_where": case.person_met_where, "occupation": case.person_occupation,
             } if case.has_person else None),
             outreach_form=OutreachForm(),
             ack_form=AcknowledgementForm(),
@@ -288,9 +302,11 @@ class RecordPersonView(CaseActionView):
     form_class = PersonForm
 
     def perform(self, case, data):
-        _, match = svc.record_person(case, by=self.request.user, **data)
-        if match == "name":
-            messages.warning(self.request, "Someone with the same name is on the 'do not approach' list. Check before outreach.")
+        _, matches = svc.record_person(case, by=self.request.user, **data)
+        if matches:
+            messages.warning(self.request, "Someone with the same name is on the 'do not approach' list: "
+                             + "; ".join(svc.describe_match(e) for e in matches)
+                             + ". Check with Admin before any outreach.")
         return "The person's details are saved (encrypted).", ""
 
 

@@ -336,39 +336,45 @@ def _maybe_ready_for_outreach(case, by):
 
 # ---------------------------------------------------------------- E7: the named person and outreach
 
-def suppression_matches(name, contact):
-    """('contact' | 'name' | None): has this person been recorded as 'do not approach'?"""
-    contact_fp = crypto.fingerprint(crypto.normalise_contact(contact)) if contact else ""
-    if contact_fp and SuppressionEntry.objects.filter(contact_fingerprint=contact_fp).exists():
-        return "contact"
-    if SuppressionEntry.objects.filter(name_fingerprint=crypto.fingerprint(crypto.normalise_name(name))).exists():
-        return "name"
-    return None
+def suppression_matches(name):
+    """'Do not approach' entries with the same full name. Names aren't unique, so this warns; people decide."""
+    return list(SuppressionEntry.objects.filter(name_fingerprint=crypto.fingerprint(crypto.normalise_name(name))))
+ 
+ 
+def describe_match(entry):
+    """One line for the warning: which case, where they met, occupation."""
+    bits = [entry.case_reference, entry.get_reason_display().lower()]
+    if entry.met_where:
+        bits.append(f"met: {entry.met_where}")
+    if entry.occupation:
+        bits.append(f"occupation/workplace: {entry.occupation}")
+    return " · ".join(bits)
 
 
 @transaction.atomic
-def record_person(case, *, name, contact_type, contact, contact_other="", by):
-    """The person the client named, and the contact route the client gave. Elyria never searches for them."""
+def record_person(case, *, name, contact_type, contact, contact_other="", met_where="", occupation="", by):
+    """
+    The person the client named, and the contact route the client gave. Elyria never searches for them.
+    Returns (case, matches): 'do not approach' entries with the same name, for the handler to check.
+    """
     case = _lock(case)
     _require_handler(by, case)
     if case.status not in (S.APPROVED, S.PAID):
         raise EliteError("The person's details are recorded before outreach.")
-    match = suppression_matches(name, contact)
-    if match == "contact":
-        raise EliteError(
-            "This person is on the 'do not approach' list (same contact). They can't be approached. "
-            "Speak to Admin about closing this case."
-        )
+    matches = suppression_matches(name)
     first = not case.has_person
     case.person_name_enc = crypto.encrypt(name.strip())
     case.person_contact_type = contact_type
     case.person_contact_enc = crypto.encrypt(contact.strip())
     case.person_contact_other_enc = crypto.encrypt(contact_other.strip()) if contact_other else ""
+    case.person_met_where_enc = crypto.encrypt(met_where.strip()) if met_where.strip() else ""
+    case.person_occupation_enc = crypto.encrypt(occupation.strip()) if occupation.strip() else ""
     case.save()
-    log_event(case, "Named person's details recorded." if first else "Named person's contact route updated.", by)
-    if match == "name":
-        log_event(case, "Warning: someone with the same name is on the 'do not approach' list. Check before outreach.", by)
-    return case, match
+    log_event(case, "Named person's details recorded." if first else "Named person's details updated.", by)
+    if matches:
+        log_event(case, "Warning: someone with the same name is on the 'do not approach' list ("
+                        + "; ".join(describe_match(e) for e in matches) + "). Check with Admin before any outreach.", by)
+    return case, matches
 
 
 @transaction.atomic
@@ -467,7 +473,10 @@ def _close_without_introduction(case, *, outcome, by):
     """Do-not-approach entry, then the Bronze offer (the fee was paid and outreach happened)."""
     SuppressionEntry.objects.create(
         name_fingerprint=crypto.fingerprint(crypto.normalise_name(case.person_name)),
-        contact_fingerprint=crypto.fingerprint(crypto.normalise_contact(case.person_contact)),
+        client_name_enc=crypto.encrypt(case.full_name),
+        person_name_enc=case.person_name_enc,
+        met_where_enc=case.person_met_where_enc,
+        occupation_enc=case.person_occupation_enc,
         reason=outcome, case_reference=case.reference,
     )
     case.outcome = outcome
@@ -500,6 +509,22 @@ def record_bronze_answer(case, *, accepted, by):
         log_event(case, "Client declined the Bronze offer. Case closed.", by)
     return case
 
+ 
+# ---------------------------------------------------------------- former Elite clients starting Bronze
+ 
+def former_elite_case_for(email):
+    """The closed Elite case whose client accepted Bronze with this email, if any (newest first)."""
+    if not email:
+        return None
+    return (EliteCase.objects.filter(email__iexact=email.strip(), bronze_accepted=True)
+            .order_by("-closed_at").first())
+ 
+ 
+def note_bronze_request(case, consultation_request):
+    """Called when their consultation request arrives: shows on the Elite timeline."""
+    log_event(case, f"Started the Bronze journey: consultation request {consultation_request.payment_reference} "
+                    "received. No payment email was sent; their matchmaker arranges it.")
+ 
 
 # ---------------------------------------------------------------- clean-up
 # Deletion is decided by Admin: see due_for_deletion() / delete_now() in introduction_service.
@@ -533,7 +558,8 @@ def wipe_named_person(now=None):
         for document in case.documents.filter(kind__in=EliteDocument.NAMED_PERSON_KINDS):
             document.file.delete(save=False)
             document.delete()
-        case.person_name_enc = case.person_contact_enc = case.person_email_enc = ""
+        case.person_name_enc = case.person_contact_enc = case.person_email_enc = case.person_contact_other_enc = ""
+        case.person_met_where_enc = case.person_occupation_enc = ""
         case.person_details_wiped_at = timezone.now()
         case.save()
         log_event(case, "Named person's details and related documents deleted.")

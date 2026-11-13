@@ -254,7 +254,8 @@ class AfterApprovalBase(EliteTestCase):
         svc.record_fee(case, method="bank_transfer", reference="TX1", paid_on=date.today(), by=self.matchmaker)
         svc.add_document(case, kind=EliteDocument.Kind.INDEMNITY, file=pdf("indemnity.pdf"), by=self.matchmaker)
         svc.confirm_indemnity(case, by=self.matchmaker)
-        svc.record_person(case, name="Thandi Phiri", contact_type="phone", contact=contact, by=self.matchmaker)
+        svc.record_person(case, name="Thandi Phiri", contact_type="phone", contact=contact,
+                          met_where="A friend's wedding in Lusaka", occupation="Banker", by=self.matchmaker)
         case.refresh_from_db()
         return case
 
@@ -296,16 +297,15 @@ class AfterApprovalTests(AfterApprovalBase):
         case = self.paid()
         self.client.force_login(self.matchmaker)
         url = reverse("elite:case-person", args=[case.pk])
-        self.client.post(url, {"name": "Thandi Phiri", "contact_type": "other", "contact": "Plot 12, Kabulonga"})
+        self.client.post(url, {"name": "Thandi Phiri", "contact": "Plot 12, Kabulonga", "met_where": "A friend's wedding in Lusaka"})
         case.refresh_from_db()
         self.assertEqual(case.person_contact_type, "phone")                    # refused: kind missing, unchanged
         self.client.post(url, {"name": "Thandi Phiri", "contact_type": "other", "contact_other": "Workplace address",
-                               "contact": "Plot 12, Kabulonga"})
+                               "contact": "Plot 12, Kabulonga", "met_where": "A friend's wedding in Lusaka"})
         case.refresh_from_db()
         self.assertEqual(case.person_contact_label, "Workplace address")
         self.assertNotIn("Workplace", case.person_contact_other_enc)            # stored encrypted
         self.assertContains(self.client.get(reverse("elite:case-detail", args=[case.pk])), "Workplace address")
- 
 
     def test_bounce_does_not_count_and_asks_client_for_another_route(self):
         case = self.paid()
@@ -329,8 +329,14 @@ class AfterApprovalTests(AfterApprovalBase):
         # Someone asks for the same person again (same number written differently): refused
         other = self.approved("other@example.com")
         svc.record_fee(other, method="bank_transfer", reference="", paid_on=date.today(), by=self.matchmaker)
-        with self.assertRaises(svc.EliteError):
-            svc.record_person(other, name="T. Phiri", contact_type="phone", contact="0977123456", by=self.matchmaker)
+        _, matches = svc.record_person(other, name="Thandi  phiri", contact_type="phone", contact="0977123456", by=self.matchmaker)
+        self.assertEqual(len(matches), 1)                                          # warned, not blocked (names aren't unique)
+        self.assertIn(case.reference, svc.describe_match(matches[0]))
+        self.assertTrue(other.events.filter(text__startswith="Warning: someone with the same name").exists())
+        entry = SuppressionEntry.objects.get()
+        self.assertEqual((entry.person_name, entry.client_name, entry.met_where, entry.occupation),
+                         ("Thandi Phiri", case.full_name, "A friend's wedding in Lusaka", "Banker"))
+        self.assertNotIn("Thandi", entry.person_name_enc)                          # stored encrypted
 
         svc.record_bronze_answer(case, accepted=True, by=self.matchmaker)
         case.refresh_from_db()
@@ -347,7 +353,8 @@ class AfterApprovalTests(AfterApprovalBase):
         self.assertEqual(case.person_name, "")
         self.assertFalse(case.documents.filter(kind=EliteDocument.Kind.REQUEST_FORM).exists())
         self.assertTrue(case.documents.filter(kind=EliteDocument.Kind.NDA).exists())
-        self.assertEqual(SuppressionEntry.objects.count(), 1)   # the fingerprint stays
+        self.assertEqual(case.person_met_where, "")
+        self.assertEqual(SuppressionEntry.objects.get().person_name, "Thandi Phiri")   # D16: the list entry stays
 
 
 # ---------------------------------------------------------------- Part 2b
@@ -475,3 +482,63 @@ class IntroductionTests(AfterApprovalBase):
         intro.delete_now(case, by=self.admin)
         case.refresh_from_db()
         self.assertEqual(case.person_name, "")
+
+
+# ---------------------------------------------------------------- former Elite clients starting Bronze
+
+from domain.matchmaking.models import ConsultationRequest  # noqa: E402
+from domain.matchmaking.services.consultation_request_service import submit_consultation_request  # noqa: E402
+
+
+class FormerEliteTests(AfterApprovalBase):
+    def bronze_client(self, email="mwila@example.com"):
+        case = self.paid(email)
+        svc.record_outreach(case, delivered=True, sent_on=date.today(), by=self.matchmaker)
+        svc.record_answer(case, answer="declined", by=self.matchmaker)
+        svc.record_bronze_answer(case, accepted=True, by=self.matchmaker)
+        case.refresh_from_db()
+        return case
+
+    def request_for(self, email):
+        return ConsultationRequest(
+            full_name="Mwila Banda", gender="female", age=34, seeking="man", relationship_status="single",
+            location="Lusaka", nationality="Zambian", occupation="Lawyer", email=email, phone="+260977000000",
+        )
+
+    def test_former_elite_request_is_flagged_and_gets_no_payment_email(self):
+        case = self.bronze_client()
+        mail.outbox.clear()
+        with self.captureOnCommitCallbacks(execute=True):
+            result = submit_consultation_request(self.request_for("Mwila@Example.com"))
+        self.assertEqual(result.consultation_request.former_elite_case, case)
+        to_client = [m for m in mail.outbox if "mwila@example.com" in m.to]
+        self.assertEqual(len(to_client), 1)
+        self.assertIn("Elite Grade", to_client[0].body)
+        self.assertNotIn("K1,000", to_client[0].body)
+        self.assertTrue(any("former Elite" in m.subject for m in mail.outbox))           # team alert says so
+        self.assertTrue(case.events.filter(text__startswith="Started the Bronze journey").exists())
+
+    def test_ordinary_request_is_not_flagged(self):
+        self.bronze_client()
+        with self.captureOnCommitCallbacks(execute=True):
+            result = submit_consultation_request(self.request_for("someone.else@example.com"))
+        self.assertIsNone(result.consultation_request.former_elite_case)
+
+    def test_declined_bronze_is_not_flagged(self):
+        case = self.paid()
+        svc.record_outreach(case, delivered=True, sent_on=date.today(), by=self.matchmaker)
+        svc.record_answer(case, answer="declined", by=self.matchmaker)
+        svc.record_bronze_answer(case, accepted=False, by=self.matchmaker)
+        self.assertIsNone(svc.former_elite_case_for(case.email))
+
+    def test_do_not_approach_tab_lists_the_kept_details(self):
+        case = self.bronze_client()
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("elite:cases") + "?show=register")
+        self.assertContains(response, case.reference)
+        self.assertContains(response, "The person declined")
+        self.assertContains(response, "Thandi Phiri")                                     # D16: names are shown
+        self.assertContains(response, "A friend&#x27;s wedding in Lusaka")
+        self.assertNotContains(response, "977")                                           # no phone kept
+        self.client.force_login(self.matchmaker)                                         # handlers don't get the tab
+        self.assertNotContains(self.client.get(reverse("elite:cases") + "?show=register"), "Do not approach")

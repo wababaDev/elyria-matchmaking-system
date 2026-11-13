@@ -203,7 +203,10 @@
         <div class="card custom-card">
             <div class="card-header justify-content-between">
                 <div class="card-title">Membership</div>
-                <span class="badge {{ status|member_badge }}">{{ status|member_status_label }}</span>
+                <span>
+                    <span class="badge {{ status|member_badge }}">{{ status|member_status_label }}</span>
+                    {% include "domain/management/elite/_former_elite_badge.html" with elite_case=member.consultation_request.former_elite_case %}
+                </span>
             </div>
             <div class="card-body">
                 <p class="fs-5 fw-semibold mb-1">{{ membership.tier.name }}</p>

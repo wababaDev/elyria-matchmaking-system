@@ -14,6 +14,42 @@
     {% endfor %}
 </ul>
 
+{% if register_view %}
+<div class="card custom-card">
+    <div class="card-header"><div class="card-title">Do not approach</div></div>
+    <div class="card-body pb-0">
+        <p class="text-muted fs-13 mb-3">
+           <i class="fe fe-lock me-1"></i>People who declined, didn't respond, or didn't sign the Acknowledgement. Only their name,
+            the client's name, where they say they met, and occupation or workplace are kept; no phone or email. When a new
+            case names someone with the same name, the Case Handler is warned and checks with Admin.
+        </p>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+                 <thead><tr><th>Named person</th><th>Client</th><th>Where they met</th><th>Occupation / workplace</th><th>Reason</th><th>Case</th></tr></thead>
+                <tbody>
+                    {% for row in entries %}
+                        <tr>
+                            <td class="fw-semibold">{{ row.entry.person_name|default:"—" }}</td>
+                            <td class="fs-13">{{ row.entry.client_name|default:"—" }}</td>
+                            <td class="fs-13">{{ row.entry.met_where|default:"—" }}</td>
+                            <td class="fs-13">{{ row.entry.occupation|default:"—" }}</td>
+                            <td class="fs-13">{{ row.entry.get_reason_display }}<div class="text-muted fs-12">{{ row.entry.created_at|date:"j M Y" }}</div></td>
+                            <td class="fs-13">
+                                {% if row.case_pk %}<a href="{% url 'elite:case-detail' row.case_pk %}">{{ row.entry.case_reference }}</a>
+                                {% else %}{{ row.entry.case_reference }}{% endif %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="6" class="text-center text-muted py-5">Nobody on the list yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
 <div class="card custom-card">
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -48,7 +84,7 @@
                                     {% else %}Reply due {{ case.reply_due_on|date:"j M Y" }}{% endif %}
                                 {% elif case.status == "agreed" %}Acknowledgement to sign
                                 {% elif case.status == "introduction" %}{% if case.intro_at %}Introduction {{ case.intro_at|date:"j M" }}{% else %}Set the introduction{% endif %}
-                                {% elif case.status == "introduced" %}Feedback · close the case
+                                {% elif case.status == "introduced" %}Feedback (offline) · close the case
                                 {% elif case.status == "bronze_offered" %}Bronze answer
                                 {% else %}<span class="text-muted">{{ case.updated_at|date:"j M Y" }}</span>{% endif %}
                             </td>
@@ -74,4 +110,5 @@
         </div>
     {% endif %}
 </div>
+{% endif %}
 {% endblock %}

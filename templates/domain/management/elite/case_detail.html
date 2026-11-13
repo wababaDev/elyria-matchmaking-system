@@ -511,9 +511,11 @@
                             <dd>
                                 {{ case.person_contact }}
                             </dd>
+                            {% if case.person_met_where %}<dt class="text-muted fw-normal fs-12">Where they first met</dt><dd>{{ case.person_met_where }}</dd>{% endif %}
+                        {% if case.person_occupation %}<dt class="text-muted fw-normal fs-12">Occupation or workplace</dt><dd>{{ case.person_occupation }}</dd>{% endif %}
                             {% if case.person_email %}<dt class="text-muted fw-normal fs-12">Email (given with consent)</dt><dd>{{ case.person_email }}</dd>{% endif %}
                         </dl>
-                        <p class="text-muted fs-12 mb-0"><i class="fe fe-lock me-1"></i>Stored encrypted. Deleted 30 days after the case closes.</p>
+                       <p class="text-muted fs-12 mb-0"><i class="fe fe-lock me-1"></i>Stored encrypted. Deleted 30 days after the case closes. If they decline or don't respond, their name, where they met and occupation stay on the "do not approach" list (with the client's name).</p>
                     {% endif %}
                 </div>
             </div>
@@ -550,6 +552,8 @@
                                     <label class="form-label fs-13" for="{{ person_form.contact.id_for_label }}">{{ person_form.contact.label }}</label>
                                     {{ person_form.contact }}
                                 </div>
+                                 <div class="col-md-6"><label class="form-label fs-13" for="{{ person_form.met_where.id_for_label }}">{{ person_form.met_where.label }}</label>{{ person_form.met_where }}</div>
+                                <div class="col-md-6"><label class="form-label fs-13" for="{{ person_form.occupation.id_for_label }}">{{ person_form.occupation.label }}</label>{{ person_form.occupation }}</div>
                             </div>
                             <p class="text-muted fs-12 mt-1 mb-2">Use only what the client gave you on the request form. Elyria never searches for the person. Checked against the "do not approach" list when saved.</p>
                             <button type="submit" class="btn btn-sm btn-light">{% if case.has_person %}Update details{% else %}Save details{% endif %}</button>

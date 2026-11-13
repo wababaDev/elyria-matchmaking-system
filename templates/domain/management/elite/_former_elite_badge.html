@@ -1,0 +1,7 @@
+{# Shown wherever matchmakers see someone who came through Elite Grade. Use: {% include "domain/management/elite/_former_elite_badge.html" with elite_case=<the request>.former_elite_case %} #}
+{% if elite_case %}
+    <span class="badge ms-1" style="background:#C9A227;color:#6E1423;"
+          title="Came to Elyria through Elite Grade ({{ elite_case.reference }}). Give them priority attention; payment is arranged by their matchmaker.">
+        <i class="fe fe-star me-1"></i>Former Elite client
+    </span>
+{% endif %}
