@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sitemaps",
     "domain.base",
     "domain.website",
     "domain.matchmaking",
@@ -37,6 +38,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "domain.base.noindex_middleware.NoIndexMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -57,6 +59,7 @@ TEMPLATES = [
                 "domain.website.context_processors.consultation_form",
                 "domain.website.context_processors.site_settings",
                 "domain.matchmaking.context_processors.queue_counts",
+                "domain.website.seo.seo",
             ],
         },
     },
