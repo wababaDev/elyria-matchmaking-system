@@ -53,11 +53,12 @@ def send_renewal_reminders(today=None):
     for membership in candidates:
         if membership.on_hold:
             continue
-        due = due_reminder((membership.end_date - today).days, membership.renewal_reminder_days)
+        days_left = (membership.end_date - today).days
+        due = due_reminder(days_left, membership.renewal_reminder_days)
         if due is None:
             continue
         try:
-            membership_emails.deliver_renewal_reminder(membership, days=due)
+            membership_emails.deliver_renewal_reminder(membership, days=days_left)
         except Exception:  # noqa: BLE001 - keep going; it's tried again tomorrow
             logger.exception("Renewal reminder failed for membership %s", membership.pk)
             summary["failed"] += 1
