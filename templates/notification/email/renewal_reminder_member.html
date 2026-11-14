@@ -1,0 +1,8 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}Your {{ membership.tier.name }} membership ends on {{ membership.end_date|date:"j F Y" }}.{% endblock %}
+{% block heading %}Your membership ends soon{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">Dear {{ client.preferred_name|default:client.full_name }},</p>
+    <p style="margin:0 0 16px;">Your Elyria <strong>{{ membership.tier.name }}</strong> membership ends on <strong>{{ membership.end_date|date:"j F Y" }}</strong>, in {{ days }} days.</p>
+    <p style="margin:0 0 16px;">If you'd like to continue, or move to another tier, simply reply to this email or speak to your matchmaker, who will be in touch.</p>
+{% endblock %}

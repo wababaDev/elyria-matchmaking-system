@@ -1,0 +1,8 @@
+{% autoescape off %}Dear {{ client.preferred_name|default:client.full_name }},
+
+Your Elyria {{ membership.tier.name }} membership ends on {{ membership.end_date|date:"j F Y" }}, in {{ days }} days.
+
+If you'd like to continue, or move to another tier, simply reply to this email or speak to your matchmaker, who will be in touch.
+
+Elyria Matchmaking
+{% endautoescape %}
