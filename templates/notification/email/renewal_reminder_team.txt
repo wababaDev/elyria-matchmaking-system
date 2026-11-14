@@ -1,0 +1,7 @@
+{% autoescape off %}Renewal due in {{ days }} days
+
+{{ client.full_name }}'s {{ membership.tier.name }} membership ends on {{ membership.end_date|date:"j F Y" }}. They've been sent a reminder too.
+
+Talk to them about renewing or upgrading. Record it with "Renew or upgrade" on their member page:
+{{ link }}
+{% endautoescape %}

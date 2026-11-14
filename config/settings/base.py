@@ -124,13 +124,17 @@ CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 
 CELERY_BEAT_SCHEDULE = {
-    # Elite: send feedback forms / reminders, remind Case Handlers, Monday deletion reminder. Never deletes.
+    # Elite: remind Case Handlers about reply windows, Monday deletion reminder to Admin. Never deletes.
     "elite-daily": {
         "task": "domain.elite.tasks.elite_daily",
         "schedule": crontab(hour=7, minute=43),   # 07:43 Lusaka time (CELERY_TIMEZONE)
     },
+    # Memberships: renewal reminders 60, 30 and 14 days before the end date (member + matchmaker).
+    "membership-daily": {
+        "task": "domain.matchmaking.tasks.membership_daily",
+        "schedule": crontab(hour=7, minute=13),   # 07:13 Lusaka time
+    },
 }
- 
 
 
 # If Redis is down, give up queuing quickly instead of hanging the request

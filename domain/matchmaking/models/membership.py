@@ -32,6 +32,8 @@ class Membership(TimeStampedModel):
     # Total introductions this membership has paid for, across renewals and upgrades.
     # Empty = use the tier's number (so new memberships need nothing set). Unlimited if the tier has none.
     introductions_allowed = models.PositiveSmallIntegerField(null=True, blank=True)
+    # Last renewal reminder sent for the current end date (60 / 30 / 14). Cleared when renewed.
+    renewal_reminder_days = models.PositiveSmallIntegerField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
     cancelled_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
