@@ -47,7 +47,15 @@ class StaffUpdateForm(BootstrapFormMixin, forms.Form):
 class MembershipTierForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = MembershipTier
-        fields = ["name", "price", "currency", "duration_months", "max_introductions", "display_order", "is_active"]
+        fields = ["name", "price", "currency", "duration_months", "max_introductions", "allows_hold", "hold_weeks", "display_order", "is_active"]
+
+        def clean(self):
+            data = super().clean()
+            if data.get("allows_hold") and not data.get("hold_weeks"):
+                self.add_error("hold_weeks", "Say how many weeks, or untick Allows Hold Time.")
+            if not data.get("allows_hold"):
+                data["hold_weeks"] = None
+            return data
 
 
 class PrivacyPolicyUploadForm(BootstrapFormMixin, forms.Form):

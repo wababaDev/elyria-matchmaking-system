@@ -21,6 +21,15 @@ class MembershipTier(TimeStampedModel):
         "Introductions included", null=True, blank=True,
         help_text="How many different people a member on this tier can be introduced to. Leave blank for unlimited.",
     )
+    # Hold Time: how long a member can pause, in total, per membership term (resets on renewal or upgrade)
+    allows_hold = models.BooleanField(
+        "Allows Hold Time", default=False,
+        help_text="Tick if members on this tier can put their membership on hold.",
+    )
+    hold_weeks = models.PositiveSmallIntegerField(
+        "Hold Time (weeks)", null=True, blank=True,
+        help_text="Total weeks on hold per membership term, across all holds. Starts again on renewal or upgrade.",
+    )
     display_order = models.PositiveSmallIntegerField(default=0)
     is_active = models.BooleanField(default=True, help_text="Untick to retire a tier without affecting existing members.")
 
@@ -29,3 +38,10 @@ class MembershipTier(TimeStampedModel):
 
     def __str__(self):
         return self.name
+
+    @property
+    def hold_days(self):
+        """Days of Hold Time per term. 0 = no Hold Time on this tier."""
+        if not self.allows_hold:
+            return 0
+        return (self.hold_weeks or 0) * 7

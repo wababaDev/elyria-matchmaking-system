@@ -13,6 +13,7 @@ from domain.matchmaking.forms.hold_forms import EndHoldForm, StartHoldForm
 from domain.matchmaking.forms.member_note_forms import CloseNoteForm, DiscrepancyForm, ObservationForm
 from domain.matchmaking.forms.staff_forms import ChangeSignInEmailForm
 from domain.matchmaking.models import ProfilePhoto
+from domain.matchmaking.models.membership import weeks_text
 from domain.matchmaking.models.membership_tier import MembershipTier
 from domain.matchmaking.models.pairing import OPEN_PAIRING_LIMIT
 from domain.matchmaking.profile_sections import answers_by_group
@@ -185,25 +186,34 @@ class RenewMembershipView(MemberActionView):
             self.success_message = f"{{name}} has been upgraded from {old_tier.name} to {membership.tier.name}."
 
 
+# Hold time: start, end, cancel
+def _d(day):
+    return f"{day.day} {day:%b %Y}"
+
+
 class StartHoldView(MemberActionView):
     form_class = StartHoldForm
-    success_message = "{name}'s membership is on hold. They won't appear in Find a match until the hold ends."
 
     def perform(self, member, data):
-        start_hold(member.membership, by=self.request.user, **data)
+        hold = start_hold(member.membership, by=self.request.user, **data)
+        self.success_message = (
+            f"{{name}} is on hold from {_d(hold.started_on)} to {_d(hold.ended_on)} ({hold.length_text}). "
+            f"The membership end date moved forward {hold.days_added} day{'s' if hold.days_added != 1 else ''}."
+        )
 
 
 class EndHoldView(MemberActionView):
     form_class = EndHoldForm
 
     def perform(self, member, data):
-        hold = end_hold(member.membership, ended_on=data["ended_on"], by=self.request.user)
-        self.success_message = (
-            f"{{name}} is back from hold. {hold.days_added} day{'s' if hold.days_added != 1 else ''} "
-            f"added to the membership."
-        )
-
-
+        hold, days_back = end_hold(member.membership, back_on=data.get("back_on"), by=self.request.user)
+        if hold.pk is None:
+            self.success_message = f"{{name}}'s planned hold was cancelled. {weeks_text(days_back)} given back."
+        else:
+            self.success_message = (
+                f"{{name}} is back from hold. Last day on hold: {_d(hold.ended_on)}. "
+                f"Unused Hold Time given back: {weeks_text(max(days_back, 0))}."
+            )
 class CancelMembershipView(MemberActionView):
     form_class = CancelMembershipForm
     success_message = "{name}'s membership has been cancelled and their sign-in disabled."

@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from domain.matchmaking.models import Client, Membership, MembershipHold, MembershipPayment
-from domain.matchmaking.models.membership import EXPIRING_SOON_DAYS
+from domain.matchmaking.models.membership import EXPIRING_SOON_DAYS, weeks_text
 from domain.matchmaking.services.consultation_request_service import InvalidTransitionError
 from domain.matchmaking.utils import add_months
 
@@ -121,6 +121,7 @@ def renew_membership(membership, *, tier, method, reference="", by):
     membership.tier = tier
     membership.end_date = add_months(base, tier.duration_months)
     membership.introductions_allowed = new_allowance
+    membership.hold_term_start = timezone.localdate()
     membership.save(update_fields=["tier", "end_date", "introductions_allowed", "updated_at"])
 
     MembershipPayment.objects.create(
@@ -138,45 +139,96 @@ def renew_membership(membership, *, tier, method, reference="", by):
 # ---------------------------------------------------------------- hold time
 
 @transaction.atomic
-def start_hold(membership, *, reason, note="", started_on=None, by):
+def start_hold(membership, *, reason, started_on, ended_on, note="", by):
+    """
+    Book Hold Time from a first day to a last day (past or future).
+    The end date moves forward by those days straight away.
+    """
     membership = _lock(membership)
-    started_on = started_on or timezone.localdate()
+    tier = membership.tier
+    today = timezone.localdate()
+
     if membership.status == Membership.Status.CANCELLED:
         raise InvalidTransitionError("A cancelled membership can't be put on hold.")
-    if membership.holds.filter(ended_on__isnull=True).exists():
-        raise InvalidTransitionError("This membership is already on hold.")
-    if started_on > timezone.localdate():
-        raise InvalidTransitionError("The hold can't start in the future. Put it on hold on the day it starts.")
+    if not membership.hold_allowance_days:
+        raise InvalidTransitionError(f"{tier.name} membership doesn't include Hold Time.")
+    if ended_on < started_on:
+        raise InvalidTransitionError("The last day can't be before the first day.")
+    if started_on < membership.start_date:
+        raise InvalidTransitionError("The hold can't start before the membership started.")
     if started_on > membership.end_date:
         raise InvalidTransitionError("The hold can't start after the membership has ended.")
-    return MembershipHold.objects.create(
-        membership=membership, reason=reason, note=note.strip(), started_on=started_on, started_by=by,
+    unfinished = Q(ended_on__isnull=True) | Q(ended_on__gte=today)
+    if membership.holds.filter(unfinished).exists():
+        raise InvalidTransitionError("There's already a hold that hasn't finished. End or cancel it first.")
+    overlap = membership.holds.filter(started_on__lte=ended_on).filter(
+        Q(ended_on__isnull=True) | Q(ended_on__gte=started_on)
     )
+    if overlap.exists():
+        raise InvalidTransitionError("These dates overlap an earlier hold.")
+
+    days = (ended_on - started_on).days + 1
+    left = membership.hold_days_left
+    if days > left:
+        raise InvalidTransitionError(
+            f"That's {weeks_text(days)}, but only {weeks_text(left)} of Hold Time is left "
+            f"({tier.name}: {weeks_text(membership.hold_allowance_days)} per term)."
+        )
+
+    hold = MembershipHold.objects.create(
+        membership=membership, reason=reason, note=note.strip(),
+        started_on=started_on, ended_on=ended_on, days_added=days, started_by=by,
+    )
+    membership.end_date += timedelta(days=days)
+    membership.renewal_reminder_days = None  # the end date moved, so reminders start again
+    membership.save(update_fields=["end_date", "renewal_reminder_days", "updated_at"])
+    return hold
 
 
 @transaction.atomic
-def end_hold(membership, *, ended_on=None, by):
-    """Ends the hold and moves the end date forward by the days it lasted."""
+def end_hold(membership, *, back_on=None, by):
+    """
+    End the hold early, or cancel one that hasn't started. The unused days come off the end date again.
+    Returns (hold, days_given_back). A cancelled hold is deleted (hold.pk is None afterwards).
+    """
     membership = _lock(membership)
-    hold = membership.holds.select_for_update().filter(ended_on__isnull=True).first()
+    today = timezone.localdate()
+    hold = (
+        membership.holds.select_for_update()
+        .filter(Q(ended_on__isnull=True) | Q(ended_on__gte=today))
+        .order_by("started_on")
+        .first()
+    )
     if hold is None:
-        raise InvalidTransitionError("This membership isn't on hold.")
-    ended_on = ended_on or timezone.localdate()
-    if ended_on < hold.started_on:
-        raise InvalidTransitionError("The hold can't end before it started.")
-    if ended_on > timezone.localdate():
-        raise InvalidTransitionError("The hold can't end in the future. End it on the day the member is back.")
+        raise InvalidTransitionError("This membership has no hold to end.")
 
-    days = (ended_on - hold.started_on).days
-    hold.ended_on = ended_on
-    hold.ended_by = by
-    hold.days_added = days
-    hold.save(update_fields=["ended_on", "ended_by", "days_added", "updated_at"])
+    if hold.started_on > today:
+        # Not started yet: cancel it completely
+        days_back = hold.days_added
+        hold.delete()
+    else:
+        back_on = back_on or today
+        last_day = back_on - timedelta(days=1)
+        if last_day < hold.started_on:
+            raise InvalidTransitionError(
+                f"The back date has to be after the first day of the hold ({hold.started_on:%d %b %Y})."
+            )
+        if hold.ended_on and last_day >= hold.ended_on:
+            raise InvalidTransitionError(
+                f"The hold already ends on {hold.ended_on:%d %b %Y}. Pick an earlier date to end it early."
+            )
+        new_days = (last_day - hold.started_on).days + 1
+        # Old open-ended holds have days_added = 0, so this is negative: the days get added instead
+        days_back = hold.days_added - new_days
+        hold.ended_on = last_day
+        hold.days_added = new_days
+        hold.ended_by = by
+        hold.save(update_fields=["ended_on", "days_added", "ended_by", "updated_at"])
 
-    membership.end_date = membership.end_date + timedelta(days=days)
-    membership.save(update_fields=["end_date", "updated_at"])
-    return hold
-
+    membership.end_date -= timedelta(days=days_back)
+    membership.renewal_reminder_days = None
+    membership.save(update_fields=["end_date", "renewal_reminder_days", "updated_at"])
+    return hold, days_back
 
 # ---------------------------------------------------------------- cancel / reassign / email
 

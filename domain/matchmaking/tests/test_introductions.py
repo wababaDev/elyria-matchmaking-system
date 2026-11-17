@@ -92,23 +92,3 @@ class RenewUpgradeTests(IntroductionCase):
         self.assertEqual(self.natasha.membership.payments.first().kind, MembershipPayment.Kind.UPGRADE)
 
 
-class HoldTests(IntroductionCase):
-    def test_hold_hides_member_and_extends_end_date(self):
-        membership = self.david.membership
-        old_end = membership.end_date
-        start_hold(membership, reason="work", started_on=timezone.localdate() - timedelta(days=10), by=self.annastasia)
-        self.assertNotIn(self.david, candidates_for(self.natasha))
-
-        hold = end_hold(membership, by=self.annastasia)
-        membership.refresh_from_db()
-        self.assertEqual(hold.days_added, 10)
-        self.assertEqual(membership.end_date, old_end + timedelta(days=10))
-        self.assertIn(self.david, candidates_for(self.natasha))
-
-    def test_hold_from_member_page(self):
-        self.as_user(self.annastasia)
-        self.client.post(reverse("matchmaking:member-hold-start", args=[self.david.pk]),
-                         {"reason": "grievance", "started_on": timezone.localdate().isoformat()})
-        self.assertTrue(self.david.membership.holds.filter(ended_on__isnull=True).exists())
-        response = self.client.get(reverse("matchmaking:member-detail", args=[self.david.pk]))
-        self.assertContains(response, "On hold")

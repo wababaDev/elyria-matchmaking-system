@@ -10,6 +10,7 @@ from django.db.models import Count, Q
 from django.utils import timezone
 
 from domain.matchmaking.models import Consultation, ConsultationRequest, Membership, MembershipPayment
+from domain.matchmaking.models.membership import MembershipHold
 from domain.matchmaking.models.pairing import Pairing
 
 TREND_MONTHS = 6
@@ -83,7 +84,7 @@ def dashboard_summary():
             scheduled_for__gte=_start_of(week_start), scheduled_for__lt=_start_of(week_start + timedelta(days=7)),
         ).count(),
         "active_members": current.count(),
-        "on_hold_members": current.filter(holds__ended_on__isnull=True, holds__isnull=False).distinct().count(),
+        "on_hold_members": current.filter(pk__in=MembershipHold.objects.active_on(timezone.localdate()).values("membership_id")).count(),
         "introductions_this_month": Pairing.objects.filter(introduced_on__gte=month_start, introduced_on__lte=today).count(),
 
         # Row 2: charts

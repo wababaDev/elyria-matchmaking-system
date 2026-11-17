@@ -82,6 +82,20 @@ def may_view_profile(user, pairing, client):
 def log_access(user, action, client=None, detail=""):
     MatchAccessLog.objects.create(user=user, action=action, client=client, detail=detail[:300])
 
+def _current_hold(client):
+    """The member's hold covering today, or None."""
+    membership = getattr(client, "membership", None)
+    return membership.current_hold if membership else None
+
+
+def hold_note(client):
+    """'David on hold until 14 Dec', or '' if not on hold."""
+    hold = _current_hold(client)
+    if not hold:
+        return ""
+    until = f" until {hold.ended_on.day} {hold.ended_on:%b}" if hold.ended_on else ""
+    return f"{client.preferred_name} on hold{until}"
+
 
 # ---------------------------------------------------------------- finding candidates
 
@@ -105,7 +119,7 @@ def candidates_for(client, *, age_min=None, age_max=None, city="", children="", 
         profile__seeking=GENDER_SEEKING.get(profile.gender, "-"),
     ).exclude(pk=client.pk)
     # Members on Hold Time aren't set on any dates
-    qs = qs.exclude(pk__in=MembershipHold.objects.filter(ended_on__isnull=True).values("membership__client_id"))
+    qs = qs.exclude(pk__in=MembershipHold.objects.active_on(today).values("membership__client_id"))
 
     already = Pairing.objects.exclude(status=P.Status.CLOSED).filter(Q(client_a=client) | Q(client_b=client))
     paired_ids = set(already.values_list("client_a", flat=True)) | set(already.values_list("client_b", flat=True))
@@ -159,6 +173,8 @@ def _why_closed(p):
 
 @transaction.atomic
 def propose(client_a, client_b, *, by, note_for_a, b_profession, b_location):
+    if note := hold_note(client_a):
+        raise InvalidTransitionError(f"{note}. Pairings can't be proposed for them while they're on hold.")
     if not can_manage(by, client_a):
         raise InvalidTransitionError("You can only propose pairings for your own members.")
     if not candidates_for(client_a).filter(pk=client_b.pk).exists():
@@ -474,8 +490,16 @@ OVERVIEW_FILTERS = [
     ("all", "All"),
 ]
 
-
 def where_it_stands(pairing, user):
+    """(text, waiting_on_me). Open pairings also say if either member is on hold."""
+    text, on_me = _where_it_stands(pairing, user)
+    if pairing.is_open:
+        notes = [n for n in (hold_note(pairing.client_a), hold_note(pairing.client_b)) if n]
+        if notes:
+            text = f"{text} ·  {' · '.join(notes)}"
+    return text, on_me
+
+def _where_it_stands(pairing, user):
     """(text, waiting_on_me) for one pairing, from the point of view of `user`."""
     a, b = pairing.client_a, pairing.client_b
     a_mm = a.matchmaker.full_name if a.matchmaker else "the other matchmaker"
