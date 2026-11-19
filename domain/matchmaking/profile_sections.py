@@ -31,6 +31,9 @@ SHOW_WHEN = {
     "children_ages": ("has_children", "yes"),
     "children_living": ("has_children", "yes"),
     "education_other": ("education", "other"),
+    "ethnicity_mixed": ("ethnicity", "mixed"),
+    "ethnicity_other": ("ethnicity", "other"),
+    "partner_ethnicity_other": ("partner_ethnicity", "other"),
     "core_values_other": ("core_values", "other"),
     "ideal_saturday_other": ("ideal_saturday", "other"),
     "partner_values_other": ("partner_values", "other"),
@@ -44,6 +47,7 @@ OPTIONAL = {
     "partner_build",
     "partner_preferences",
     "religion",  # Elyria's decision: always optional
+     "ethnicity", "partner_ethnicity",  # sensitive: optional, like religion
 }
 
 # A change to any of these after completion "affects matching": flagged in notes and in the email
@@ -117,9 +121,12 @@ SECTIONS = [
         zone="you", has_photos=True,
         fields=[
             Field("build", SELECT, col="col-md-4"),
+             Field("ethnicity", SELECT, col="col-md-4"),
             Field("languages", col="col-md-4", placeholder="e.g. English, Bemba"),
+            Field("ethnicity_mixed", col="col-md-4 offset-md-4", placeholder="Please specify the mix"),
+            Field("ethnicity_other", col="col-md-4 offset-md-4", placeholder="Please specify"),
             Field("education", SELECT, col="col-md-4"),
-            Field("education_other", col="col-md-4 offset-md-8", placeholder="Please specify"),
+             Field("education_other", col="col-md-4", placeholder="Please specify"),
         ],
     ),
     Section(
@@ -202,6 +209,8 @@ SECTIONS = [
             Field("partner_gender", SELECT, col="col-md-4"),
             Field("partner_age_min", col="col-md-4"),
             Field("partner_age_max", col="col-md-4"),
+             Field("partner_ethnicity", SELECT, col="col-md-4"),
+            Field("partner_ethnicity_other", col="col-md-4", placeholder="Please specify"),
             Field("partner_location", placeholder="e.g. Lusaka, or anywhere in Zambia"),
             Field("willing_to_relocate", SELECT),
             Field("open_to_partner_children", SELECT),

@@ -171,8 +171,13 @@ def _why_closed(p):
 
 # ---------------------------------------------------------------- staff actions
 
+def was_paired_before(client_a, client_b):
+    return Pairing.objects.filter(status=P.Status.CLOSED).filter(
+        Q(client_a=client_a, client_b=client_b) | Q(client_a=client_b, client_b=client_a)
+    ).exists()
+
 @transaction.atomic
-def propose(client_a, client_b, *, by, note_for_a, b_profession, b_location):
+def propose(client_a, client_b, *, by, note_for_a, b_profession, b_location, repeat_reason=""):
     if note := hold_note(client_a):
         raise InvalidTransitionError(f"{note}. Pairings can't be proposed for them while they're on hold.")
     if not can_manage(by, client_a):
@@ -182,6 +187,10 @@ def propose(client_a, client_b, *, by, note_for_a, b_profession, b_location):
     if not note_for_a.strip():
         raise InvalidTransitionError("Write the note your member will read.")
 
+    if was_paired_before(client_a, client_b) and not repeat_reason.strip():
+        raise InvalidTransitionError(
+            "These two were paired before. Say why they should be presented again."
+        )
     same_matchmaker = client_b.matchmaker_id in (None, client_a.matchmaker_id)
     pairing = Pairing.objects.create(
         client_a=client_a, client_b=client_b, added_by=by,
@@ -190,6 +199,7 @@ def propose(client_a, client_b, *, by, note_for_a, b_profession, b_location):
         a_presented_at=timezone.now() if same_matchmaker else None,
         a_presented_by=by if same_matchmaker else None,
         note_for_a=note_for_a.strip(), b_profession=b_profession.strip(), b_location=b_location.strip(),
+        repeat_reason=repeat_reason.strip(),
     )
     log_access(by, MatchAccessLog.Action.PROPOSE, client_b, f"Proposed for {client_a.pk}")
 

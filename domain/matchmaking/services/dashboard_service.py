@@ -1,5 +1,9 @@
 """
-The Overview page: the whole business at a glance, from request to introduction.
+The Overview page.
+
+Admin sees the whole business, from request to introduction.
+A matchmaker sees only their own work: requests assigned to them and members they look after.
+No business-wide traffic or totals for matchmakers.
 
 Every number is a plain count over real records. Months and weeks follow the local calendar
 (Lusaka): a week starts on Monday.
@@ -9,14 +13,18 @@ from datetime import date, datetime, time, timedelta
 from django.db.models import Count, Q
 from django.utils import timezone
 
-from domain.matchmaking.models import Consultation, ConsultationRequest, Membership, MembershipPayment
-from domain.matchmaking.models.membership import MembershipHold
+from domain.matchmaking.models import Consultation, ConsultationRequest, Membership, MembershipHold, MembershipPayment
 from domain.matchmaking.models.pairing import Pairing
 
 TREND_MONTHS = 6
 FUNNEL_DAYS = 90
 RENEWAL_DAYS = 30
 LIST_SIZE = 5
+
+
+def sees_everything(user):
+    """Admin is the only role that sees every request."""
+    return user is None or user.has_perm("base.view_all_consultation_requests")
 
 
 def _start_of(day):
@@ -66,31 +74,38 @@ def _funnel(today):
     }
 
 
-def dashboard_summary():
+def dashboard_summary(user=None):
+    """user=None or Admin: everything. A matchmaker: only their own requests, members and pairings."""
+    everything = sees_everything(user)
     today = timezone.localdate()
     month_start = today.replace(day=1)
     week_start = today - timedelta(days=today.weekday())
-    requests = ConsultationRequest.objects
+
+    requests = ConsultationRequest.objects.all()
     current = Membership.objects.filter(status=Membership.Status.ACTIVE, end_date__gte=today)
-    open_pairings = Pairing.objects.exclude(status=Pairing.Status.CLOSED)
+    pairings = Pairing.objects.all()
+    consultations = Consultation.objects.all()
+    if not everything:
+        requests = requests.filter(assigned_to=user)
+        current = current.filter(client__matchmaker=user)
+        pairings = pairings.filter(Q(client_a__matchmaker=user) | Q(client_b__matchmaker=user))
+        consultations = consultations.filter(request__assigned_to=user)
 
+    open_pairings = pairings.exclude(status=Pairing.Status.CLOSED)
     by_tier = list(current.values("tier__name").annotate(total=Count("pk")).order_by("tier__name"))
+    on_hold_ids = MembershipHold.objects.active_on(today).values("membership_id")
 
-    return {
+    summary = {
+        "sees_everything": everything,
+
         # Row 1: the four headline numbers
-        "requests_this_month": requests.filter(created_at__gte=_start_of(month_start)).count(),
         "awaiting_payment_count": requests.filter(status=ConsultationRequest.Status.AWAITING_PAYMENT).count(),
-        "consultations_this_week": Consultation.objects.filter(
+        "consultations_this_week": consultations.filter(
             scheduled_for__gte=_start_of(week_start), scheduled_for__lt=_start_of(week_start + timedelta(days=7)),
         ).count(),
         "active_members": current.count(),
-        "on_hold_members": current.filter(pk__in=MembershipHold.objects.active_on(timezone.localdate()).values("membership_id")).count(),
-        "introductions_this_month": Pairing.objects.filter(introduced_on__gte=month_start, introduced_on__lte=today).count(),
-
-        # Row 2: charts
-        "trend": _trend(today),
-        "funnel": _funnel(today),
-        "funnel_days": FUNNEL_DAYS,
+        "on_hold_members": current.filter(pk__in=on_hold_ids).count(),
+        "introductions_this_month": pairings.filter(introduced_on__gte=month_start, introduced_on__lte=today).count(),
 
         # Row 3: what needs attention
         "members_by_tier": {"labels": [r["tier__name"] for r in by_tier], "values": [r["total"] for r in by_tier]},
@@ -108,16 +123,27 @@ def dashboard_summary():
             "mutual_no_date": open_pairings.filter(status=Pairing.Status.MUTUAL, introduced_on__isnull=True).count(),
         },
         "upcoming_consultations": (
-            Consultation.objects
+            consultations
             .filter(scheduled_for__gte=timezone.now(), request__status=ConsultationRequest.Status.FEE_PAID)
             .select_related("request", "request__assigned_to")
             .order_by("scheduled_for")[:LIST_SIZE]
         ),
-
-        # Row 4 (Admin): recent requests and Elite
-        "recent_requests": requests.select_related("assigned_to", "former_elite_case")[:LIST_SIZE],
-        "elite": _elite_summary(),
     }
+
+    if everything:
+        # Business-wide numbers: Admin only
+        summary.update({
+            "requests_this_month": requests.filter(created_at__gte=_start_of(month_start)).count(),
+            "trend": _trend(today),
+            "funnel": _funnel(today),
+            "funnel_days": FUNNEL_DAYS,
+            "recent_requests": requests.select_related("assigned_to", "former_elite_case")[:LIST_SIZE],
+            "elite": _elite_summary(),
+        })
+    else:
+        # The matchmaker's own requests still in progress
+        summary["my_open_requests"] = requests.filter(status__in=ConsultationRequest.OPEN_STATUSES).count()
+    return summary
 
 
 def _elite_summary():

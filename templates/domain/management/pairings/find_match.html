@@ -108,8 +108,9 @@
                                     data-name="{{ p.preferred_name|default:c.preferred_name }}"
                                     data-location="{{ p.location }}"
                                     data-limit="{% if card.at_limit %}1{% endif %}"
-                                    data-needs-approval="{% if not card.mine %}1{% endif %}">
-                                Propose pairing
+                                    data-needs-approval="{% if not card.mine %}1{% endif %}"
+                                    data-paired-before="{% if card.paired_before %}1{% endif %}">
+                                {% if card.paired_before %}Propose again (reason needed){% else %}Propose pairing{% endif %}
                             </button>
                         </div>
                     </div>
@@ -146,6 +147,12 @@
                 <div class="alert alert-warning fs-13 py-2" data-field="limit-warning" hidden>
                     This person is already in {{ limit }} or more open pairings. You can still go ahead.
                 </div>
+                <div data-field="repeat-box" hidden>
+                    <div class="alert alert-warning fs-13 py-2 mb-2">
+                        <strong>These two were paired before.</strong> Propose stays off until you say why they should be presented again.
+                    </div>
+                    {% include "partials/management/_field.html" with field=propose_form.repeat_reason %}
+                </div>
                 {% include "partials/management/_field.html" with field=propose_form.note %}
                 <div class="row">
                     <div class="col-md-6">{% include "partials/management/_field.html" with field=propose_form.profession %}</div>
@@ -159,7 +166,7 @@
             </div>
             <div class="modal-footer d-flex flex-nowrap gap-2">
                 <button type="button" class="btn btn-light flex-fill m-0" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-primary flex-fill m-0">Propose pairing</button>
+                <button type="submit" class="btn btn-primary flex-fill m-0" data-field="submit">Propose pairing</button>
             </div>
         </form>
     </div>
@@ -178,6 +185,16 @@ document.addEventListener('click', function (event) {
     modal.querySelector('[name="location"]').value = button.dataset.location || '';
     modal.querySelector('[name="profession"]').value = '';
     modal.querySelector('[name="note"]').value = '';
+     // Paired before: a reason is needed before Propose is enabled
+    var repeat = !!button.dataset.pairedBefore;
+    var reason = modal.querySelector('[name="repeat_reason"]');
+    var submit = field('submit');
+    field('repeat-box').hidden = !repeat;
+    reason.value = '';
+    reason.required = repeat;
+    var check = function () { submit.disabled = repeat && !reason.value.trim(); };
+    reason.oninput = check;
+    check();
     bootstrap.Modal.getOrCreateInstance(modal).show();
 });
 </script>

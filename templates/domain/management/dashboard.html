@@ -18,8 +18,13 @@
             <div class="card-body d-flex align-items-center gap-3">
                 <span class="avatar avatar-lg bg-primary-transparent avatar-rounded"><i class="fe fe-inbox fs-20"></i></span>
                 <div>
-                    <p class="text-muted mb-1 fs-13">New requests this month</p>
-                    <div class="dash-figure">{{ requests_this_month }}</div>
+                    {% if sees_everything %}
+                        <p class="text-muted mb-1 fs-13">New requests this month</p>
+                        <div class="dash-figure">{{ requests_this_month }}</div>
+                    {% else %}
+                        <p class="text-muted mb-1 fs-13">My requests in progress</p>
+                        <div class="dash-figure">{{ my_open_requests }}</div>
+                    {% endif %}
                     <span class="fs-12 {% if awaiting_payment_count %}text-warning-emphasis{% else %}text-muted{% endif %}">{{ awaiting_payment_count }} awaiting fee</span>
                 </div>
             </div>
@@ -30,7 +35,7 @@
             <div class="card-body d-flex align-items-center gap-3">
                 <span class="avatar avatar-lg bg-info-transparent avatar-rounded"><i class="fe fe-calendar fs-20"></i></span>
                 <div>
-                    <p class="text-muted mb-1 fs-13">Consultations this week</p>
+                    <p class="text-muted mb-1 fs-13">{% if sees_everything %}Consultations this week{% else %}My consultations this week{% endif %}</p>
                     <div class="dash-figure">{{ consultations_this_week }}</div>
                     <span class="fs-12 text-muted">Monday to Sunday</span>
                 </div>
@@ -42,7 +47,7 @@
             <div class="card-body d-flex align-items-center gap-3">
                 <span class="avatar avatar-lg bg-success-transparent avatar-rounded"><i class="fe fe-award fs-20"></i></span>
                 <div>
-                    <p class="text-muted mb-1 fs-13">Active members</p>
+                    <p class="text-muted mb-1 fs-13">{% if sees_everything %}Active members{% else %}My active members{% endif %}</p>
                     <div class="dash-figure">{{ active_members }}</div>
                     <span class="fs-12 text-muted">{{ on_hold_members }} on hold</span>
                 </div>
@@ -54,7 +59,7 @@
             <div class="card-body d-flex align-items-center gap-3">
                 <span class="avatar avatar-lg bg-warning-transparent avatar-rounded"><i class="fe fe-heart fs-20"></i></span>
                 <div>
-                    <p class="text-muted mb-1 fs-13">Introductions this month</p>
+                    <p class="text-muted mb-1 fs-13">{% if sees_everything %}Introductions this month{% else %}My introductions this month{% endif %}</p>
                     <div class="dash-figure">{{ introductions_this_month }}</div>
                     <span class="fs-12 text-muted">Dates that took place</span>
                 </div>
@@ -63,7 +68,8 @@
     </div>
 </div>
 
-<!-- ===== Row 2: is it growing, and where do people drop off ===== -->
+<!-- ===== Row 2: is it growing, and where do people drop off (Admin only) ===== -->
+{% if sees_everything %}
 <div class="row">
     <div class="col-xl-8">
         <div class="card custom-card">
@@ -83,12 +89,13 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 <!-- ===== Row 3: what needs attention this week ===== -->
 <div class="row">
     <div class="col-xl-4 col-md-6">
         <div class="card custom-card">
-            <div class="card-header"><div class="card-title">Active members by tier</div></div>
+            <div class="card-header"><div class="card-title">{% if sees_everything %}Active members by tier{% else %}My members by tier{% endif %}</div></div>
             <div class="card-body">
                 {% if active_members %}<div id="chartTiers"></div>
                 {% else %}<p class="text-muted text-center py-5 mb-0">No active members yet.</p>{% endif %}
@@ -98,7 +105,7 @@
 
     <div class="col-xl-4 col-md-6">
         <div class="card custom-card">
-            <div class="card-header"><div class="card-title">Matching</div></div>
+            <div class="card-header"><div class="card-title">{% if sees_everything %}Matching{% else %}My matching{% endif %}</div></div>
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                     <span class="fs-13">Open pairings</span><span class="fw-semibold">{{ matching.open }}</span>
@@ -139,7 +146,7 @@
 
     <div class="col-xl-4">
         <div class="card custom-card">
-            <div class="card-header"><div class="card-title">Upcoming consultations</div></div>
+            <div class="card-header"><div class="card-title">{% if sees_everything %}Upcoming consultations{% else %}My upcoming consultations{% endif %}</div></div>
             <ul class="list-unstyled mb-0 dash-list">
                 {% for meeting in upcoming_consultations %}
                     <li class="d-flex justify-content-between align-items-center {% if not forloop.last %}border-bottom{% endif %}">
@@ -155,7 +162,7 @@
             </ul>
         </div>
 
-        {% if perms.base.manage_staff %}
+        {% if sees_everything and perms.base.manage_staff %}
             <!-- Elite: Admin only -->
             <div class="card custom-card">
                 <div class="card-header justify-content-between">
@@ -176,7 +183,7 @@
 </div>
 
 <!-- ===== Row 4: recent requests (people who see all requests) ===== -->
-{% if perms.base.view_all_consultation_requests %}
+{% if sees_everything %}
     <div class="row">
         <div class="col-12">
             <div class="card custom-card">
@@ -214,8 +221,10 @@
 {% endblock %}
 
 {% block scripts %}
-    {{ trend|json_script:"trend-data" }}
-    {{ funnel|json_script:"funnel-data" }}
+    {% if sees_everything %}
+        {{ trend|json_script:"trend-data" }}
+        {{ funnel|json_script:"funnel-data" }}
+    {% endif %}
     {{ members_by_tier|json_script:"tiers-data" }}
     <script>
     (function () {
@@ -226,6 +235,8 @@
         var wholeNumbers = { labels: { formatter: function (v) { return Math.round(v); } }, forceNiceScale: true, min: 0 };
 
         // Requests vs new members: two series over months, so grouped columns read exactly
+        // Requests and funnel charts are Admin only
+        if (document.getElementById('trend-data')) {
         var trend = read('trend-data');
         new ApexCharts(document.querySelector('#chartTrend'), {
             chart: Object.assign({ type: 'bar', height: 300 }, base),
@@ -251,6 +262,7 @@
             dataLabels: { enabled: true, style: { colors: ['#fff'] } },
             grid: { borderColor: '#ece6df' }
         }).render();
+        }
 
         // Active members by tier
         var tiers = read('tiers-data');

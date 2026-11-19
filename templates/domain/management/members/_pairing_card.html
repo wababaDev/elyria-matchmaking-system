@@ -49,6 +49,11 @@
                 {% elif row.side == "b" and p.note_for_b %}
                     <p class="fs-13 mt-2 mb-0"><span class="text-muted">Note {{ member.preferred_name }} reads:</span> {{ p.note_for_b }}</p>
                 {% endif %}
+                {% if p.repeat_reason %}
+                    <p class="fs-12 mt-2 mb-0 text-warning-emphasis">
+                        <i class="fe fe-repeat me-1"></i><strong>Presented again</strong> (paired before). Reason from {{ p.added_by.full_name }}: {{ p.repeat_reason }}
+                    </p>
+                {% endif %}
                 {% if not p.is_open %}
                     <p class="fs-12 text-muted mt-2 mb-0">Closed {{ p.closed_at|date:"j M Y" }}{% if p.closed_by %} by {{ p.closed_by.full_name }}{% endif %}: {{ p.closed_reason }}</p>
                 {% endif %}

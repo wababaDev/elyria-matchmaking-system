@@ -53,6 +53,7 @@ class Consultation(TimeStampedModel):
     b1 = models.TextField("What does a shared life actually look like for you, day to day?", blank=True)
     b2 = models.TextField("What are three things you will not compromise on, and why?", blank=True)
     b3 = models.TextField("How central is faith, family, or career to how you want to live?", blank=True)
+    b_race = models.TextField("How important is the race of the person you're being matched with?", blank=True)
     b4 = models.TextField("Your partner is offered a great job elsewhere, and taking it means relocating. How should that decision be made?", blank=True)
     b5 = models.TextField("How do you imagine major financial decisions being made between you and a partner?", blank=True)
     b6 = models.TextField("How involved do you want extended family to be in daily life together?", blank=True)

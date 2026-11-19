@@ -115,6 +115,7 @@ class ProposePairingView(StaffRequiredMixin, View):
                 note_for_a=form.cleaned_data["note"],
                 b_profession=form.cleaned_data["profession"],
                 b_location=form.cleaned_data["location"],
+                repeat_reason=form.cleaned_data["repeat_reason"],
             )
         except InvalidTransitionError as e:
             messages.error(request, str(e))
