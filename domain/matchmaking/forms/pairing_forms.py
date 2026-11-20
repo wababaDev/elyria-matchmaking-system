@@ -32,6 +32,10 @@ class ProposePairingForm(forms.Form):
                                  widget=forms.TextInput(attrs={**TEXT, "placeholder": "e.g. Works in engineering"}))
     location = forms.CharField(label="Location, as your member will see it", required=False, max_length=120,
                                widget=forms.TextInput(attrs={**TEXT, "placeholder": "e.g. Lusaka"}))
+    repeat_reason = forms.CharField(
+        label="Why present them again (staff only)", required=False,
+        widget=forms.Textarea(attrs={**TEXT, "rows": 2, "placeholder": "They were paired before. What has changed?"}),
+    )
 
 
 class ApprovalForm(forms.Form):

@@ -15,6 +15,7 @@
                         <th>Standard price</th>
                         <th>Duration</th>
                         <th>Introductions</th>
+                        <th>Hold Time</th>
                         <th>Status</th>
                         <th></th>
                     </tr>
@@ -26,7 +27,11 @@
                             <td>{% if tier.price is not None %}{{ tier.currency }} {{ tier.price|floatformat:2 }}{% else %}<span class="text-muted">Agreed case by case</span>{% endif %}</td>
                             <td>{{ tier.duration_months }} month{{ tier.duration_months|pluralize }}</td>
                             <td>{% if tier.max_introductions %}{{ tier.max_introductions }}{% else %}<span class="text-muted">Unlimited</span>{% endif %}</td>
-                            <td>{% if tier.is_active %}<span class="badge bg-success-transparent">Active</span>{% else %}<span class="badge bg-light text-muted">Retired</span>{% endif %}</td>
+                            <td>{% if tier.hold_days %}Up to {{ tier.hold_weeks }} week{{ tier.hold_weeks|pluralize }}{% else %}<span class="text-muted">No</span>{% endif %}</td>
+                            <td>
+                               {% if tier.is_active %}<span class="badge bg-success-transparent">Active</span>{% else %}<span class="badge bg-light text-muted">Retired</span>{% endif %}
+                               {% if tier.is_elite %}<span class="badge bg-light text-dark ms-1" title="Used for the Elite fee only. Not offered in Confirm membership or Renew.">Elite path only</span>{% endif %}
+                           </td>
                             <td class="text-end"><a href="{% url 'matchmaking:settings-tiers-edit' tier.pk %}"
    class="btn btn-sm btn-light">Edit</a></td>
                         </tr>
@@ -34,6 +39,6 @@
                 </tbody>
             </table>
         </div>
-        <div class="card-footer text-muted fs-12">Price and duration changes apply to new memberships and renewals. Introduction numbers apply to members on that tier straight away, until they renew.</div>
+        <div class="card-footer text-muted fs-12">Price and duration changes apply to new memberships and renewals. Introduction numbers and Hold Time apply to members on that tier straight away. Hold Time starts again on renewal or upgrade.</div>
     </div>
 {% endblock %}

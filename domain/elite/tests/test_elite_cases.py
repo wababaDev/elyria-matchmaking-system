@@ -60,14 +60,20 @@ class EliteTestCase(TestCase):
         with self.captureOnCommitCallbacks(execute=True):
             return self.client.get(reverse("elite:confirm", args=[case.verify_token]))
 
-    def to_review(self):
-        case = self.apply()
+    def to_review(self, email="mwila@example.com", person="Chanda Mulenga"):
+        case = self.apply(email)
         self.confirm(case)
         self.client.force_login(self.admin)
         for kind in ("nda", "declaration", "request_form"):
             self.client.post(reverse("elite:case-upload", args=[case.pk]), {"kind": kind, "file": pdf(f"{kind}.pdf")})
         self.client.post(reverse("elite:case-received", args=[case.pk]), {"nda": "on", "declaration": "on", "request_form": "on"})
         case.refresh_from_db()
+        if person:
+            # Admin enters the named person from the Request Form during review
+            from domain.elite.services import elite_service
+            elite_service.record_person(case, name=person, contact_type="phone", contact="+260 977 000000",
+                                        met_where="Church in Lusaka", by=self.admin)
+            case.refresh_from_db()
         return case
 
 
@@ -243,6 +249,8 @@ class AfterApprovalBase(EliteTestCase):
             svc.add_document(case, kind=kind, file=pdf(f"{kind}.pdf"), by=self.admin)
         svc.confirm_documents(case, nda=True, declaration=True, request_form=True, by=self.admin)
         svc.save_checks(case, checks={field: True for field, _ in svc.CHECKS}, by=self.admin)
+        svc.record_person(case, name="Thandi Phiri", contact_type="phone", contact="+260 977 123456",
+                          met_where="A friend's wedding in Lusaka", occupation="Banker", by=self.admin)
         svc.decide(case, decision="approve", by=self.admin)
         with self.captureOnCommitCallbacks(execute=True):
             svc.assign_handler(case, handler=self.matchmaker, by=self.admin)
@@ -326,13 +334,15 @@ class AfterApprovalTests(AfterApprovalBase):
         self.assertEqual(SuppressionEntry.objects.count(), 1)
         self.assertTrue(any("Bronze" in m.body for m in mail.outbox if case.email in m.to))
 
-        # Someone asks for the same person again (same number written differently): refused
-        other = self.approved("other@example.com")
-        svc.record_fee(other, method="bank_transfer", reference="", paid_on=date.today(), by=self.matchmaker)
-        _, matches = svc.record_person(other, name="Thandi  phiri", contact_type="phone", contact="0977123456", by=self.matchmaker)
-        self.assertEqual(len(matches), 1)                                          # warned, not blocked (names aren't unique)
+        # Someone asks for the same person again: caught at review, before any payment request
+        other = self.to_review("other@example.com", person=None)
+        _, matches = svc.record_person(other, name="Thandi  phiri", contact_type="phone", contact="0977123456", by=self.admin)
+        self.assertEqual(len(matches), 1)
         self.assertIn(case.reference, svc.describe_match(matches[0]))
         self.assertTrue(other.events.filter(text__startswith="Warning: someone with the same name").exists())
+        svc.save_checks(other, checks={field: True for field, _ in svc.CHECKS}, by=self.admin)
+        with self.assertRaisesMessage(svc.EliteError, "do not approach"):
+            svc.decide(other, decision="approve", by=self.admin)
         entry = SuppressionEntry.objects.get()
         self.assertEqual((entry.person_name, entry.client_name, entry.met_where, entry.occupation),
                          ("Thandi Phiri", case.full_name, "A friend's wedding in Lusaka", "Banker"))
@@ -542,3 +552,55 @@ class FormerEliteTests(AfterApprovalBase):
         self.assertNotContains(response, "977")                                           # no phone kept
         self.client.force_login(self.matchmaker)                                         # handlers don't get the tab
         self.assertNotContains(self.client.get(reverse("elite:cases") + "?show=register"), "Do not approach")
+
+class DoNotApproachBeforePaymentTests(AfterApprovalBase):
+    """The named person is checked at review, so the client is told before being asked to pay."""
+ 
+    def on_the_list(self):
+        case = self.paid()
+        svc.record_outreach(case, delivered=True, sent_on=date.today(), by=self.matchmaker)
+        with self.captureOnCommitCallbacks(execute=True):
+            svc.record_answer(case, answer="declined", by=self.matchmaker)
+        return case
+ 
+    def second_request(self):
+        self.on_the_list()
+        mail.outbox.clear()
+        other = self.to_review("other@example.com", person="Thandi Phiri")
+        svc.save_checks(other, checks={field: True for field, _ in svc.CHECKS}, by=self.admin)
+        return other
+ 
+    def test_match_blocks_approve_so_no_payment_request(self):
+        other = self.second_request()
+        self.client.post(reverse("elite:case-decide", args=[other.pk]), {"decision": "approve"})
+        other.refresh_from_db()
+        self.assertEqual(other.status, EliteCase.Status.UNDER_REVIEW)
+        self.assertFalse(any("payment" in m.subject.lower() for m in mail.outbox))
+        page = self.client.get(reverse("elite:case-detail", args=[other.pk]))
+        self.assertContains(page, "On the \"do not approach\" list")
+ 
+    def test_client_names_a_different_person(self):
+        other = self.second_request()
+        svc.record_person(other, name="Chanda Mulenga", contact_type="phone", contact="0977000111", by=self.admin)
+        svc.decide(other, decision="approve", by=self.admin)
+        other.refresh_from_db()
+        self.assertEqual(other.status, EliteCase.Status.APPROVED)
+ 
+    def test_client_chooses_to_close(self):
+        other = self.second_request()
+        with self.assertRaises(svc.EliteError):
+            svc.decide(other, decision="withdraw", note="", by=self.admin)       # needs what they chose
+        svc.decide(other, decision="withdraw", note="Will apply for Gold instead.", by=self.admin)
+        other.refresh_from_db()
+        self.assertEqual(other.status, EliteCase.Status.CLOSED)
+        self.assertIsNotNone(other.closed_at)
+        self.assertFalse(other.fee_recorded)
+ 
+    def test_admin_confirms_a_different_person_with_the_same_name(self):
+        other = self.second_request()
+        with self.assertRaises(svc.EliteError):
+            svc.clear_dna_match(other, note="Met elsewhere", by=self.matchmaker)  # Admin only
+        svc.clear_dna_match(other, note="Met at university in Kitwe, teacher", by=self.admin)
+        svc.decide(other, decision="approve", by=self.admin)
+        other.refresh_from_db()
+        self.assertEqual(other.status, EliteCase.Status.APPROVED)

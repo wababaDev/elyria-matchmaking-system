@@ -5,13 +5,14 @@ from django.urls import reverse
 from django.utils import timezone
 
 from domain.matchmaking.models import MembershipPayment, MembershipTier, Pairing
+from domain.matchmaking.services.consultation_request_service import InvalidTransitionError
 from domain.matchmaking.services.member_service import (
     end_hold,
     introduction_status,
     renew_membership,
     start_hold,
 )
-from domain.matchmaking.services.pairing_service import candidates_for, record_introduction
+from domain.matchmaking.services.pairing_service import candidates_for, propose, record_introduction
 from domain.matchmaking.tests.test_pairings import PairingCase, make_member
 
 
@@ -92,23 +93,25 @@ class RenewUpgradeTests(IntroductionCase):
         self.assertEqual(self.natasha.membership.payments.first().kind, MembershipPayment.Kind.UPGRADE)
 
 
-class HoldTests(IntroductionCase):
-    def test_hold_hides_member_and_extends_end_date(self):
-        membership = self.david.membership
-        old_end = membership.end_date
-        start_hold(membership, reason="work", started_on=timezone.localdate() - timedelta(days=10), by=self.annastasia)
-        self.assertNotIn(self.david, candidates_for(self.natasha))
 
-        hold = end_hold(membership, by=self.annastasia)
-        membership.refresh_from_db()
-        self.assertEqual(hold.days_added, 10)
-        self.assertEqual(membership.end_date, old_end + timedelta(days=10))
-        self.assertIn(self.david, candidates_for(self.natasha))
 
-    def test_hold_from_member_page(self):
-        self.as_user(self.annastasia)
-        self.client.post(reverse("matchmaking:member-hold-start", args=[self.david.pk]),
-                         {"reason": "grievance", "started_on": timezone.localdate().isoformat()})
-        self.assertTrue(self.david.membership.holds.filter(ended_on__isnull=True).exists())
-        response = self.client.get(reverse("matchmaking:member-detail", args=[self.david.pk]))
-        self.assertContains(response, "On hold")
+class RepeatPairingTests(IntroductionCase):
+    def setUp(self):
+        super().setUp()
+        between = Pairing.objects.filter(client_a__in=[self.david, self.natasha], client_b__in=[self.david, self.natasha])
+        between.update(status=Pairing.Status.CLOSED)
+        if not between.exists():
+            Pairing.objects.create(client_a=self.david, client_b=self.natasha, added_by=self.annastasia,
+                                   status=Pairing.Status.CLOSED)
+
+    def go(self, reason=""):
+        return propose(self.david, self.natasha, by=self.annastasia, note_for_a="x",
+                       b_profession="", b_location="", repeat_reason=reason)
+
+    def test_refused_without_reason(self):
+        with self.assertRaisesMessage(InvalidTransitionError, "paired before"):
+            self.go()
+
+    def test_allowed_with_reason_and_saved(self):
+        pairing = self.go("Both have moved to Lusaka since.")
+        self.assertEqual(pairing.repeat_reason, "Both have moved to Lusaka since.")

@@ -13,6 +13,7 @@ from domain.matchmaking.models import (
     MembershipHold,
     Pairing,
 )
+from domain.matchmaking.models.date_feedback import DateFeedback
 from domain.matchmaking.models.pairing import OPEN_PAIRING_LIMIT
 from domain.matchmaking.services.consultation_request_service import InvalidTransitionError
 from domain.matchmaking.services.member_service import members_visible_to
@@ -82,6 +83,20 @@ def may_view_profile(user, pairing, client):
 def log_access(user, action, client=None, detail=""):
     MatchAccessLog.objects.create(user=user, action=action, client=client, detail=detail[:300])
 
+def _current_hold(client):
+    """The member's hold covering today, or None."""
+    membership = getattr(client, "membership", None)
+    return membership.current_hold if membership else None
+
+
+def hold_note(client):
+    """'David on hold until 14 Dec', or '' if not on hold."""
+    hold = _current_hold(client)
+    if not hold:
+        return ""
+    until = f" until {hold.ended_on.day} {hold.ended_on:%b}" if hold.ended_on else ""
+    return f"{client.preferred_name} on hold{until}"
+
 
 # ---------------------------------------------------------------- finding candidates
 
@@ -105,7 +120,7 @@ def candidates_for(client, *, age_min=None, age_max=None, city="", children="", 
         profile__seeking=GENDER_SEEKING.get(profile.gender, "-"),
     ).exclude(pk=client.pk)
     # Members on Hold Time aren't set on any dates
-    qs = qs.exclude(pk__in=MembershipHold.objects.filter(ended_on__isnull=True).values("membership__client_id"))
+    qs = qs.exclude(pk__in=MembershipHold.objects.active_on(today).values("membership__client_id"))
 
     already = Pairing.objects.exclude(status=P.Status.CLOSED).filter(Q(client_a=client) | Q(client_b=client))
     paired_ids = set(already.values_list("client_a", flat=True)) | set(already.values_list("client_b", flat=True))
@@ -157,8 +172,15 @@ def _why_closed(p):
 
 # ---------------------------------------------------------------- staff actions
 
+def was_paired_before(client_a, client_b):
+    return Pairing.objects.filter(status=P.Status.CLOSED).filter(
+        Q(client_a=client_a, client_b=client_b) | Q(client_a=client_b, client_b=client_a)
+    ).exists()
+
 @transaction.atomic
-def propose(client_a, client_b, *, by, note_for_a, b_profession, b_location):
+def propose(client_a, client_b, *, by, note_for_a, b_profession, b_location, repeat_reason=""):
+    if note := hold_note(client_a):
+        raise InvalidTransitionError(f"{note}. Pairings can't be proposed for them while they're on hold.")
     if not can_manage(by, client_a):
         raise InvalidTransitionError("You can only propose pairings for your own members.")
     if not candidates_for(client_a).filter(pk=client_b.pk).exists():
@@ -166,6 +188,10 @@ def propose(client_a, client_b, *, by, note_for_a, b_profession, b_location):
     if not note_for_a.strip():
         raise InvalidTransitionError("Write the note your member will read.")
 
+    if was_paired_before(client_a, client_b) and not repeat_reason.strip():
+        raise InvalidTransitionError(
+            "These two were paired before. Say why they should be presented again."
+        )
     same_matchmaker = client_b.matchmaker_id in (None, client_a.matchmaker_id)
     pairing = Pairing.objects.create(
         client_a=client_a, client_b=client_b, added_by=by,
@@ -174,6 +200,7 @@ def propose(client_a, client_b, *, by, note_for_a, b_profession, b_location):
         a_presented_at=timezone.now() if same_matchmaker else None,
         a_presented_by=by if same_matchmaker else None,
         note_for_a=note_for_a.strip(), b_profession=b_profession.strip(), b_location=b_location.strip(),
+        repeat_reason=repeat_reason.strip(),
     )
     log_access(by, MatchAccessLog.Action.PROPOSE, client_b, f"Proposed for {client_a.pk}")
 
@@ -474,8 +501,16 @@ OVERVIEW_FILTERS = [
     ("all", "All"),
 ]
 
-
 def where_it_stands(pairing, user):
+    """(text, waiting_on_me). Open pairings also say if either member is on hold."""
+    text, on_me = _where_it_stands(pairing, user)
+    if pairing.is_open:
+        notes = [n for n in (hold_note(pairing.client_a), hold_note(pairing.client_b)) if n]
+        if notes:
+            text = f"{text} ·  {' · '.join(notes)}"
+    return text, on_me
+
+def _where_it_stands(pairing, user):
     """(text, waiting_on_me) for one pairing, from the point of view of `user`."""
     a, b = pairing.client_a, pairing.client_b
     a_mm = a.matchmaker.full_name if a.matchmaker else "the other matchmaker"
@@ -564,12 +599,18 @@ def member_pairing_rows(user, member):
     for p in pairings_for(member).select_related("a_presented_by", "b_presented_by", "closed_by"):
         other = p.other(member)
         text, on_me = where_it_stands(p, user)
+        mine = feedback.get(p.pk, [])
+        # Closed after a date, but this member's feedback isn't in yet: keep it open for feedback
+        other_count = DateFeedback.objects.filter(pairing=p, client=other).count() if p.introduced_on else 0
+        feedback_pending = bool(p.introduced_on) and not p.is_open and len(mine) < max(other_count, 1)
+        if feedback_pending:
+            text, on_me = f"Closed: record {member.preferred_name}'s feedback for the date", True
         row = {
             "p": p, "other": other, "other_profile": getattr(other, "profile", None),
             "other_is_mine": other.pk in visible_ids, "side": p.side(member),
-            "stands": text, "on_me": on_me, "feedback": feedback.get(p.pk, []),
+            "stands": text, "on_me": on_me, "feedback": mine, "feedback_pending": feedback_pending,
         }
-        (open_rows if p.is_open else closed_rows).append(row)
+        (open_rows if p.is_open or feedback_pending else closed_rows).append(row)
 
     def priority(row):
         p = row["p"]

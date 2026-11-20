@@ -19,6 +19,7 @@ urlpatterns = [
     path("management/elite/<int:pk>/documents/<int:document_pk>/", staff.DocumentFileView.as_view(), name="case-document"),
     path("management/elite/<int:pk>/checks/", staff.SaveChecksView.as_view(), name="case-checks"),
     path("management/elite/<int:pk>/decide/", staff.DecideView.as_view(), name="case-decide"),
+    path("management/elite/<int:pk>/dna-clear/", staff.ClearDnaView.as_view(), name="case-dna-clear"),
 
     # Part 2a (Case Handler; Admin can step in)
     path("management/elite/<int:pk>/handler/", staff.AssignHandlerView.as_view(), name="case-handler"),

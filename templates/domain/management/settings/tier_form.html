@@ -1,27 +1,56 @@
 {% extends 'domain/management/settings/_base.html' %}
 
 {% block settings_content %}
-    <div class="card custom-card" style="max-width: 640px;">
+    <div class="row">
+       <div class="col-xl-8">
+       <div class="card custom-card">
         <div class="card-header"><div class="card-title">{% if object %}Edit {{ object.name }}{% else %}Add tier{% endif %}</div></div>
         <div class="card-body">
             <form method="post">
                 {% csrf_token %}
-                {% include "partials/management/_field.html" with field=form.name %}
+
+                <h6 class="fw-semibold mb-3">Tier</h6>
                 <div class="row">
-                    <div class="col-7">{% include "partials/management/_field.html" with field=form.price %}</div>
-                    <div class="col-5">{% include "partials/management/_field.html" with field=form.currency %}</div>
+                    <div class="col-md-6">{% include "partials/management/_field.html" with field=form.name %}</div>
+                    <div class="col-md-4">{% include "partials/management/_field.html" with field=form.price %}</div>
+                    <div class="col-md-2">{% include "partials/management/_field.html" with field=form.currency %}</div>
                 </div>
                 <div class="row">
-                    <div class="col-sm-4">{% include "partials/management/_field.html" with field=form.duration_months %}</div>
-                    <div class="col-sm-4">{% include "partials/management/_field.html" with field=form.max_introductions %}</div>
-                    <div class="col-sm-4">{% include "partials/management/_field.html" with field=form.display_order %}</div>
+                    <div class="col-md-4">{% include "partials/management/_field.html" with field=form.duration_months %}</div>
+                    <div class="col-md-4">{% include "partials/management/_field.html" with field=form.max_introductions %}</div>
+                    <div class="col-md-4">{% include "partials/management/_field.html" with field=form.display_order %}</div>
                 </div>
+
+                <hr class="my-3">
+                <h6 class="fw-semibold mb-3">Hold Time</h6>
+                <div class="row">
+                    <div class="col-md-4">
+                        {% include "partials/management/_field.html" with field=form.allows_hold %}
+                        <div id="holdWeeksField">{% include "partials/management/_field.html" with field=form.hold_weeks %}</div>
+                    </div>
+                </div>
+
+                <hr class="my-3">
                 {% include "partials/management/_field.html" with field=form.is_active %}
-                <div class="d-flex justify-content-between">
+
+                <div class="d-flex justify-content-between mt-3">
                     <a href="{% url 'matchmaking:settings-tiers' %}" class="btn btn-light">Cancel</a>
                     <button type="submit" class="btn btn-primary">Save tier</button>
                 </div>
             </form>
         </div>
     </div>
+    </div>
+    </div>
+    <script>
+        // Only show "Hold Time (weeks)" when the tier allows hold
+        document.addEventListener("DOMContentLoaded", function () {
+            const box = document.getElementById("{{ form.allows_hold.id_for_label }}");
+            const weeks = document.getElementById("holdWeeksField");
+            if (!box || !weeks) return;
+            const toggle = function () { weeks.style.display = box.checked ? "" : "none"; };
+            box.addEventListener("change", toggle);
+            toggle();
+        });
+    </script>
 {% endblock %}

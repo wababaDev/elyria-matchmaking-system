@@ -53,6 +53,11 @@ class DateFeedback(TimeStampedModel):
         HIGH = "high", "High"
         SERIOUS = "serious", "Serious (Admin is emailed)"
 
+    class FlagStatus(models.TextChoices):
+        OPEN = "open", "Open"
+        ACTION_TAKEN = "action_taken", "Action taken"
+        RESOLVED = "resolved", "Resolved"
+
     class Outcome(models.TextChoices):
         ANOTHER_DATE = "another_date", "Another date"
         ENDED_BY_CLIENT = "ended_by_client", "Ended by client"
@@ -107,6 +112,13 @@ class DateFeedback(TimeStampedModel):
     profile_vs_report = models.TextField(
         "Differences between the match's profile and what the client reported", blank=True
     )
+        # What was done about the red flag, and where it stands (kept after the pairing closes)
+    flag_status = models.CharField("Flag status", max_length=20, choices=FlagStatus.choices, blank=True)
+    flag_action = models.TextField("Action taken", blank=True)
+    flag_action_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="+"
+    )
+    flag_action_at = models.DateTimeField(null=True, blank=True)
 
     # ---------- 5. Outcome
     outcome = models.CharField("Outcome", max_length=20, choices=Outcome.choices)

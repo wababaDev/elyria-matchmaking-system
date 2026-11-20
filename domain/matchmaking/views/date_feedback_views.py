@@ -16,6 +16,9 @@ from domain.matchmaking.services.date_feedback_service import (
     save_feedback,
 )
 from domain.matchmaking.services.pairing_service import pairings_visible_to
+from django.views import View
+from domain.matchmaking.forms.date_feedback_forms import FlagActionForm
+from domain.matchmaking.services.date_feedback_service import update_flag
 
 
 class DateFeedbackView(StaffRequiredMixin, TemplateView):
@@ -73,3 +76,21 @@ class DateFeedbackView(StaffRequiredMixin, TemplateView):
             return redirect(self.back_url())
         messages.success(request, f"Feedback for date {feedback.date_number} saved ({feedback.get_outcome_display()}).")
         return redirect(self.back_url())
+
+
+class FlagActionView(StaffRequiredMixin, View):
+    permission_required = "base.manage_matching"
+    http_method_names = ["post"]
+
+    def post(self, request, feedback_pk):
+        feedback = get_object_or_404(DateFeedback.objects.select_related("client"), pk=feedback_pk)
+        form = FlagActionForm(request.POST)
+        if form.is_valid():
+            try:
+                update_flag(feedback, by=request.user, **form.cleaned_data)
+                messages.success(request, "Red flag updated.")
+            except InvalidTransitionError as e:
+                messages.error(request, str(e))
+        else:
+            messages.error(request, "Choose a status.")
+        return redirect(reverse("matchmaking:member-detail", args=[feedback.client_id]) + "#pairings")

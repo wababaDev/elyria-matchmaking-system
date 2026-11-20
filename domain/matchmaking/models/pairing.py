@@ -92,6 +92,9 @@ class Pairing(TimeStampedModel):
     introduction_minutes = models.PositiveSmallIntegerField("Planned length (minutes)", null=True, blank=True)
     introduction_setting_other = models.CharField("Setting (other)", max_length=120, blank=True)
 
+    #  Filled in when these two were paired before: why present them again (staff only)
+    repeat_reason = models.TextField("Why present again", blank=True)
+
     @property
     def introduction_setting_label(self):
         if self.introduction_setting == self.Setting.OTHER and self.introduction_setting_other:

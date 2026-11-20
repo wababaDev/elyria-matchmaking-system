@@ -20,6 +20,7 @@ from domain.elite.forms import (
     CloseCaseForm,
     ConfirmForm,
     DecisionForm,
+    DnaClearForm,
     DocumentsReceivedForm,
     DocumentUploadForm,
     ExtendWindowForm,
@@ -151,6 +152,8 @@ class CaseDetailView(EliteStaffMixin, TemplateView):
                 "met_where": case.person_met_where, "occupation": case.person_occupation,
             } if case.has_person else None),
             outreach_form=OutreachForm(),
+            dna_matches=[svc.describe_match(e) for e in svc.suppression_matches(case.person_name)] if case.has_person else [],
+            dna_blocked=svc.dna_blocked(case),
             ack_form=AcknowledgementForm(),
             has_indemnity_file=case.documents.filter(kind=EliteDocument.Kind.INDEMNITY).exists(),
             has_ack_file=case.documents.filter(kind=EliteDocument.Kind.ACKNOWLEDGEMENT).exists(),
@@ -256,9 +259,17 @@ class DecideView(AdminCaseActionView):
             "approve": "Approved. Next: assign the Case Handler (this emails the payment request).",
             "decline": "Declined. The client has been sent the standard message.",
             "more_info": "Your question has been emailed to the client.",
+            "withdraw": "Closed at the client's request. No fee was charged.",
         }[data["decision"]], ""
 
 
+class ClearDnaView(AdminCaseActionView):
+    form_class = DnaClearForm
+ 
+    def perform(self, case, data):
+        svc.clear_dna_match(case, note=data["note"], by=self.request.user)
+        return "Recorded as a different person. You can approve now.", ""
+ 
 class InfoAnswerView(AdminCaseActionView):
     form_class = InfoAnswerForm
 
@@ -303,7 +314,10 @@ class RecordPersonView(CaseActionView):
 
     def perform(self, case, data):
         _, matches = svc.record_person(case, by=self.request.user, **data)
-        if matches:
+        if matches and case.status == S.UNDER_REVIEW:
+            messages.warning(self.request, "This person is on the 'do not approach' list. Don't approve: tell the "
+                             "client before any payment and let them choose (see Review).")
+        elif matches:
             messages.warning(self.request, "Someone with the same name is on the 'do not approach' list: "
                              + "; ".join(svc.describe_match(e) for e in matches)
                              + ". Check with Admin before any outreach.")

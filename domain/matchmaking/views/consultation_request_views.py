@@ -113,7 +113,7 @@ class ConsultationRequestDetailView(StaffRequiredMixin, DetailView):
                     "start_date": timezone.localdate(),
                 }
             ),
-            active_tiers=MembershipTier.objects.filter(is_active=True),
+            active_tiers=MembershipTier.objects.for_members(),
         )
 
         return context

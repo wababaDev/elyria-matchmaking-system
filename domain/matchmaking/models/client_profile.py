@@ -56,6 +56,25 @@ class ClientProfile(TimeStampedModel):
         CURVY = "curvy", "Curvy"
         BROAD = "broad", "Broad"
 
+    class Ethnicity(models.TextChoices):
+        BLACK_AFRICAN = "black_african", "Black African"
+        WHITE = "white", "White"
+        ASIAN = "asian", "Asian"
+        INDIAN = "indian", "Indian"
+        ARAB = "arab", "Arab"
+        MIXED = "mixed", "Mixed (specify)"
+        OTHER = "other", "Other (specify)"
+
+    class PartnerEthnicity(models.TextChoices):
+        ANY = "any", "Any / Doesn't matter"
+        BLACK_AFRICAN = "black_african", "Black African"
+        WHITE = "white", "White"
+        ASIAN = "asian", "Asian"
+        INDIAN = "indian", "Indian"
+        ARAB = "arab", "Arab"
+        MIXED = "mixed", "Mixed"
+        OTHER = "other", "Other (specify)"
+
     class Education(models.TextChoices):
         SECONDARY = "secondary", "Secondary"
         DIPLOMA = "diploma", "Diploma / Certificate"
@@ -200,6 +219,9 @@ class ClientProfile(TimeStampedModel):
 
     # ---------- Additional personal information
     build = choice("General build", Build.choices)
+    ethnicity = choice("Ethnicity", Ethnicity.choices)
+    ethnicity_mixed = models.CharField("Ethnicity: mixed (specify)", max_length=150, blank=True)
+    ethnicity_other = models.CharField("Ethnicity: other (specify)", max_length=150, blank=True)
     languages = models.CharField("Languages spoken", max_length=200, blank=True)
     education = choice("Education level", Education.choices)
     education_other = models.CharField("Education (other)", max_length=150, blank=True)
@@ -288,6 +310,8 @@ class ClientProfile(TimeStampedModel):
         "Age to", null=True, blank=True, validators=[MinValueValidator(20), MaxValueValidator(90)]
     )
     partner_location = models.CharField("Preferred location", max_length=200, blank=True)
+    partner_ethnicity = choice("Ethnicity of preferred partner", PartnerEthnicity.choices)
+    partner_ethnicity_other = models.CharField("Partner ethnicity (specify)", max_length=150, blank=True)
     willing_to_relocate = choice("Willing to relocate to your partner's location?", YesNoMaybe.choices)
     open_to_partner_children = choice("Open to a partner who already has children?", YesNoOpen.choices)
     open_to_long_distance = choice("Open to a long-distance relationship?", LongDistance.choices)

@@ -25,7 +25,16 @@
                     <p class="fst-italic mb-1">"{{ open_info.question|truncatechars:160 }}"</p>
                     <p class="text-muted mb-0">When they reply to info@, Admin clicks "Answer received" in Review. If they never answer, record that there instead. Approve stays locked until then.</p>
 
-                {% elif case.status == "under_review" %}
+                    {% elif case.status == "under_review" and not case.has_person %}
+                    <p class="mb-1"><strong>Admin:</strong> enter the named person's details from the Request Form, in Review.</p>
+                    <p class="text-muted mb-0">They're checked against the "do not approach" list before anything else, so the client is never asked to pay for someone who can't be approached.</p>
+ 
+                {% elif case.status == "under_review" and dna_blocked %}
+                    <p class="mb-1"><strong>Admin:</strong> the named person is on the "do not approach" list. Tell the client before any payment and let them choose:</p>
+                    <p class="mb-0">name a different person · close the case · or apply for another membership tier. <span class="text-muted">Approve stays locked until then.</span></p>
+  
+                
+                    {% elif case.status == "under_review" %}
                     <p class="mb-1"><strong>Admin:</strong> do the five checks, save them, then Approve, ask for more information, or Decline.</p>
                     <p class="text-muted mb-0">No fee is charged at this stage. Declining sends the standard message with no reason.</p>
 
@@ -89,7 +98,7 @@
 
                 {% elif case.status == "declined" %}
                     <p class="mb-1">Nothing more to do. The application was declined{% if case.decided_at %} on {{ case.decided_at|date:"j M Y" }}{% endif %}.</p>
-                    <p class="text-muted mb-0">No outreach happened, so there are no details about the named person to delete. The application itself is kept as a record.</p>
+                    <p class="text-muted mb-0">No outreach happened. Any named-person details entered at review become due for deletion 30 days after it closed. The application itself is kept as a record.</p>
 
                 {% elif due_for_deletion %}
                     <p class="mb-1"><strong>Admin:</strong> this case is due for deletion. Use "Delete now" above.</p>

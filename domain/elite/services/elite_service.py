@@ -180,9 +180,11 @@ def save_checks(case, *, checks, by):
 @transaction.atomic
 def decide(case, *, decision, note="", by):
     """
-    approve: all checks must be ticked; no fee yet (payment is the next step).
+    approve: all checks ticked, the named person entered and not on the 'do not approach' list
+             (or cleared by Admin). No fee yet: payment is the next step.
     decline: the client gets an automatic message with no reason. No fee, no Bronze offer. Closed.
     more_info: stays under review; the message is emailed to the client.
+    withdraw: the client chose to close (e.g. after hearing the person is on the list). No email, no fee. Closed.
     """
     case = _lock(case)
     if not is_admin(by):
@@ -195,6 +197,11 @@ def decide(case, *, decision, note="", by):
             raise EliteError("Tick all the checks before approving.")
         if open_info_request(case):
             raise EliteError("A question to the client is still open. Record their answer (or 'No answer') first.")
+        if not case.has_person:
+            raise EliteError("Enter the named person's details from the Request Form first.")
+        if dna_blocked(case):
+            raise EliteError("The named person matches the 'do not approach' list. Tell the client before any "
+                             "payment and let them choose: name someone else, close the case, or another tier.")
         case.status = S.APPROVED
         case.decided_at, case.decided_by = timezone.now(), by
         case.save()
@@ -214,6 +221,14 @@ def decide(case, *, decision, note="", by):
         EliteInfoRequest.objects.create(case=case, question=note.strip(), asked_by=by)
         log_event(case, f"More information requested from the client: {note.strip()}", by)
         transaction.on_commit(lambda: _emails().notify_more_info(case, note.strip()))
+    elif decision == "withdraw":
+        if not note.strip():
+            raise EliteError("Say in the note what the client chose (e.g. close the case, or apply for another tier).")
+        case.status = S.CLOSED
+        case.decided_at, case.decided_by = timezone.now(), by
+        case.closed_at = case.decided_at
+        case.save()
+        log_event(case, f"Closed at the client's request before payment. No fee charged. {note.strip()}", by)
     else:
         raise EliteError("Unknown decision.")
     return case
@@ -340,6 +355,29 @@ def suppression_matches(name):
     """'Do not approach' entries with the same full name. Names aren't unique, so this warns; people decide."""
     return list(SuppressionEntry.objects.filter(name_fingerprint=crypto.fingerprint(crypto.normalise_name(name))))
  
+
+def dna_blocked(case):
+    """True while the named person matches the list and Admin hasn't confirmed it's someone else."""
+    return case.has_person and case.dna_cleared_at is None and bool(suppression_matches(case.person_name))
+ 
+ 
+@transaction.atomic
+def clear_dna_match(case, *, note, by):
+    """Names aren't unique: Admin confirms the match is clearly a different person (met elsewhere, other job)."""
+    case = _lock(case)
+    if not is_admin(by):
+        raise EliteError("Only Admin can do that.")
+    if case.status != S.UNDER_REVIEW:
+        raise EliteError("This is checked during review.")
+    if not dna_blocked(case):
+        raise EliteError("There's no 'do not approach' match to clear.")
+    if not note.strip():
+        raise EliteError("Say why it's a different person.")
+    case.dna_cleared_at, case.dna_cleared_by, case.dna_clear_note = timezone.now(), by, note.strip()
+    case.save()
+    log_event(case, f"Admin confirmed the named person is not the one on the 'do not approach' list: {note.strip()}", by)
+    return case
+
  
 def describe_match(entry):
     """One line for the warning: which case, where they met, occupation."""
@@ -358,11 +396,19 @@ def record_person(case, *, name, contact_type, contact, contact_other="", met_wh
     Returns (case, matches): 'do not approach' entries with the same name, for the handler to check.
     """
     case = _lock(case)
-    _require_handler(by, case)
-    if case.status not in (S.APPROVED, S.PAID):
-        raise EliteError("The person's details are recorded before outreach.")
+    if case.status == S.UNDER_REVIEW:
+        # From the Request Form, at review: checked against the list before any payment
+        if not is_admin(by):
+            raise EliteError("Only Admin enters the named person during review.")
+    elif case.status in (S.APPROVED, S.PAID):
+        _require_handler(by, case)
+    else:
+        raise EliteError("The person's details are recorded at review, or before outreach.")
     matches = suppression_matches(name)
     first = not case.has_person
+    if not first and crypto.normalise_name(case.person_name) != crypto.normalise_name(name):
+        # A different person: any earlier "not the same person" ruling no longer applies
+        case.dna_cleared_at, case.dna_cleared_by, case.dna_clear_note = None, None, ""
     case.person_name_enc = crypto.encrypt(name.strip())
     case.person_contact_type = contact_type
     case.person_contact_enc = crypto.encrypt(contact.strip())

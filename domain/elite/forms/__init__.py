@@ -58,13 +58,10 @@ class ChecksForm(forms.Form):
 
 
 class DecisionForm(forms.Form):
-    decision = forms.ChoiceField(
-        choices=[
-            ("approve", "Approve"),
-            ("decline", "Decline"),
-            ("more_info", "More information needed"),
-        ]
-    )
+    decision = forms.ChoiceField(choices=[
+        ("approve", "Approve"), ("decline", "Decline"), ("more_info", "More information needed"),
+        ("withdraw", "Client chose to close"),
+    ])
     note = forms.CharField(required=False, max_length=2000)
 
 
@@ -359,7 +356,9 @@ class CaseNoteForm(forms.Form):
         required=False, widget=forms.CheckboxInput(attrs={"class": "form-check-input"})
     )
 
-
+class DnaClearForm(forms.Form):
+    note = forms.CharField(max_length=1000)
+ 
 class InfoAnswerForm(forms.Form):
     """The client's reply to 'More information needed'. 'outcome' is the button pressed."""
 

@@ -5,6 +5,7 @@ from django.utils import timezone
 from domain.base.models import Groups
 from domain.matchmaking.models import Pairing
 from domain.matchmaking.models.date_feedback import DateFeedback
+from domain.matchmaking.services.pairing_service import member_pairing_rows
 from domain.matchmaking.tests.test_pairings import PairingCase, make_user
 
 WENT_WELL = {
@@ -78,3 +79,58 @@ class DateFeedbackTests(PairingCase):
             "flag_notes": "Followed her to her car.", "outcome": "ended_by_client",
         }, self.anisha)
         self.assertTrue(any("boss@x.com" in m.to and "Serious flag" in m.subject for m in mail.outbox))
+
+    def rows_for_this_pairing(self, user, member):
+        open_rows, closed_rows = member_pairing_rows(user, member)
+        mine = lambda rows: [r for r in rows if r["p"].pk == self.pairing.pk]
+        return mine(open_rows), mine(closed_rows)
+
+    def test_other_side_can_still_record_after_one_side_ends_it(self):
+        # Natasha's matchmaker records "Ended by client": the pairing closes
+        self.post(self.natasha, {**WENT_WELL, "meet_again": "no", "outcome": "ended_by_client"}, self.anisha)
+        self.pairing.refresh_from_db()
+        self.assertFalse(self.pairing.is_open)
+
+        # David's side: still in the Open list, waiting for his feedback, with the button there
+        open_rows, closed_rows = self.rows_for_this_pairing(self.annastasia, self.david)
+        self.assertEqual(len(open_rows), 1)
+        self.assertTrue(open_rows[0]["feedback_pending"])
+        self.as_user(self.annastasia)
+        page = self.client.get(reverse("matchmaking:member-detail", args=[self.david.pk]))
+        self.assertContains(page, self.add_url(self.david))
+
+        # David's matchmaker records his feedback; then it moves to Closed
+        self.post(self.david, {**WENT_WELL, "meet_again": "no", "outcome": "ended_by_match"}, self.annastasia)
+        self.assertEqual(DateFeedback.objects.filter(client=self.david).count(), 1)
+        open_rows, closed_rows = self.rows_for_this_pairing(self.annastasia, self.david)
+        self.assertEqual((len(open_rows), len(closed_rows)), (0, 1))
+
+    def test_red_flag_keeps_action_and_status_after_closing(self):
+        self.post(self.natasha, {
+            **WENT_WELL, "behaviour_flags": ["pressure"], "flag_severity": "high",
+            "flag_notes": "Pushed for a second date.", "outcome": "ended_by_client",
+        }, self.anisha)
+        fb = DateFeedback.objects.get()
+        self.assertEqual(fb.flag_status, "open")
+        url = reverse("matchmaking:date-feedback-flag", args=[fb.pk])
+
+        # Anything but Open needs an action
+        self.as_user(self.anisha)
+        self.client.post(url, {"status": "resolved", "action": ""})
+        fb.refresh_from_db()
+        self.assertEqual(fb.flag_status, "open")
+
+        self.client.post(url, {"status": "action_taken", "action": "Spoke with the other matchmaker"})
+        fb.refresh_from_db()
+        self.assertEqual((fb.flag_status, fb.flag_action_by), ("action_taken", self.anisha))
+
+        # The other matchmaker can't change it
+        self.as_user(self.annastasia)
+        self.client.post(url, {"status": "resolved", "action": "x"})
+        fb.refresh_from_db()
+        self.assertEqual(fb.flag_status, "action_taken")
+
+        # Still on Natasha's page after the pairing closed
+        self.as_user(self.anisha)
+        page = self.client.get(reverse("matchmaking:member-detail", args=[self.natasha.pk]))
+        self.assertContains(page, "Spoke with the other matchmaker")
