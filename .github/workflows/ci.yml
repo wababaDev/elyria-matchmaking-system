@@ -7,7 +7,7 @@ on:
     branches: [beta, main]
 
 env:
-  IMAGE_NAME: ghcr.io/wababadev/elyria-matchmaking-system
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
 
 jobs:
   test:
