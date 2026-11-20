@@ -4,6 +4,11 @@ from domain.base.models import TimeStampedModel
 from domain.matchmaking.models.consultation_request import ConsultationRequest
 
 
+class MembershipTierQuerySet(models.QuerySet):
+    def for_members(self):
+        """Tiers a member can be given, renewed or upgraded onto. Elite Grade has its own path (Elite cases)."""
+        return self.filter(is_active=True).exclude(name__icontains="elite")
+
 class MembershipTier(TimeStampedModel):
     """Managed by Admin. Changes apply to new memberships and renewals only."""
     name = models.CharField(max_length=60, unique=True)
@@ -32,7 +37,7 @@ class MembershipTier(TimeStampedModel):
     )
     display_order = models.PositiveSmallIntegerField(default=0)
     is_active = models.BooleanField(default=True, help_text="Untick to retire a tier without affecting existing members.")
-
+    objects = MembershipTierQuerySet.as_manager()
     class Meta:
         ordering = ["display_order", "name"]
 
@@ -45,3 +50,8 @@ class MembershipTier(TimeStampedModel):
         if not self.allows_hold:
             return 0
         return (self.hold_weeks or 0) * 7
+
+    @property
+    def is_elite(self):
+       """Same rule as elite_service.elite_tier(): the name contains 'Elite'."""
+       return "elite" in self.name.lower()

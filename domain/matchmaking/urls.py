@@ -6,6 +6,7 @@ from domain.matchmaking.views import settings_views as settings_
 from domain.matchmaking.views import dashboard_views, enquiry_views, member_views as members, payment_views, queue_views
 from domain.matchmaking.views import member_note_views as notes
 from domain.matchmaking.views import pairing_views as pairing
+from domain.matchmaking.views import date_feedback_views
 from domain.matchmaking.views.date_feedback_views import DateFeedbackView
 app_name = "matchmaking"
 
@@ -83,4 +84,5 @@ urlpatterns = [
     # Feedback
     path("pairings/<int:pk>/feedback/<int:client_pk>/add/", DateFeedbackView.as_view(), name="date-feedback-add"),
     path("feedback/<int:feedback_pk>/", DateFeedbackView.as_view(), name="date-feedback-edit"),
+    path("feedback/<int:feedback_pk>/flag/", date_feedback_views.FlagActionView.as_view(), name="date-feedback-flag"),
 ]

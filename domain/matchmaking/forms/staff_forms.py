@@ -65,7 +65,7 @@ class PricedTierMixin:
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["tier"].queryset = MembershipTier.objects.filter(is_active=True)
+        self.fields["tier"].queryset = MembershipTier.objects.for_members()
 
     def clean_tier(self):
         tier = self.cleaned_data["tier"]

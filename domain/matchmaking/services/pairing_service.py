@@ -13,6 +13,7 @@ from domain.matchmaking.models import (
     MembershipHold,
     Pairing,
 )
+from domain.matchmaking.models.date_feedback import DateFeedback
 from domain.matchmaking.models.pairing import OPEN_PAIRING_LIMIT
 from domain.matchmaking.services.consultation_request_service import InvalidTransitionError
 from domain.matchmaking.services.member_service import members_visible_to
@@ -598,12 +599,18 @@ def member_pairing_rows(user, member):
     for p in pairings_for(member).select_related("a_presented_by", "b_presented_by", "closed_by"):
         other = p.other(member)
         text, on_me = where_it_stands(p, user)
+        mine = feedback.get(p.pk, [])
+        # Closed after a date, but this member's feedback isn't in yet: keep it open for feedback
+        other_count = DateFeedback.objects.filter(pairing=p, client=other).count() if p.introduced_on else 0
+        feedback_pending = bool(p.introduced_on) and not p.is_open and len(mine) < max(other_count, 1)
+        if feedback_pending:
+            text, on_me = f"Closed: record {member.preferred_name}'s feedback for the date", True
         row = {
             "p": p, "other": other, "other_profile": getattr(other, "profile", None),
             "other_is_mine": other.pk in visible_ids, "side": p.side(member),
-            "stands": text, "on_me": on_me, "feedback": feedback.get(p.pk, []),
+            "stands": text, "on_me": on_me, "feedback": mine, "feedback_pending": feedback_pending,
         }
-        (open_rows if p.is_open else closed_rows).append(row)
+        (open_rows if p.is_open or feedback_pending else closed_rows).append(row)
 
     def priority(row):
         p = row["p"]

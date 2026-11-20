@@ -28,7 +28,10 @@
                             <td>{{ tier.duration_months }} month{{ tier.duration_months|pluralize }}</td>
                             <td>{% if tier.max_introductions %}{{ tier.max_introductions }}{% else %}<span class="text-muted">Unlimited</span>{% endif %}</td>
                             <td>{% if tier.hold_days %}Up to {{ tier.hold_weeks }} week{{ tier.hold_weeks|pluralize }}{% else %}<span class="text-muted">No</span>{% endif %}</td>
-                            <td>{% if tier.is_active %}<span class="badge bg-success-transparent">Active</span>{% else %}<span class="badge bg-light text-muted">Retired</span>{% endif %}</td>
+                            <td>
+                               {% if tier.is_active %}<span class="badge bg-success-transparent">Active</span>{% else %}<span class="badge bg-light text-muted">Retired</span>{% endif %}
+                               {% if tier.is_elite %}<span class="badge bg-light text-dark ms-1" title="Used for the Elite fee only. Not offered in Confirm membership or Renew.">Elite path only</span>{% endif %}
+                           </td>
                             <td class="text-end"><a href="{% url 'matchmaking:settings-tiers-edit' tier.pk %}"
    class="btn btn-sm btn-light">Edit</a></td>
                         </tr>

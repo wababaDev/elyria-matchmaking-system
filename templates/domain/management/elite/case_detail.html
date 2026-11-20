@@ -147,7 +147,7 @@
                     aria-controls="pane-payment">Handler &amp; payment</button>
         </li>
     {% endif %}
-    {% if case.status == "paid" or case.status == "outreach_sent" or case.status == "agreed" or case.has_person or case.person_details_wiped_at %}
+    {% if case.status == "paid" or case.status == "outreach_sent" or case.status == "agreed" or case.has_person and case.status != "under_review" or case.person_details_wiped_at %}
         <li class="nav-item" role="presentation">
             <button type="button"
                     class="nav-link"
@@ -312,7 +312,40 @@
                                 </div>
                                 {% if case.status == "under_review" %}<button type="submit" class="btn btn-light btn-sm mt-2">Save checks</button>{% endif %}
                             </form>
-
+                            {# The named person, from the Request Form: checked against "do not approach" before any payment #}
+                            <div class="border-top pt-3 mt-3" id="review-person">
+                                <p class="fs-13 fw-semibold mb-2">Named person (from the Request Form)</p>
+                                {% if dna_blocked %}
+                                    <div class="alert alert-danger fs-13">
+                                        <strong>On the "do not approach" list:</strong> {{ dna_matches|join:"; " }}.
+                                        <br>
+                                        Don't approve, so no payment is asked for. Tell the client (use More information below) and let them choose:
+                                        <ol class="mb-2 mt-1">
+                                            <li><strong>Name a different person:</strong> update the details below; they're checked again.</li>
+                                            <li><strong>Close the case:</strong> use "Client chose to close".</li>
+                                            <li><strong>Another membership tier:</strong> close the case and point them to Request a Private Consultation.</li>
+                                        </ol>
+                                        <form method="post"
+                                              action="{% url 'elite:case-dna-clear' case.pk %}"
+                                              class="d-flex flex-wrap gap-2">
+                                            {% csrf_token %}
+                                            <input type="text"
+                                                   name="note"
+                                                   class="form-control form-control-sm flex-fill"
+                                                   required
+                                                   placeholder="Only if it's clearly someone else: why (e.g. met elsewhere, different workplace)">
+                                            <button type="submit" class="btn btn-sm btn-light text-nowrap">Not the same person</button>
+                                        </form>
+                                    </div>
+                                {% elif dna_matches and case.dna_cleared_at %}
+                                    <p class="fs-12 text-muted mb-2">Same name as a "do not approach" entry ({{ dna_matches|join:"; " }}). Confirmed as a different person by {{ case.dna_cleared_by.full_name }} on {{ case.dna_cleared_at|date:"j M Y" }}: {{ case.dna_clear_note }}</p>
+                                {% elif case.has_person %}
+                                    <p class="fs-12 text-success mb-2"><i class="fe fe-check me-1"></i>Not on the "do not approach" list.</p>
+                                {% endif %}
+                                {% if case.status == "under_review" %}
+                                    {% include "domain/management/elite/_person_form.html" %}
+                                {% endif %}
+                            </div>
                             {% if info_requests %}
                                 <div class="border-top pt-3 mt-3">
                                     <p class="fs-13 fw-semibold mb-2">Questions to the client</p>
@@ -357,7 +390,7 @@
                                                 name="decision"
                                                 value="approve"
                                                 class="btn btn-success"
-                                                {% if not case.all_checks_done %}disabled title="Tick and save all the checks first"{% elif open_info %}disabled title="Record the client's answer first"{% endif %}
+                                                {% if not case.all_checks_done %}disabled title="Tick and save all the checks first"{% elif open_info %}disabled title="Record the client's answer first"{% elif not case.has_person %}disabled title="Enter the named person first"{% elif dna_blocked %}disabled title="The named person is on the do not approach list"{% endif %}
                                                 data-confirm-title="Approve {{ case.reference }}?"
                                                 data-confirm="Next you'll assign the Case Handler, which emails the K35,000 payment request."
                                                 data-confirm-button="Approve">Approve</button>
@@ -377,9 +410,13 @@
                                                 data-confirm="The client gets the standard 'not proceeding' message, with no reason. No fee, no Bronze offer. This closes the case."
                                                 data-confirm-button="Decline"
                                                 data-confirm-variant="danger">Decline</button>
+                                        <button type="submit" name="decision" value="withdraw" class="btn btn-outline-secondary"
+                                        data-confirm-title="Close {{ case.reference }} at the client's request?" data-confirm="Write in the note what the client chose. No fee is charged and no email is sent." data-confirm-button="Close case">Client chose to close</button>
                                     </div>
                                     {% if not case.all_checks_done %}<p class="text-muted fs-12 mt-2 mb-0">Approve unlocks once all five checks are ticked and saved.</p>
-                {% elif open_info %}<p class="text-muted fs-12 mt-2 mb-0">Approve unlocks once the client's answer is recorded (or marked as no answer).</p>{% endif %}
+                 {% elif open_info %}<p class="text-muted fs-12 mt-2 mb-0">Approve unlocks once the client's answer is recorded (or marked as no answer).</p>
+                            {% elif not case.has_person %}<p class="text-muted fs-12 mt-2 mb-0">Approve unlocks once the named person is entered and checked.</p>
+                            {% elif dna_blocked %}<p class="text-muted fs-12 mt-2 mb-0">Approve stays locked while the named person is on the "do not approach" list.</p>{% endif %}
                     </form>
                 {% elif case.decided_at %}
                     <p class="fs-12 text-muted border-top pt-2 mt-3 mb-0">Decided {{ case.decided_at|date:"j M Y" }} by {{ case.decided_by.full_name }}.</p>
@@ -487,7 +524,7 @@
         {% endif %}
     </div>
 {% endif %}
-{% if case.status == "paid" or case.status == "outreach_sent" or case.status == "agreed" or case.has_person or case.person_details_wiped_at %}
+{% if case.status == "paid" or case.status == "outreach_sent" or case.status == "agreed" or case.has_person and case.status != "under_review" or case.person_details_wiped_at %}
     <div class="tab-pane fade"
          id="pane-outreach"
          role="tabpanel"
@@ -512,10 +549,10 @@
                                 {{ case.person_contact }}
                             </dd>
                             {% if case.person_met_where %}<dt class="text-muted fw-normal fs-12">Where they first met</dt><dd>{{ case.person_met_where }}</dd>{% endif %}
-                        {% if case.person_occupation %}<dt class="text-muted fw-normal fs-12">Occupation or workplace</dt><dd>{{ case.person_occupation }}</dd>{% endif %}
+                            {% if case.person_occupation %}<dt class="text-muted fw-normal fs-12">Occupation or workplace</dt><dd>{{ case.person_occupation }}</dd>{% endif %}
                             {% if case.person_email %}<dt class="text-muted fw-normal fs-12">Email (given with consent)</dt><dd>{{ case.person_email }}</dd>{% endif %}
                         </dl>
-                       <p class="text-muted fs-12 mb-0"><i class="fe fe-lock me-1"></i>Stored encrypted. Deleted 30 days after the case closes. If they decline or don't respond, their name, where they met and occupation stay on the "do not approach" list (with the client's name).</p>
+                        <p class="text-muted fs-12 mb-0"><i class="fe fe-lock me-1"></i>Stored encrypted. Deleted 30 days after the case closes. If they decline or don't respond, their name, where they met and occupation stay on the "do not approach" list (with the client's name).</p>
                     {% endif %}
                 </div>
             </div>
@@ -529,35 +566,7 @@
                 </div>
                 <div class="card-body">
                     {% if can_handle and case.status != "outreach_sent" %}
-                        <form method="post"
-                              action="{% url 'elite:case-person' case.pk %}"
-                              class="mb-3">
-                            {% csrf_token %}
-                            <div class="row g-2">
-                                <div class="col-md-6">
-                                    <label class="form-label fs-13" for="{{ person_form.name.id_for_label }}">{{ person_form.name.label }}</label>
-                                    {{ person_form.name }}
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fs-13"
-                                           for="{{ person_form.contact_type.id_for_label }}">{{ person_form.contact_type.label }}</label>
-                                    {{ person_form.contact_type }}
-                                </div>
-                                <div class="col-md-4" id="contact-other-wrap">
-                                    <label class="form-label fs-13"
-                                           for="{{ person_form.contact_other.id_for_label }}">{{ person_form.contact_other.label }}</label>
-                                    {{ person_form.contact_other }}
-                                </div>
-                                <div class="col" id="contact-value-wrap">
-                                    <label class="form-label fs-13" for="{{ person_form.contact.id_for_label }}">{{ person_form.contact.label }}</label>
-                                    {{ person_form.contact }}
-                                </div>
-                                 <div class="col-md-6"><label class="form-label fs-13" for="{{ person_form.met_where.id_for_label }}">{{ person_form.met_where.label }}</label>{{ person_form.met_where }}</div>
-                                <div class="col-md-6"><label class="form-label fs-13" for="{{ person_form.occupation.id_for_label }}">{{ person_form.occupation.label }}</label>{{ person_form.occupation }}</div>
-                            </div>
-                            <p class="text-muted fs-12 mt-1 mb-2">Use only what the client gave you on the request form. Elyria never searches for the person. Checked against the "do not approach" list when saved.</p>
-                            <button type="submit" class="btn btn-sm btn-light">{% if case.has_person %}Update details{% else %}Save details{% endif %}</button>
-                        </form>
+                        {% include "domain/management/elite/_person_form.html" %}
                     {% endif %}
 
                     {% if case.status == "paid" and can_handle %}

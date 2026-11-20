@@ -4,6 +4,7 @@ plus their matchmaker's own record and the outcome that decides what happens nex
 """
 from django.db import transaction
 from django.db.models import Max
+from django.utils import timezone
 
 from domain.matchmaking.models.date_feedback import DateFeedback
 from domain.matchmaking.services.consultation_request_service import InvalidTransitionError
@@ -57,6 +58,11 @@ def save_feedback(feedback, *, by):
         feedback.updated_by = by
     else:
         feedback.recorded_by = by
+    # A new red flag starts as Open; removing the severity clears the status
+    if feedback.flag_severity and not feedback.flag_status:
+        feedback.flag_status = DateFeedback.FlagStatus.OPEN
+    elif not feedback.flag_severity:
+        feedback.flag_status = ""
     feedback.save()
 
     if feedback.outcome in ENDING_OUTCOMES:
@@ -73,10 +79,27 @@ def save_feedback(feedback, *, by):
         transaction.on_commit(lambda: feedback_emails.notify_admin_serious_flag(feedback))
     return feedback
 
+@transaction.atomic
+def update_flag(feedback, *, status, action, by):
+    """Record what was done about a red flag. Works after the pairing has closed."""
+    feedback = DateFeedback.objects.select_for_update().select_related("pairing", "client").get(pk=feedback.pk)
+    if not can_record_feedback(by, feedback.pairing, feedback.client):
+        raise InvalidTransitionError("Only this member's matchmaker can update this flag.")
+    if not feedback.flag_severity:
+        raise InvalidTransitionError("This feedback has no red flag.")
+    if status not in DateFeedback.FlagStatus.values:
+        raise InvalidTransitionError("Choose a status.")
+    if status != DateFeedback.FlagStatus.OPEN and not action.strip():
+        raise InvalidTransitionError("Say what was done.")
+    feedback.flag_status = status
+    feedback.flag_action = action.strip()
+    feedback.flag_action_by, feedback.flag_action_at = by, timezone.now()
+    feedback.save(update_fields=["flag_status", "flag_action", "flag_action_by", "flag_action_at", "updated_at"])
+    return feedback
 
 def feedback_by_pairing(member):
     """{pairing_id: [feedback, ...]} for the member page's Pairings tab (this member's feedback only)."""
     grouped = {}
-    for fb in DateFeedback.objects.filter(client=member).select_related("recorded_by").order_by("date_number"):
+    for fb in DateFeedback.objects.filter(client=member).select_related("recorded_by", "flag_action_by").order_by("date_number"):
         grouped.setdefault(fb.pairing_id, []).append(fb)
     return grouped

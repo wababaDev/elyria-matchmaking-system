@@ -76,3 +76,7 @@ class DateFeedbackForm(forms.ModelForm):
         if cleaned.get("flag_severity") and not cleaned.get("behaviour_flags"):
             self.add_error("behaviour_flags", "Tick at least one flag, or set severity to No concerns.")
         return cleaned
+
+class FlagActionForm(forms.Form):
+    status = forms.ChoiceField(choices=DateFeedback.FlagStatus.choices)
+    action = forms.CharField(required=False)

@@ -146,6 +146,14 @@ class EliteCase(TimeStampedModel):
     person_occupation_enc = models.TextField(blank=True)  # occupation or workplace, if known
     person_details_wiped_at = models.DateTimeField(null=True, blank=True)
 
+    # "Do not approach" check at review: a name match blocks Approve (so no payment request) until the client
+    # names someone else or closes the case, or Admin confirms it's clearly a different person.
+    dna_cleared_at = models.DateTimeField(null=True, blank=True)
+    dna_cleared_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    dna_clear_note = models.TextField(blank=True)
+    
     # E7/E8: outreach
     outreach_bounces = models.PositiveSmallIntegerField(default=0)
     outreach_delivered_on = models.DateField(null=True, blank=True)

@@ -109,7 +109,7 @@ class MemberDetailView(StaffRequiredMixin, DetailView):
             end_hold_form=EndHoldForm(),
             payments=membership.payments.select_related("recorded_by") if membership else [],
             renew_form=RenewMembershipForm(initial={"tier": membership.tier_id if membership else None}),
-            active_tiers=MembershipTier.objects.filter(is_active=True),
+            active_tiers=MembershipTier.objects.for_members(),
             cancel_form=CancelMembershipForm(),
             assign_form=AssignForm(initial={"assigned_to": member.matchmaker_id}),
             details=member.consultation_request,
