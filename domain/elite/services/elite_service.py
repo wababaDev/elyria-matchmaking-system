@@ -1,0 +1,613 @@
+"""
+Elite Grade.
+Part 1: apply → confirm email → documents emailed → Admin records the signed documents → review → decide.
+Part 2a: Case Handler → fee + Indemnity Notice → named person → one outreach (14 days) →
+         declined / no response / agreed → acknowledgement → identity shared, or Bronze offer → closed.
+"""
+from datetime import timedelta
+
+from django.db import transaction
+from django.db.models import Q
+from django.utils import timezone
+
+from domain.elite import crypto
+from domain.elite.models import EliteAccessLog, EliteCase, EliteCaseEvent, EliteDocument, SuppressionEntry, EliteInfoRequest
+from domain.elite.models.elite_case import ABANDONED_AFTER_DAYS, new_token
+
+REPLY_WINDOW_DAYS = 14
+WIPE_AFTER_DAYS = 30
+
+S = EliteCase.Status
+
+
+class EliteError(Exception):
+    pass
+
+
+def log_event(case, text, by=None):
+    EliteCaseEvent.objects.create(case=case, text=text, by=by)
+
+
+def log_access(case, user, action, detail=""):
+    EliteAccessLog.objects.create(case=case, user=user, action=action, detail=detail)
+
+
+def _lock(case):
+    return EliteCase.objects.select_for_update().get(pk=case.pk)
+
+
+# ---------------------------------------------------------------- who sees what
+
+def is_admin(user):
+    return user.has_perm("base.manage_staff")
+
+
+def cases_visible_to(user):
+    """Admin: every case. A Case Handler: only the cases assigned to her. Everyone else: none."""
+    if is_admin(user):
+        return EliteCase.objects.all()
+    return EliteCase.objects.filter(handler=user)
+
+
+def can_handle(user, case):
+    """The Case Handler's actions. Admin can step in on any case."""
+    return is_admin(user) or (case.handler_id is not None and case.handler_id == user.pk)
+
+
+def _require_handler(user, case):
+    if not can_handle(user, case):
+        raise EliteError("Only this case's Case Handler (or Admin) can do that.")
+
+
+def _emails():
+    from notification.services import elite_emails
+
+    return elite_emails
+
+
+# ---------------------------------------------------------------- E1: apply and confirm email
+
+@transaction.atomic
+def apply(*, full_name, email, phone=""):
+    """
+    Start an application. If this email already has one waiting for confirmation, send a fresh link
+    instead of creating a second case.
+    """
+    email = email.strip().lower()
+    case = EliteCase.objects.filter(email=email, status=S.AWAITING_EMAIL).first()
+    if case:
+        case.full_name, case.phone = full_name.strip(), phone.strip()
+        case.verify_token = new_token()
+        case.verify_sent_at = timezone.now()  # restarts the 48-hour link
+        case.save()
+        log_event(case, "Applied again: a new confirmation link was sent.")
+    else:
+        case = EliteCase.objects.create(full_name=full_name.strip(), email=email, phone=phone.strip())
+        log_event(case, "Applied for consideration on the website.")
+    transaction.on_commit(lambda: _emails().notify_verify(case))
+    return case
+
+
+@transaction.atomic
+def confirm_email(token):
+    """E1 done: the case moves to Awaiting documents and the Elite email with the documents goes out."""
+    case = EliteCase.objects.select_for_update().filter(verify_token=token).first()
+    if case is None:
+        raise EliteError("This link isn't valid.")
+    if case.status != S.AWAITING_EMAIL:
+        return case  # already confirmed: clicking the link twice is fine
+    if case.verify_link_expired:
+        raise EliteError("This link has expired. Please apply again to get a new one.")
+
+    case.email_verified_at = timezone.now()
+    case.status = S.AWAITING_DOCUMENTS
+    case.save(update_fields=["email_verified_at", "status", "updated_at"])
+    log_event(case, "Email confirmed. Elite Grade documents emailed.")
+    transaction.on_commit(lambda: _emails().notify_documents(case))
+    transaction.on_commit(lambda: _emails().notify_team_new_application(case))
+    return case
+
+
+# ---------------------------------------------------------------- E2/E3: documents received by email
+
+@transaction.atomic
+def add_document(case, *, kind, file, by):
+    case = _lock(case)
+    if not case.is_open or case.status == S.AWAITING_EMAIL:
+        raise EliteError("Documents can't be added to this case now.")
+    if not (is_admin(by) or can_handle(by, case)):
+        raise EliteError("You can't add documents to this case.")
+    document = EliteDocument.objects.create(
+        case=case, kind=kind, file=file, original_name=getattr(file, "name", "")[:200], uploaded_by=by,
+    )
+    log_event(case, f"Uploaded {document.get_kind_display()} ({document.original_name}).", by)
+    return document
+
+
+@transaction.atomic
+def confirm_documents(case, *, nda, declaration, request_form, by):
+    """Admin ticks what came back signed. All three → Under review (shows in her queue)."""
+    case = _lock(case)
+    if not is_admin(by):
+        raise EliteError("Only Admin can do that.")
+    if case.status != S.AWAITING_DOCUMENTS:
+        raise EliteError("This case isn't waiting for documents.")
+    if not case.documents.exists():
+        raise EliteError("Upload the documents you received before ticking them.")
+
+    case.nda_received, case.declaration_received, case.request_form_received = nda, declaration, request_form
+    received = [label for label, ok in [("NDA", nda), ("Declaration", declaration), ("Request form", request_form)] if ok]
+    if case.all_documents_received:
+        case.status = S.UNDER_REVIEW
+        case.documents_confirmed_at, case.documents_confirmed_by = timezone.now(), by
+        log_event(case, "All documents received (NDA, Declaration, Request form). Now under review.", by)
+    else:
+        log_event(case, f"Documents received so far: {', '.join(received) or 'none'}.", by)
+    case.save()
+    return case
+
+
+# ---------------------------------------------------------------- E4/E5: review and decision
+
+CHECKS = [
+    ("check_known_to_client", "Known to the client"),
+    ("check_no_prior_rejection", "No prior rejection"),
+    ("check_no_power_imbalance", "No power imbalance"),
+    ("check_identity_verified", "Identity verified"),
+    ("check_suitability", "Suitability assessment complete"),
+]
+
+
+@transaction.atomic
+def save_checks(case, *, checks, by):
+    case = _lock(case)
+    if not is_admin(by):
+        raise EliteError("Only Admin can do that.")
+    if case.status != S.UNDER_REVIEW:
+        raise EliteError("Checks can only be changed while the case is under review.")
+    changed = []
+    for field, label in CHECKS:
+        value = bool(checks.get(field))
+        if getattr(case, field) != value:
+            setattr(case, field, value)
+            changed.append(f"{label}: {'yes' if value else 'no'}")
+    case.save()
+    if changed:
+        log_event(case, "Checks updated. " + "; ".join(changed) + ".", by)
+    return case
+
+
+@transaction.atomic
+def decide(case, *, decision, note="", by):
+    """
+    approve: all checks ticked, the named person entered and not on the 'do not approach' list
+             (or cleared by Admin). No fee yet: payment is the next step.
+    decline: the client gets an automatic message with no reason. No fee, no Bronze offer. Closed.
+    more_info: stays under review; the message is emailed to the client.
+    withdraw: the client chose to close (e.g. after hearing the person is on the list). No email, no fee. Closed.
+    """
+    case = _lock(case)
+    if not is_admin(by):
+        raise EliteError("Only Admin can do that.")
+    if case.status != S.UNDER_REVIEW:
+        raise EliteError("Only cases under review can be decided.")
+
+    if decision == "approve":
+        if not case.all_checks_done:
+            raise EliteError("Tick all the checks before approving.")
+        if open_info_request(case):
+            raise EliteError("A question to the client is still open. Record their answer (or 'No answer') first.")
+        if not case.has_person:
+            raise EliteError("Enter the named person's details from the Request Form first.")
+        if dna_blocked(case):
+            raise EliteError("The named person matches the 'do not approach' list. Tell the client before any "
+                             "payment and let them choose: name someone else, close the case, or another tier.")
+        case.status = S.APPROVED
+        case.decided_at, case.decided_by = timezone.now(), by
+        case.save()
+        log_event(case, "Approved." + (f" Note: {note}" if note else ""), by)
+    elif decision == "decline":
+        case.status = S.DECLINED
+        case.decided_at, case.decided_by = timezone.now(), by
+        case.closed_at = case.decided_at
+        case.save()
+        log_event(case, "Declined. Client sent the standard 'not proceeding' message." + (f" Note: {note}" if note else ""), by)
+        transaction.on_commit(lambda: _emails().notify_declined(case))
+    elif decision == "more_info":
+        if not note.strip():
+            raise EliteError("Write the message to send to the client.")
+        if open_info_request(case):
+            raise EliteError("A question is already waiting for an answer. Record it before asking another.")
+        EliteInfoRequest.objects.create(case=case, question=note.strip(), asked_by=by)
+        log_event(case, f"More information requested from the client: {note.strip()}", by)
+        transaction.on_commit(lambda: _emails().notify_more_info(case, note.strip()))
+    elif decision == "withdraw":
+        if not note.strip():
+            raise EliteError("Say in the note what the client chose (e.g. close the case, or apply for another tier).")
+        case.status = S.CLOSED
+        case.decided_at, case.decided_by = timezone.now(), by
+        case.closed_at = case.decided_at
+        case.save()
+        log_event(case, f"Closed at the client's request before payment. No fee charged. {note.strip()}", by)
+    else:
+        raise EliteError("Unknown decision.")
+    return case
+
+
+def open_info_request(case):
+    """The question still waiting for the client's answer, if any."""
+    return case.info_requests.filter(answered_at__isnull=True).first()
+ 
+ 
+@transaction.atomic
+def record_info_answer(case, *, answer="", file=None, no_answer=False, by):
+    """
+    The client replied to info@ (or never did). Admin records a short summary of the answer and can
+    upload the reply itself. Approve unlocks again afterwards.
+    """
+    case = _lock(case)
+    if not is_admin(by):
+        raise EliteError("Only Admin can do that.")
+    if case.status != S.UNDER_REVIEW:
+        raise EliteError("Only cases under review have questions to the client.")
+    request = open_info_request(case)
+    if request is None:
+        raise EliteError("There's no open question for this case.")
+    asked = f"{request.asked_at:%d %b %Y}"
+    request.answered_at, request.answered_by = timezone.now(), by
+    if no_answer:
+        request.no_answer = True
+        request.save()
+        log_event(case, f"No answer to the question sent on {asked}. Carried on without it.", by)
+        return request
+    if not answer.strip():
+        raise EliteError("Write a short summary of their answer.")
+    request.answer = answer.strip()
+    request.save()
+    log_event(case, f"Client answered the question sent on {asked}: {request.answer}", by)
+    if file:
+        add_document(case, kind=EliteDocument.Kind.CLIENT_REPLY, file=file, by=by)
+    return request
+
+# ---------------------------------------------------------------- E6: Case Handler, fee, Indemnity Notice
+
+def elite_tier():
+    """The Elite Grade tier in Settings → Membership tiers (it can be retired; its price still applies)."""
+    from domain.matchmaking.models import MembershipTier
+
+    return MembershipTier.objects.filter(name__icontains="elite").order_by("display_order").first()
+
+
+def elite_fee():
+    """(amount, currency) from Settings → Membership tiers. The fee can't be typed in on the case."""
+    tier = elite_tier()
+    if tier is None or tier.price is None:
+        raise EliteError("Set the Elite Grade price in Settings → Membership tiers first.")
+    return tier.price, tier.currency
+
+
+@transaction.atomic
+def assign_handler(case, *, handler, by):
+    """Admin picks the Case Handler. The first time, the client is asked to pay and sign the Indemnity Notice."""
+    case = _lock(case)
+    if not is_admin(by):
+        raise EliteError("Only Admin can assign the Case Handler.")
+    if not case.is_open or case.status in (S.AWAITING_EMAIL, S.AWAITING_DOCUMENTS, S.UNDER_REVIEW):
+        raise EliteError("A Case Handler is assigned once the case is approved.")
+    first_time = case.handler_id is None
+    if first_time:
+        elite_fee()  # the payment request needs the price: stop here if it isn't set
+    case.handler, case.handler_assigned_at = handler, timezone.now()
+    case.save()
+    log_event(case, f"Case Handler: {handler.full_name}.", by)
+    if first_time and case.status == S.APPROVED:
+        log_event(case, "Payment request and Indemnity Notice emailed to the client.")
+        transaction.on_commit(lambda: _emails().notify_payment_request(case))
+    return case
+
+
+@transaction.atomic
+def record_fee(case, *, method, reference, paid_on, by):
+    """The amount always comes from the Elite Grade tier's price in Settings."""
+    case = _lock(case)
+    _require_handler(by, case)
+    if case.status != S.APPROVED:
+        raise EliteError("The fee is recorded once the case is approved and before outreach.")
+    if case.fee_recorded:
+        raise EliteError("The fee has already been recorded.")
+    if paid_on > timezone.localdate():
+        raise EliteError("The payment date can't be in the future.")
+    amount, currency = elite_fee()
+    case.fee_amount, case.fee_currency = amount, currency
+    case.fee_method, case.fee_reference, case.fee_paid_on, case.fee_recorded_by = method, reference.strip(), paid_on, by
+    case.save()
+    note = " (recorded by the Case Handler)" if case.handler_id == by.pk else ""
+    log_event(case, f"Elite Grade fee recorded: {currency} {amount:,.2f}, paid {paid_on:%d %b %Y}{note}. Non-refundable.", by)
+    _maybe_ready_for_outreach(case, by)
+    return case
+
+
+@transaction.atomic
+def confirm_indemnity(case, *, by):
+    case = _lock(case)
+    _require_handler(by, case)
+    if case.status != S.APPROVED:
+        raise EliteError("The Indemnity Notice is recorded before outreach.")
+    if not case.documents.filter(kind=EliteDocument.Kind.INDEMNITY).exists():
+        raise EliteError("Upload the signed Indemnity Notice first.")
+    case.indemnity_received = True
+    case.save()
+    log_event(case, "Signed Indemnity Notice received.", by)
+    _maybe_ready_for_outreach(case, by)
+    return case
+
+
+def _maybe_ready_for_outreach(case, by):
+    if case.fee_recorded and case.indemnity_received and case.status == S.APPROVED:
+        case.status = S.PAID
+        case.save(update_fields=["status", "updated_at"])
+        log_event(case, "Fee and Indemnity Notice in. Ready for outreach.", by)
+
+
+# ---------------------------------------------------------------- E7: the named person and outreach
+
+def suppression_matches(name):
+    """'Do not approach' entries with the same full name. Names aren't unique, so this warns; people decide."""
+    return list(SuppressionEntry.objects.filter(name_fingerprint=crypto.fingerprint(crypto.normalise_name(name))))
+ 
+
+def dna_blocked(case):
+    """True while the named person matches the list and Admin hasn't confirmed it's someone else."""
+    return case.has_person and case.dna_cleared_at is None and bool(suppression_matches(case.person_name))
+ 
+ 
+@transaction.atomic
+def clear_dna_match(case, *, note, by):
+    """Names aren't unique: Admin confirms the match is clearly a different person (met elsewhere, other job)."""
+    case = _lock(case)
+    if not is_admin(by):
+        raise EliteError("Only Admin can do that.")
+    if case.status != S.UNDER_REVIEW:
+        raise EliteError("This is checked during review.")
+    if not dna_blocked(case):
+        raise EliteError("There's no 'do not approach' match to clear.")
+    if not note.strip():
+        raise EliteError("Say why it's a different person.")
+    case.dna_cleared_at, case.dna_cleared_by, case.dna_clear_note = timezone.now(), by, note.strip()
+    case.save()
+    log_event(case, f"Admin confirmed the named person is not the one on the 'do not approach' list: {note.strip()}", by)
+    return case
+
+ 
+def describe_match(entry):
+    """One line for the warning: which case, where they met, occupation."""
+    bits = [entry.case_reference, entry.get_reason_display().lower()]
+    if entry.met_where:
+        bits.append(f"met: {entry.met_where}")
+    if entry.occupation:
+        bits.append(f"occupation/workplace: {entry.occupation}")
+    return " · ".join(bits)
+
+
+@transaction.atomic
+def record_person(case, *, name, contact_type, contact, contact_other="", met_where="", occupation="", by):
+    """
+    The person the client named, and the contact route the client gave. Elyria never searches for them.
+    Returns (case, matches): 'do not approach' entries with the same name, for the handler to check.
+    """
+    case = _lock(case)
+    if case.status == S.UNDER_REVIEW:
+        # From the Request Form, at review: checked against the list before any payment
+        if not is_admin(by):
+            raise EliteError("Only Admin enters the named person during review.")
+    elif case.status in (S.APPROVED, S.PAID):
+        _require_handler(by, case)
+    else:
+        raise EliteError("The person's details are recorded at review, or before outreach.")
+    matches = suppression_matches(name)
+    first = not case.has_person
+    if not first and crypto.normalise_name(case.person_name) != crypto.normalise_name(name):
+        # A different person: any earlier "not the same person" ruling no longer applies
+        case.dna_cleared_at, case.dna_cleared_by, case.dna_clear_note = None, None, ""
+    case.person_name_enc = crypto.encrypt(name.strip())
+    case.person_contact_type = contact_type
+    case.person_contact_enc = crypto.encrypt(contact.strip())
+    case.person_contact_other_enc = crypto.encrypt(contact_other.strip()) if contact_other else ""
+    case.person_met_where_enc = crypto.encrypt(met_where.strip()) if met_where.strip() else ""
+    case.person_occupation_enc = crypto.encrypt(occupation.strip()) if occupation.strip() else ""
+    case.save()
+    log_event(case, "Named person's details recorded." if first else "Named person's details updated.", by)
+    if matches:
+        log_event(case, "Warning: someone with the same name is on the 'do not approach' list ("
+                        + "; ".join(describe_match(e) for e in matches) + "). Check with Admin before any outreach.", by)
+    return case, matches
+
+
+@transaction.atomic
+def record_outreach(case, *, delivered, sent_on, by):
+    """
+    One discreet message without naming the client. A bounced message isn't an attempt: the client is
+    asked for another route. Delivered: the 14-day reply window starts.
+    """
+    case = _lock(case)
+    _require_handler(by, case)
+    if case.status != S.PAID:
+        raise EliteError("Outreach happens once the fee and Indemnity Notice are in.")
+    if not case.has_person:
+        raise EliteError("Record the person's details first.")
+    if not delivered:
+        case.outreach_bounces += 1
+        case.save()
+        log_event(case, f"Outreach bounced ({sent_on:%d %b %Y}). Not counted as an attempt. Client asked for another route.", by)
+        transaction.on_commit(lambda: _emails().notify_new_route_needed(case))
+        return case
+    case.status = S.OUTREACH_SENT
+    case.outreach_delivered_on = sent_on
+    case.reply_due_on = sent_on + timedelta(days=REPLY_WINDOW_DAYS)
+    case.save()
+    log_event(case, f"Outreach delivered {sent_on:%d %b %Y}. Reply due by {case.reply_due_on:%d %b %Y}.", by)
+    return case
+
+
+# ---------------------------------------------------------------- E8/E9: the answer
+
+@transaction.atomic
+def record_answer(case, *, answer, person_email="", by):
+    """
+    answer: 'agreed' | 'declined' | 'no_response'. No response only once the 14 days have passed.
+    Agreed: if they gave an email, the Introduction Acknowledgement is emailed to them straight away.
+    """
+    case = _lock(case)
+    _require_handler(by, case)
+    if case.status != S.OUTREACH_SENT:
+        raise EliteError("There's no outreach waiting for an answer.")
+    if answer == "agreed":
+        case.status = S.AGREED
+        case.save()
+        log_event(case, "The person agreed to hear more.", by)
+        if person_email.strip():
+            _send_acknowledgement(case, person_email, by)
+        else:
+            log_event(case, "No email given: the handler sends the Introduction Acknowledgement another way.", by)
+        return case
+    if answer == "no_response" and timezone.localdate() <= case.reply_due_on:
+        raise EliteError(f"The reply window runs until {case.reply_due_on:%d %b %Y}.")
+    if answer not in ("declined", "no_response"):
+        raise EliteError("Unknown answer.")
+    return _close_without_introduction(case, outcome=answer, by=by)
+
+
+def _send_acknowledgement(case, person_email, by):
+    case.person_email_enc = crypto.encrypt(person_email.strip().lower())
+    case.save(update_fields=["person_email_enc", "updated_at"])
+    log_event(case, "Introduction Acknowledgement emailed to the person (replies go to info@).", by)
+    transaction.on_commit(lambda: _emails().notify_acknowledgement(case))
+
+
+@transaction.atomic
+def send_acknowledgement(case, *, person_email, by):
+    """Email (or re-send) the Introduction Acknowledgement to the person, e.g. if they gave an email later."""
+    case = _lock(case)
+    _require_handler(by, case)
+    if case.status != S.AGREED:
+        raise EliteError("The acknowledgement is sent once the person agrees to hear more.")
+    _send_acknowledgement(case, person_email, by)
+    return case
+
+
+@transaction.atomic
+def record_acknowledgement(case, *, signed, person_email="", by):
+    """Signed: only now is the client's identity shared. Not signed: treated as no response."""
+    case = _lock(case)
+    _require_handler(by, case)
+    if case.status != S.AGREED:
+        raise EliteError("The case isn't waiting for the acknowledgement.")
+    if not signed:
+        return _close_without_introduction(case, outcome=EliteCase.Outcome.NOT_SIGNED, by=by)
+    if not case.documents.filter(kind=EliteDocument.Kind.ACKNOWLEDGEMENT).exists():
+        raise EliteError("Upload the signed Introduction Acknowledgement first.")
+    case.acknowledgement_received = True
+    if person_email.strip():
+        case.person_email_enc = crypto.encrypt(person_email.strip().lower())
+    case.status = S.INTRODUCTION
+    case.save()
+    log_event(case, "Introduction Acknowledgement signed. The client's identity can now be shared. Next: the introduction.", by)
+    return case
+
+
+def _close_without_introduction(case, *, outcome, by):
+    """Do-not-approach entry, then the Bronze offer (the fee was paid and outreach happened)."""
+    SuppressionEntry.objects.create(
+        name_fingerprint=crypto.fingerprint(crypto.normalise_name(case.person_name)),
+        client_name_enc=crypto.encrypt(case.full_name),
+        person_name_enc=case.person_name_enc,
+        met_where_enc=case.person_met_where_enc,
+        occupation_enc=case.person_occupation_enc,
+        reason=outcome, case_reference=case.reference,
+    )
+    case.outcome = outcome
+    case.status = S.BRONZE_OFFERED
+    case.bronze_offered_at = timezone.now()
+    case.save()
+    log_event(case, f"{EliteCase.Outcome(outcome).label}. Added to the 'do not approach' list. "
+                    f"Client told it isn't proceeding and offered Bronze Membership.", by)
+    transaction.on_commit(lambda: _emails().notify_not_proceeding_bronze(case))
+
+    return case
+
+
+# ---------------------------------------------------------------- E11: Bronze answer and closing
+
+@transaction.atomic
+def record_bronze_answer(case, *, accepted, by):
+    case = _lock(case)
+    _require_handler(by, case)
+    if case.status != S.BRONZE_OFFERED:
+        raise EliteError("No Bronze offer is waiting for an answer.")
+    case.bronze_accepted = accepted
+    case.status = S.CLOSED
+    case.closed_at = timezone.now()
+    case.save()
+    if accepted:
+        log_event(case, "Client accepted the Bronze offer and was sent the link to start the standard journey. Case closed.", by)
+        transaction.on_commit(lambda: _emails().notify_bronze_start(case))
+    else:
+        log_event(case, "Client declined the Bronze offer. Case closed.", by)
+    return case
+
+ 
+# ---------------------------------------------------------------- former Elite clients starting Bronze
+ 
+def former_elite_case_for(email):
+    """The closed Elite case whose client accepted Bronze with this email, if any (newest first)."""
+    if not email:
+        return None
+    return (EliteCase.objects.filter(email__iexact=email.strip(), bronze_accepted=True)
+            .order_by("-closed_at").first())
+ 
+ 
+def note_bronze_request(case, consultation_request):
+    """Called when their consultation request arrives: shows on the Elite timeline."""
+    log_event(case, f"Started the Bronze journey: consultation request {consultation_request.payment_reference} "
+                    "received. No payment email was sent; their matchmaker arranges it.")
+ 
+
+# ---------------------------------------------------------------- clean-up
+# Deletion is decided by Admin: see due_for_deletion() / delete_now() in introduction_service.
+# These remain for the manual `cleanup_elite` command (run on purpose, never scheduled).
+
+def abandoned_cases(now=None):
+    from domain.elite.services.introduction_service import due_for_deletion
+
+    return due_for_deletion(now)[0]
+
+
+def cases_to_wipe(now=None):
+    from domain.elite.services.introduction_service import due_for_deletion
+
+    return due_for_deletion(now)[1]
+
+
+def delete_abandoned(now=None):
+    count = 0
+    for case in abandoned_cases(now):
+        for document in case.documents.all():
+            document.file.delete(save=False)
+        case.delete()
+        count += 1
+    return count
+
+
+def wipe_named_person(now=None):
+    count = 0
+    for case in cases_to_wipe(now):
+        for document in case.documents.filter(kind__in=EliteDocument.NAMED_PERSON_KINDS):
+            document.file.delete(save=False)
+            document.delete()
+        case.person_name_enc = case.person_contact_enc = case.person_email_enc = case.person_contact_other_enc = ""
+        case.person_met_where_enc = case.person_occupation_enc = ""
+        case.person_details_wiped_at = timezone.now()
+        case.save()
+        log_event(case, "Named person's details and related documents deleted.")
+        count += 1
+    return count

@@ -49,6 +49,7 @@
                         <tr>
                             <td>
                                 <span class="fw-semibold">{{ c.full_name }}</span>
+                                {% include "domain/management/elite/_former_elite_badge.html" with elite_case=c.former_elite_case %}
                                 {% if c.resubmission_count %}
                                     <span class="badge bg-warning-transparent ms-1" title="Submitted the form again">+{{ c.resubmission_count }}</span>
                                 {% endif %}

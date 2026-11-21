@@ -6,7 +6,7 @@ from domain.matchmaking.models import MembershipTier
 from domain.website.models import SiteDocument, SiteSettings
 from domain.website.models.site_document import validate_pdf
 
-ROLE_CHOICES = [(Groups.MATCHMAKER, "Matchmaker"), (Groups.ADMIN, "Admin")]
+ROLE_CHOICES = [(Groups.MATCHMAKER, "Matchmaker"), (Groups.ADMIN, "Admin"), (Groups.FINANCE, "Finance")]
 
 
 class SiteSettingsForm(BootstrapFormMixin, forms.ModelForm):
@@ -47,7 +47,15 @@ class StaffUpdateForm(BootstrapFormMixin, forms.Form):
 class MembershipTierForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = MembershipTier
-        fields = ["name", "price", "currency", "duration_months", "display_order", "is_active"]
+        fields = ["name", "price", "currency", "duration_months", "max_introductions", "allows_hold", "hold_weeks", "display_order", "is_active"]
+
+        def clean(self):
+            data = super().clean()
+            if data.get("allows_hold") and not data.get("hold_weeks"):
+                self.add_error("hold_weeks", "Say how many weeks, or untick Allows Hold Time.")
+            if not data.get("allows_hold"):
+                data["hold_weeks"] = None
+            return data
 
 
 class PrivacyPolicyUploadForm(BootstrapFormMixin, forms.Form):
@@ -56,3 +64,13 @@ class PrivacyPolicyUploadForm(BootstrapFormMixin, forms.Form):
         validators=[validate_pdf],
         widget=forms.ClearableFileInput(attrs={"accept": "application/pdf"}),
     )
+
+class SiteDocumentUploadForm(BootstrapFormMixin, forms.Form):
+    """One upload form, used for every document kind on the Documents page."""
+    kind = forms.ChoiceField(choices=SiteDocument.Kind.choices, widget=forms.HiddenInput)
+    file = forms.FileField(
+        label="PDF file",
+        validators=[validate_pdf],
+        widget=forms.ClearableFileInput(attrs={"accept": "application/pdf"}),
+    )
+ 

@@ -1,0 +1,166 @@
+{% extends "layouts/management.html" %}
+{% block title %}Payments{% endblock %}
+{% block page_title %}Payments{% endblock %}
+{% block content %}
+
+{# ---------- Totals ---------- #}
+<div class="row">
+    {% with label="Total received" totals=summary.all %}{% include "domain/management/payments/_total_card.html" %}{% endwith %}
+    {% with label="This month" totals=summary.this_month %}{% include "domain/management/payments/_total_card.html" %}{% endwith %}
+    {% with label="Consultation fees" totals=summary.fees %}{% include "domain/management/payments/_total_card.html" %}{% endwith %}
+    {% with label="Memberships & renewals" totals=summary.memberships %}{% include "domain/management/payments/_total_card.html" %}{% endwith %}
+</div>
+{% if is_filtered %}
+    <p class="text-muted fs-12 mt-n2">Totals reflect the filters below.</p>
+{% endif %}
+
+{# ---------- Members ---------- #}
+<div class="card custom-card">
+    <div class="card-header">
+        <div class="card-title">Members</div>
+    </div>
+    <div class="card-body">
+        <div class="row text-center g-3">
+            <div class="col-6 col-md"><div class="fs-20 fw-semibold">{{ members.total }}</div><div class="text-muted fs-12">Registered</div></div>
+            <div class="col-6 col-md"><div class="fs-20 fw-semibold text-success">{{ members.active }}</div><div class="text-muted fs-12">Active</div></div>
+            <div class="col-6 col-md"><div class="fs-20 fw-semibold text-warning">{{ members.expiring }}</div><div class="text-muted fs-12">Expiring soon</div></div>
+            <div class="col-6 col-md"><div class="fs-20 fw-semibold text-danger">{{ members.expired }}</div><div class="text-muted fs-12">Expired</div></div>
+            <div class="col-6 col-md"><div class="fs-20 fw-semibold text-muted">{{ members.cancelled }}</div><div class="text-muted fs-12">Cancelled</div></div>
+        </div>
+    </div>
+</div>
+
+{# ---------- Filters ---------- #}
+<div class="card custom-card">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-lg-3">
+                <label class="form-label fs-13">Search</label>
+                {{ form.q }}
+            </div>
+            <div class="col-lg-2 col-sm-6">
+                <label class="form-label fs-13">Type</label>
+                {{ form.kind }}
+            </div>
+            <div class="col-lg-2 col-sm-6">
+                <label class="form-label fs-13">Recorded by</label>
+                {{ form.staff }}
+            </div>
+            <div class="col-lg-2 col-sm-6">
+                <label class="form-label fs-13">From</label>
+                {{ form.date_from }}
+            </div>
+            <div class="col-lg-2 col-sm-6">
+                <label class="form-label fs-13">To</label>
+                {{ form.date_to }}
+            </div>
+            <div class="col-lg-1 d-flex gap-1">
+                <button type="submit" class="btn btn-primary w-100" title="Filter"><i class="fe fe-search"></i></button>
+                {% if is_filtered %}
+                    <a href="{% url 'matchmaking:payments' %}" class="btn btn-light" title="Clear filters"><i class="fe fe-x"></i></a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+{# ---------- Per staff member ---------- #}
+<div class="card custom-card">
+    <div class="card-header">
+        <div class="card-title">Recorded by staff member</div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table text-nowrap mb-0">
+                <thead>
+                    <tr>
+                        <th>Staff member</th>
+                        <th class="text-end">Consultation fees</th>
+                        <th class="text-end">New memberships</th>
+                        <th class="text-end">Renewals</th>
+                        <th class="text-end">Cancelled</th>
+                        <th class="text-end">Amount recorded</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in staff_rows %}
+                        <tr>
+                            <td>
+                                {% if s.user %}
+                                    <a href="?{% if filter_query %}{{ filter_query }}&{% endif %}staff={{ s.user.pk }}">{{ s.user.full_name }}</a>
+                                {% else %}
+                                    <span class="text-muted">Unknown (account removed)</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">{{ s.fees }}</td>
+                            <td class="text-end">{{ s.new }}</td>
+                            <td class="text-end">{{ s.renewals }}</td>
+                            <td class="text-end">{{ s.cancelled }}</td>
+                            <td class="text-end">
+                                {% for currency, amount in s.totals %}{{ currency }} {{ amount|floatformat:"2g" }}{% if not forloop.last %}<br>{% endif %}{% empty %}—{% endfor %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="6" class="text-center text-muted py-4">Nothing recorded yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{# ---------- All payments ---------- #}
+<div class="card custom-card">
+    <div class="card-header justify-content-between">
+        <div class="card-title">All payments</div>
+        <span class="text-muted fs-12">{{ summary.count }} payment{{ summary.count|pluralize }}</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table text-nowrap mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Person</th>
+                        <th>Payment ref</th>
+                        <th>Type</th>
+                        <th class="text-end">Amount</th>
+                        <th>Method</th>
+                        <th>Transaction ID</th>
+                        <th>Recorded by</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in payments %}
+                        <tr>
+                            <td>{{ p.paid_on|date:"j M Y" }}</td>
+                            <td><a href="{{ p.link }}">{{ p.person }}</a></td>
+                            <td><strong>{{ p.payment_reference|default:"—" }}</strong></td>
+                            <td>{{ p.kind_label }}</td>
+                            <td class="text-end">{{ p.currency }} {{ p.amount|floatformat:"2g" }}</td>
+                            <td>{{ p.method }}</td>
+                            <td>{{ p.transaction_ref|default:"—" }}</td>
+                            <td>{{ p.recorded_by.full_name|default:"—" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="8" class="text-center text-muted py-4">No payments match.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if page_obj.paginator.num_pages > 1 %}
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <span class="text-muted fs-12">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            <div class="d-flex gap-1">
+                {% if page_obj.has_previous %}
+                    <a class="btn btn-sm btn-light" href="?{% if filter_query %}{{ filter_query }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                    <a class="btn btn-sm btn-light" href="?{% if filter_query %}{{ filter_query }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

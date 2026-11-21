@@ -10,11 +10,10 @@ from domain.base.mixins import StaffRequiredMixin
 from domain.matchmaking.forms import (
     AssignForm,
     BookConsultationForm,
-    ConsultationNotesForm,
     FeePaymentForm,
     staff_members,
 )
-from domain.matchmaking.forms.staff_forms import ConfirmMembershipForm
+from domain.matchmaking.forms.staff_forms import ConfirmMembershipForm, ConsultationRequestDetailsForm, UndoFeePaidForm
 from domain.matchmaking.services.membership_service import confirm_membership
 from django.utils import timezone
 from domain.matchmaking.models import ConsultationRequest, MembershipTier
@@ -26,13 +25,16 @@ from domain.matchmaking.services.consultation_request_service import (
     filter_consultation_requests,
     mark_fee_paid,
     requests_visible_to,
+    undo_fee_paid,
+    update_request_details,
 )
 from domain.matchmaking.services.consultation_service import (
     book_consultation,
-    mark_consulted,
-    save_consultation_notes,
 )
 from domain.website.models import SiteSettings
+from django.utils.decorators import method_decorator  # not needed, ignore if your linter complains
+from django.views.generic import UpdateView
+from notification.services.consultation_emails import resend_payment_instructions
 
 class ConsultationRequestListView(StaffRequiredMixin, ListView):
     permission_required = "base.view_all_consultation_requests"
@@ -79,6 +81,7 @@ class ConsultationRequestDetailView(StaffRequiredMixin, DetailView):
         return requests_visible_to(self.request.user).select_related(
             "assigned_to",
             "fee_marked_paid_by",
+            "former_elite_case",
             "consultation",
             "consultation__conducted_by",
         )
@@ -101,16 +104,16 @@ class ConsultationRequestDetailView(StaffRequiredMixin, DetailView):
                     ),
                 }
             ),
-            notes_form=ConsultationNotesForm(
-                initial={"notes": consultation.notes if consultation else ""}
-            ),
+
             assign_form=AssignForm(initial={"assigned_to": self.object.assigned_to_id}),
+            undo_form=UndoFeePaidForm(),
+            can_edit_details=self.object.status in ConsultationRequest.OPEN_STATUSES,
             confirm_form=ConfirmMembershipForm(
                 initial={
                     "start_date": timezone.localdate(),
                 }
             ),
-            active_tiers=MembershipTier.objects.filter(is_active=True),
+            active_tiers=MembershipTier.objects.for_members(),
         )
 
         return context
@@ -172,8 +175,8 @@ class MarkFeePaidView(ConsultationRequestActionView):
         mark_fee_paid(
             consultation_request,
             by=self.request.user,
-            amount=data["amount"],
-            currency=data["currency"],
+        
+            
             method=data["method"],
             reference=data["reference"],
         )
@@ -220,29 +223,6 @@ class BookConsultationView(ConsultationRequestActionView):
         )
 
 
-class SaveNotesView(ConsultationRequestActionView):
-    form_class = ConsultationNotesForm
-    success_message = "Notes saved."
-
-    def perform(self, consultation_request, data):
-        save_consultation_notes(
-            consultation_request, notes=data["notes"], by=self.request.user
-        )
-
-
-class MarkConsultedView(ConsultationRequestActionView):
-    """Saves the notes in the box, then marks the consultation as held."""
-
-    form_class = ConsultationNotesForm
-    success_message = "{name}'s consultation is marked as held."
-
-    def perform(self, consultation_request, data):
-        save_consultation_notes(
-            consultation_request, notes=data["notes"], by=self.request.user
-        )
-        mark_consulted(consultation_request, by=self.request.user)
-
-
 class ConfirmMembershipView(ConsultationRequestActionView):
     form_class = ConfirmMembershipForm
     success_message = "{name} is now a member. Their sign-in email has been sent."
@@ -252,10 +232,54 @@ class ConfirmMembershipView(ConsultationRequestActionView):
             consultation_request,
             tier=data["tier"],
             start_date=data["start_date"],
-            end_date=data["end_date"],
-            amount=data["amount"],
-            currency=data["currency"],
+            
             method=data["method"],
             reference=data["reference"],
             by=self.request.user,
         )
+
+
+class ConsultationRequestEditView(StaffRequiredMixin, UpdateView):
+    """Correct the applicant's submitted details while the request is in progress."""
+    permission_required = "base.manage_consultation_request"
+    form_class = ConsultationRequestDetailsForm
+    template_name = "domain/management/consultation_requests/edit.html"
+    context_object_name = "cr"
+
+    def get_queryset(self):
+        # Scoped like the detail page, and only open requests can be edited
+        return requests_visible_to(self.request.user).filter(status__in=ConsultationRequest.OPEN_STATUSES)
+
+    def form_valid(self, form):
+        email_changed = "email" in form.changed_data
+        try:
+            request_obj = update_request_details(self.object, data=form.cleaned_data, by=self.request.user)
+        except InvalidTransitionError as error:
+            messages.error(self.request, str(error))
+        else:
+            message = "Details updated."
+            if email_changed and request_obj.status == ConsultationRequest.Status.AWAITING_PAYMENT:
+                message += " The email changed: use Resend payment instructions so they receive them."
+            messages.success(self.request, message)
+        return redirect("matchmaking:consultation-request-detail", pk=self.object.pk)
+
+
+class ResendPaymentInstructionsView(ConsultationRequestActionView):
+    success_message = "Payment instructions sent again to {name}."
+
+    def perform(self, consultation_request, data):
+        if consultation_request.status != ConsultationRequest.Status.AWAITING_PAYMENT:
+            raise InvalidTransitionError("Payment instructions can only be resent while awaiting payment.")
+        if consultation_request.former_elite_case_id:
+            raise InvalidTransitionError("Former Elite clients don't get the payment email; contact them personally.")
+        resend_payment_instructions(consultation_request)
+
+
+class UndoFeePaidView(ConsultationRequestActionView):
+    # Admin only: reversing a payment record is an owner-level decision
+    permission_required = "base.undo_payment"
+    form_class = UndoFeePaidForm
+    success_message = "Payment undone for {name}. The request is back to awaiting payment."
+
+    def perform(self, consultation_request, data):
+        undo_fee_paid(consultation_request, reason=data["reason"], by=self.request.user)

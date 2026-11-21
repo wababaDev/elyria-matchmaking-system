@@ -1,0 +1,56 @@
+{% extends "layouts/public.html" %}
+{% block title %}Apply for Consideration | Elite Grade | Elyria Matchmaking{% endblock %}
+{% block body_class %}always-show-header page-static{% endblock %}
+
+{% block content %}
+{% include "domain/website/elite/_hero.html" with hero_title="Apply for Consideration" %}
+
+<section class="section-padding">
+    <div class="container" style="max-width: 720px;">
+        <div class="page-intro reveal" data-reveal="fade-up">
+            <span class="accent-text">Elite Grade · By approval only</span>
+            <h2 class="section-title">When you have a specific person in mind</h2>
+            <p class="section-subtitle">
+                Elyria makes one discreet inquiry to the person you name, without saying who you are.
+                Only if they clearly agree do we share your identity. A decline or silence ends the process.
+            </p>
+        </div>
+
+        <ol class="mb-4" style="line-height: 1.8;">
+            <li>Give us your name and email, and confirm your email address.</li>
+            <li>We'll email you the Elite Grade details and three documents to sign: an NDA, a Declaration of Respectful Intent and the Confidential Introduction Request Form.</li>
+            <li>Return them signed by replying to that email. We review every request personally. No fee is charged unless your request is approved.</li>
+        </ol>
+
+        <form method="post" novalidate class="elite-apply-form">
+            {% csrf_token %}
+            {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors|first }}</div>{% endif %}
+
+            {% for field in form %}
+                {% if field.name == "website" %}
+                    <div style="position:absolute;left:-9999px;" aria-hidden="true">{{ field }}</div>
+                {% elif field.name == "understood" %}
+                    <div class="form-check mb-4">
+                        <input type="checkbox" name="{{ field.html_name }}" id="{{ field.id_for_label }}" class="form-check-input{% if field.errors %} is-invalid{% endif %}" {% if field.value %}checked{% endif %} required>
+                        <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                {% else %}
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        <input type="{% if field.name == 'email' %}email{% elif field.name == 'phone' %}tel{% else %}text{% endif %}"
+                               name="{{ field.html_name }}" id="{{ field.id_for_label }}" value="{{ field.value|default_if_none:'' }}"
+                               class="form-control{% if field.errors %} is-invalid{% endif %}" {% if field.field.required %}required{% endif %}>
+                        {% for error in field.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                    </div>
+                {% endif %}
+            {% endfor %}
+
+            <button type="submit" class="register-submit-btn">Apply for Consideration</button>
+            <p class="text-muted mt-3" style="font-size: .85rem;">
+                We only use these details for your Elite Grade application. See our <a href="{% url 'website:privacy' %}">Privacy Policy</a>.
+            </p>
+        </form>
+    </div>
+</section>
+{% endblock %}

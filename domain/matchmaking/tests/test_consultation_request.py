@@ -114,7 +114,7 @@ class ViewTests(TestCase):
     def test_blocked_status_shows_message_and_saves_nothing(self):
         response = self.client.post(self.url, {**VALID, "relationship_status": "married"})
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "married or separated")
+        self.assertContains(response, "designed exclusively for single individuals")
         self.assertEqual(ConsultationRequest.objects.count(), 0)
 
     def test_honeypot_saves_nothing(self):

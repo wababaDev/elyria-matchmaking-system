@@ -1,0 +1,282 @@
+{% extends "layouts/management.html" %}
+{% block title %}Consultation record: {{ cr.full_name }}{% endblock %}
+{% block page_title %}Official Consultation Record{% endblock %}
+{% block page_actions %}
+    <a href="{% url 'matchmaking:consultation-request-detail' cr.pk %}" class="btn btn-sm btn-light"><i class="fe fe-arrow-left me-1"></i>Back to request</a>
+{% endblock %}
+
+{% block content %}
+<style>
+    .record-progress { position: sticky; top: 84px; }
+    .record-nav li { display: flex; justify-content: space-between; gap: .5rem; padding: .3rem 0; border-bottom: 1px dashed rgba(0,0,0,.06); }
+    .record-nav li:last-child { border-bottom: 0; }
+    .record-nav a { color: #6E1423; font-weight: 500; text-decoration: none; }
+    .record-nav a:hover { color: #C9A227; text-decoration: underline; }
+    .record-section, #sec-begin { scroll-margin-top: 90px; }
+</style>
+{% if editable %}<form method="post" novalidate id="recordForm">{% csrf_token %}{% endif %}
+
+<!-- Status -->
+{% if consultation.is_locked %}
+    <div class="alert alert-light border fs-13">
+        <i class="fe fe-lock me-1"></i>Locked {{ consultation.record_locked_at|date:"j M Y, H:i" }} by {{ consultation.record_locked_by.full_name|default:"—" }}.
+        This is the baseline and can't be changed. Anything learned later goes in the member's notes.
+    </div>
+{% elif editable %}
+    <div class="alert alert-light border fs-13">
+        Fill this in during the call. <strong>Save draft</strong> as often as you like. <strong>Lock record</strong> when the consultation is over: after that it can't be changed.
+    </div>
+{% endif %}
+
+<div class="row">
+    <!-- ================= LEFT: the interview ================= -->
+    <div class="col-xl-8">
+
+        <!-- Client information (automatic) -->
+        <div class="card custom-card">
+            <div class="card-header"><div class="card-title">Client information</div></div>
+            <div class="card-body">
+                <dl class="row mb-0 fs-13">
+                    <dt class="col-sm-3 text-muted fw-normal">Full name</dt><dd class="col-sm-3">{{ cr.full_name }}</dd>
+                    <dt class="col-sm-3 text-muted fw-normal">Preferred name</dt><dd class="col-sm-3">{{ cr.preferred_name|default:"—" }}</dd>
+                    <dt class="col-sm-3 text-muted fw-normal">Phone number</dt><dd class="col-sm-3">{{ cr.phone }}</dd>
+                    <dt class="col-sm-3 text-muted fw-normal">Email address</dt><dd class="col-sm-3">{{ cr.email }}</dd>
+                    <dt class="col-sm-3 text-muted fw-normal">Date of consultation</dt>
+                    <dd class="col-sm-3">
+                        {% if consultation.held_at %}{{ consultation.held_at|date:"j M Y, H:i" }}
+                        {% elif consultation.scheduled_for %}{{ consultation.scheduled_for|date:"j M Y, H:i" }}
+                        {% else %}Not booked{% endif %}
+                    </dd>
+                    <dt class="col-sm-3 text-muted fw-normal">Consulting matchmaker</dt>
+                    <dd class="col-sm-3 mb-0">
+                        {% if consultation.conducted_by %}{{ consultation.conducted_by.full_name }}
+                        {% elif cr.assigned_to %}{{ cr.assigned_to.full_name }}
+                        {% else %}—{% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        <!-- Before you begin -->
+        <div class="card custom-card" id="sec-begin">
+            <div class="card-header">
+                <div class="card-title">Before You Begin</div>
+                {% if editable %}<span class="badge bg-light text-muted ms-2">Required to lock</span>{% endif %}
+            </div>
+            <div class="card-body">
+                {% for field in before_you_begin %}
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 {% if not forloop.last %}mb-3{% endif %}">
+                        <span class="fs-14">{{ field.label }}</span>
+                        {% if editable %}
+                            <span>
+                                {% for choice in field %}
+                                    <span class="form-check form-check-inline mb-0">{{ choice.tag }}<label class="form-check-label" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label></span>
+                                {% endfor %}
+                            </span>
+                        {% else %}
+                            <strong>{{ field.value|default:"—"|capfirst }}</strong>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- The questions -->
+        {% for section in sections %}
+            <div class="card custom-card record-section" id="sec-{{ forloop.counter }}">
+                <div class="card-header justify-content-between">
+                    <div>
+                        <div class="card-title">{% if section.code %}{{ section.code }}. {% endif %}{{ section.title }}</div>
+                        {% if section.hint %}<span class="text-muted fs-12">{{ section.hint }}</span>{% endif %}
+                    </div>
+                    <span class="badge bg-light text-muted" data-section-count>{{ section.answered }}/{{ section.total }}</span>
+                </div>
+                <div class="card-body">
+                    {% for field in section.items %}
+                        <div class="{% if not forloop.last %}mb-4{% endif %}">
+                            <label class="form-label fw-semibold fs-14" for="{{ field.id_for_label }}">
+                                <span class="text-primary me-1">{% if section.code %}{{ section.code }}{% endif %}{{ forloop.counter }}.</span>{{ field.label }}
+                            </label>
+                            {% if editable %}
+                                {{ field }}
+                            {% else %}
+                                <div class="fs-14 {% if not field.value %}text-muted fst-italic{% endif %}">{{ field.value|default:"No answer recorded."|linebreaksbr }}</div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- ================= RIGHT: progress and the matchmaker's own boxes ================= -->
+    <div class="col-xl-4">
+
+        <!-- Other questions + overall notes -->
+        {% for section in side_sections %}
+            <div class="card custom-card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">{{ section.title }}</div>
+                        {% if section.hint %}<span class="text-muted fs-12">{{ section.hint }}</span>{% endif %}
+                    </div>
+                    {% if editable and "notes" in section.fields %}<span class="badge bg-light text-muted ms-auto">Required to lock</span>{% endif %}
+                </div>
+                <div class="card-body">
+                    {% for field in section.items %}
+                        {% if editable %}
+                            {{ field }}
+                        {% else %}
+                            <div class="fs-14 {% if not field.value %}text-muted fst-italic{% endif %}">{{ field.value|default:"Nothing recorded."|linebreaksbr }}</div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+
+        <!-- Readiness -->
+        <div class="card custom-card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Readiness score</div>
+                    <span class="text-muted fs-12">Low / Medium / High rubric, Screening Guide Part 6. Due within 24 hours of the call.</span>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if editable %}
+                    {{ form.readiness }}
+                    <p class="text-muted fs-12 mt-2 mb-0">Can also be added after locking.</p>
+                {% elif consultation.readiness %}
+                    <strong>{{ consultation.get_readiness_display }}</strong>
+                    <div class="text-muted fs-12">Recorded {{ consultation.readiness_set_at|date:"j M Y, H:i" }}{% if consultation.readiness_set_by %} by {{ consultation.readiness_set_by.full_name }}{% endif %}</div>
+                {% elif consultation.is_locked %}
+                    {# Its own small form: the record itself is locked #}
+                    <span class="text-warning fs-12 d-block mb-2">Not scored yet.</span>
+                    <div class="d-flex gap-2">
+                        <select name="readiness" form="readinessForm" class="form-select">
+                            {% for value, label in readiness_form.fields.readiness.choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                        </select>
+                        <button type="submit" form="readinessForm" class="btn btn-primary text-nowrap"
+                                data-confirm-title="Record readiness score"
+                                data-confirm="The score can only be recorded once. Continue?"
+                                data-confirm-button="Record score">Record</button>
+                    </div>
+                {% else %}
+                    <span class="text-muted">Not scored.</span>
+                {% endif %}
+            </div>
+        </div>
+        <!-- Questions answered + jump to section (stays in view while scrolling) -->
+        <div class="card custom-card record-progress">
+            <div class="card-header justify-content-between">
+                <div>
+                    <div class="card-title">Questions answered</div>
+                    <span class="text-muted fs-12">{% if editable %}How much of the interview is filled in. Not a score.{% else %}How much of the interview was recorded. Not a score.{% endif %}</span>
+                </div>
+                <span class="fs-14 fw-semibold text-nowrap" id="progressText">
+                    {{ consultation.answered_count|default:0 }} / {{ question_total }}
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="progress mb-3" style="height: 6px;">
+                    <div class="progress-bar bg-primary" id="progressBar" role="progressbar"
+                         style="width: {% widthratio consultation.answered_count|default:0 question_total 100 %}%"></div>
+                </div>
+                <p class="text-muted fs-12 mb-2">Jump to a section:</p>
+                <ul class="list-unstyled mb-0 fs-13 record-nav">
+                    <li><a href="#sec-begin">Before You Begin</a></li>
+                    {% for section in sections %}
+                        <li>
+                            <a href="#sec-{{ forloop.counter }}">{% if section.code %}{{ section.code }}. {% endif %}{{ section.title }}</a>
+                            <span class="text-muted" data-nav-count="sec-{{ forloop.counter }}">{% if section.answered == section.total %}✓{% else %}{{ section.answered }}/{{ section.total }}{% endif %}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if editable %}
+    <!-- Sticky action bar -->
+    <div class="card custom-card position-sticky bottom-0 mb-0" style="z-index: 5;">
+        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
+            <span class="fs-13 text-muted" id="saveState">
+                {% if consultation %}Last saved {{ consultation.updated_at|date:"j M Y, H:i" }}{% else %}Not saved yet{% endif %}
+            </span>
+            <div class="d-flex gap-2">
+                <button type="submit" name="action" value="save" class="btn btn-light">Save draft</button>
+                <button type="submit" name="action" value="lock" class="btn btn-primary" id="lockButton"
+                        data-confirm-title="Lock consultation record?"
+                        data-confirm="Once locked, {{ cr.display_name }}'s record can never be changed.{% if cr.status == 'fee_paid' %} The consultation will also be marked as held.{% endif %}"
+                        data-confirm-button="Yes, lock it"
+                        data-confirm-variant="danger">
+                    <i class="fe fe-lock me-1"></i>Lock record
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+{% endif %}
+
+{% if consultation.is_locked and not consultation.readiness %}
+    <form method="post" id="readinessForm">{% csrf_token %}<input type="hidden" name="action" value="readiness"></form>
+{% endif %}
+
+{% if editable %}
+<script>
+(function () {
+    // Live progress: counts answered interview questions as the matchmaker types
+    var form = document.getElementById('recordForm');
+    var sections = form.querySelectorAll('.record-section');
+    var total = form.querySelectorAll('.record-section textarea').length;  // counted on the page, so it can't go missing
+    var bar = document.getElementById('progressBar');
+    var text = document.getElementById('progressText');
+    var saveState = document.getElementById('saveState');
+    var lockButton = document.getElementById('lockButton');
+    var baseMessage = lockButton.dataset.confirm;
+    var dirty = false;
+
+    function refresh() {
+        var answered = 0;
+        sections.forEach(function (section) {
+            var boxes = section.querySelectorAll('textarea');
+            var done = Array.prototype.filter.call(boxes, function (b) { return b.value.trim(); }).length;
+            answered += done;
+            var label = done + '/' + boxes.length;
+            section.querySelector('[data-section-count]').textContent = label;
+            var nav = document.querySelector('[data-nav-count="' + section.id + '"]');
+            if (nav) nav.textContent = done === boxes.length ? '✓' : label;
+        });
+        text.textContent = answered + ' / ' + total;
+        bar.style.width = (answered / total * 100) + '%';
+
+        // The "are you sure" message mentions unanswered questions
+        var left = total - answered;
+        lockButton.dataset.confirm = baseMessage + (left ? ' ' + left + ' question' + (left === 1 ? ' has' : 's have') + ' no answer.' : '');
+    }
+
+    form.addEventListener('input', function () {
+        refresh();
+        if (!dirty) { dirty = true; saveState.textContent = 'Unsaved changes'; }
+    });
+    form.addEventListener('submit', function () {
+        dirty = false;
+        // Come back to the same place after "Save draft"
+        try { sessionStorage.setItem('recordScroll', String(window.scrollY)); } catch (e) {}
+    });
+    // Wait until the page has fully laid out, then return to where they were
+    window.addEventListener('load', function () {
+        try {
+            var y = sessionStorage.getItem('recordScroll');
+            if (y !== null) { sessionStorage.removeItem('recordScroll'); window.scrollTo(0, parseInt(y, 10)); }
+        } catch (e) {}
+    });
+    window.addEventListener('beforeunload', function (e) {
+        if (dirty) { e.preventDefault(); e.returnValue = ''; }
+    });
+    refresh();
+})();
+</script>
+{% endif %}
+{% endblock %}

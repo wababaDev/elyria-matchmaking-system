@@ -1,0 +1,13 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}{{ client.full_name }} has completed their profile.{% endblock %}
+{% block heading %}Profile complete{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">
+        <strong>{{ client.full_name }}</strong>{% if client.preferred_name %} (&ldquo;{{ client.preferred_name }}&rdquo;){% endif %}
+        has marked their Self-Service Profile complete.
+    </p>
+    <p style="margin:0 0 16px;">It's ready for you to review and cross-check against the consultation notes.</p>
+
+    {% include "notification/email/_button.html" with url=link label="Open the member" %}
+{% endblock %}
+{% block signoff %}{% endblock %}

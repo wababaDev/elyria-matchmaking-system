@@ -1,0 +1,8 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}Your matchmaker will be in touch personally to arrange your consultation.{% endblock %}
+{% block heading %}Thank you, {{ consultation.display_name }}{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">We've received your request for a private consultation.</p>
+    <p style="margin:0 0 16px;">Because you came to us through Elite Grade, your matchmaker will contact you personally to arrange your consultation and the next steps. There's nothing you need to do in the meantime.</p>
+    <p style="margin:0 0 16px;">Your reference is <strong>{{ consultation.payment_reference }}</strong>. Please quote it if you contact us.</p>
+{% endblock %}  

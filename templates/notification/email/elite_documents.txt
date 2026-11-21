@@ -1,0 +1,15 @@
+{% autoescape off %}Dear {{ case.full_name }},
+
+Thank you for confirming your email. Attached you'll find:
+
+- the Elite Grade document, explaining how this service works
+- the Client Confidentiality & Non-Disclosure Agreement
+- the Declaration of Respectful Intent
+- the Confidential Introduction Request Form
+
+If you wish to proceed, please read them carefully, complete and sign the NDA, the Declaration and the Request Form, and send them back as a reply to this email ({{ reply_to }}).
+
+Please send them only to this address and do not share them with anyone else. No fee is charged at this stage. We will review your request once we have all three documents, and approval is not guaranteed.
+
+Elyria Matchmaking
+{% endautoescape %}

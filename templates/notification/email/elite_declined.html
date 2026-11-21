@@ -1,0 +1,8 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}An update on your Elite Grade request.{% endblock %}
+{% block heading %}Your Elite Grade request{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">Dear {{ case.full_name }},</p>
+    <p style="margin:0 0 16px;">Thank you for your Elite Grade request. After careful review, we are unable to proceed with it.</p>
+    <p style="margin:0 0 16px;font-size:13px;color:#777;">No fee is payable. Please note that we do not give reasons for these decisions.</p>
+{% endblock %}

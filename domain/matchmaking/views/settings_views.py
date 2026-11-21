@@ -16,11 +16,11 @@ from domain.base.services.staff_service import (
 )
 from domain.matchmaking.forms import (
     MembershipTierForm,
-    PrivacyPolicyUploadForm,
     SiteSettingsForm,
     StaffCreateForm,
     StaffUpdateForm,
 )
+from domain.matchmaking.forms.settings_forms import SiteDocumentUploadForm
 from domain.matchmaking.models import MembershipTier
 from domain.website.models import SiteDocument, SiteSettings
 from domain.website.services.document_service import replace_document
@@ -153,18 +153,39 @@ class TierUpdateView(SettingsMixin, SuccessMessageMixin, UpdateView):
 
 # ---------- Documents ----------
 
+
 class DocumentsView(SettingsMixin, FormView):
+    """Privacy Policy (public) and the Elite Grade documents (emailed to applicants)."""
     settings_tab = "documents"
-    form_class = PrivacyPolicyUploadForm
+    form_class = SiteDocumentUploadForm
     template_name = "domain/management/settings/documents.html"
     success_url = reverse_lazy("matchmaking:settings-documents")
-
+ 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["privacy_document"] = SiteDocument.current(SiteDocument.Kind.PRIVACY_POLICY)
+        current = {d.kind: d for d in SiteDocument.objects.select_related("uploaded_by")}
+        context.update(
+            privacy_document=current.get(SiteDocument.Kind.PRIVACY_POLICY),
+            elite_documents=[
+                (kind, SiteDocument.Kind(kind).label, current.get(kind), kind in SiteDocument.ELITE_EMAIL_KINDS)
+                for kind in SiteDocument.ELITE_KINDS
+            ],
+            failed_kind=getattr(self, "failed_kind", ""),
+        )
         return context
-
+ 
+    def form_invalid(self, form):
+        self.failed_kind = self.request.POST.get("kind", "")
+        messages.error(self.request, " ".join(form.errors.get("file", ["Please choose a PDF file."])))
+        return super().form_invalid(form)
+ 
     def form_valid(self, form):
-        replace_document(kind=SiteDocument.Kind.PRIVACY_POLICY, file=form.cleaned_data["file"], by=self.request.user)
-        messages.success(self.request, "Privacy Policy uploaded. The public page now links to it.")
+        kind = form.cleaned_data["kind"]
+        replace_document(kind=kind, file=form.cleaned_data["file"], by=self.request.user)
+        label = SiteDocument.Kind(kind).label
+        if kind == SiteDocument.Kind.PRIVACY_POLICY:
+            messages.success(self.request, "Privacy Policy uploaded. The public page now links to it.")
+        else:
+            messages.success(self.request, f"{label} uploaded. New Elite applicants will receive this version.")
         return super().form_valid(form)
+ 

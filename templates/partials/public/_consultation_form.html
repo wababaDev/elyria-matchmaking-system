@@ -27,7 +27,7 @@ Usage: {% include "partials/_consultation_form.html" with p="c" button="Send req
         <div class="col-md-6 form-group">
             <label for="{{ p }}-preferred-name">Preferred name</label>
            <input type="text" id="{{ p }}-preferred-name" name="preferred_name" value="{{ f.preferred_name.value|default:'' }}" maxlength="80"
-+                   placeholder="Optional">
+                   placeholder="Optional">
             {% if f.preferred_name.errors %}<small class="text-danger">{{ f.preferred_name.errors.0 }}</small>{% endif %}
         </div>
         <div class="col-md-6 form-group">

@@ -1,0 +1,15 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}Your Elite Grade documents are attached.{% endblock %}
+{% block heading %}Your Elite Grade documents{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">Dear {{ case.full_name }},</p>
+    <p style="margin:0 0 12px;">Thank you for confirming your email. Attached you'll find:</p>
+    <ul style="margin:0 0 16px;padding-left:20px;">
+        <li>the Elite Grade document, explaining how this service works</li>
+        <li>the Client Confidentiality &amp; Non-Disclosure Agreement</li>
+        <li>the Declaration of Respectful Intent</li>
+        <li>the Confidential Introduction Request Form</li>
+    </ul>
+    <p style="margin:0 0 16px;">If you wish to proceed, please read them carefully, complete and sign the <strong>NDA</strong>, the <strong>Declaration</strong> and the <strong>Request Form</strong>, and send them back as a <strong>reply to this email</strong> ({{ reply_to }}).</p>
+    <p style="margin:0 0 16px;font-size:13px;color:#777;">Please send them only to this address and do not share them with anyone else. No fee is charged at this stage. We will review your request once we have all three documents, and approval is not guaranteed.</p>
+{% endblock %}

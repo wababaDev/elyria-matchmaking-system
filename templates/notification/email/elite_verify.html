@@ -1,0 +1,9 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}Confirm your email to continue your Elite Grade application.{% endblock %}
+{% block heading %}Confirm your email{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">Dear {{ case.full_name }},</p>
+    <p style="margin:0 0 16px;">Thank you for applying for Elite Grade consideration with Elyria Matchmaking. Please confirm your email address to continue.</p>
+    <p style="margin:0 0 24px;"><a href="{{ link }}" style="display:inline-block;background:#6E1423;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;">Confirm my email</a></p>
+    <p style="margin:0 0 16px;font-size:13px;color:#777;">The link works for 48 hours. Once confirmed, we'll email you the Elite Grade details and the documents to sign. If you didn't apply, you can ignore this email.</p>
+{% endblock %}

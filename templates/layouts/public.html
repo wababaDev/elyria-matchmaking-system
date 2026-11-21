@@ -5,7 +5,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="robots" content="noindex, nofollow">
-        <title>{% block title %}Elyria Matchmaking — Date with Intention{% endblock %}</title>
+           {% include "partials/public/_seo.html" %}
         <link rel="icon"
               type="image/png"
               href="{% static 'front/assets/logo-head.png' %}">
@@ -19,7 +19,7 @@
         {% block style %}{% endblock %}
     </head>
     <body class="{% block body_class %}{% endblock %}">
-        {% include "partials/_env_banner.html" %}
+        {% include "partials/public/_env_banner.html" %}
         {% include "partials/public/_header.html" %}
         {% block content %}{% endblock %}
 

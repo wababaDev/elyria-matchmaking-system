@@ -1,0 +1,7 @@
+{% autoescape off %}{{ client.full_name }}{% if client.preferred_name %} ("{{ client.preferred_name }}"){% endif %} has marked their Self-Service Profile complete.
+
+It's ready for you to review and cross-check against the consultation notes.
+
+Open the member:
+{{ link }}
+{% endautoescape %}

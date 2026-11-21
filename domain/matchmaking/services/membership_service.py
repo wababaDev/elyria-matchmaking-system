@@ -6,6 +6,7 @@ from domain.base.models import STAFF_GROUPS, Groups
 from domain.base.services.groups import in_groups
 from domain.matchmaking.models import Client, ConsultationRequest, Membership, MembershipPayment
 from domain.matchmaking.services.consultation_request_service import InvalidTransitionError
+from domain.matchmaking.utils import add_months
 from notification.services.member_emails import send_member_welcome
 
 Status = ConsultationRequest.Status
@@ -33,13 +34,13 @@ def _get_or_create_member_user(consultation_request):
 
 
 @transaction.atomic
-def confirm_membership(
-    consultation_request, *, tier, start_date, end_date,
-    amount, currency, method, reference="", by,
-):
+def confirm_membership(consultation_request, *, tier, start_date, method, reference="", by):
+    """Price and end date come from the tier; staff only record how it was paid."""
     consultation_request = ConsultationRequest.objects.select_for_update().get(pk=consultation_request.pk)
     if consultation_request.status != Status.CONSULTED:
         raise InvalidTransitionError("Membership can only be confirmed after the consultation.")
+    if tier.price is None:
+        raise InvalidTransitionError(f"{tier.name} has no price yet. Set it in Settings → Membership tiers first.")
 
     user = _get_or_create_member_user(consultation_request)
 
@@ -51,13 +52,16 @@ def confirm_membership(
         matchmaker=consultation_request.assigned_to or by,
     )
     membership = Membership.objects.create(
-        client=client, tier=tier, start_date=start_date, end_date=end_date,
+        client=client,
+        tier=tier,
+        start_date=start_date,
+        end_date=add_months(start_date, tier.duration_months),
     )
     MembershipPayment.objects.create(
         membership=membership,
         kind=MembershipPayment.Kind.NEW,
-        amount=amount,
-        currency=currency,
+        amount=tier.price,
+        currency=tier.currency,
         method=method,
         reference=reference,
         recorded_by=by,
@@ -65,6 +69,7 @@ def confirm_membership(
 
     consultation_request.status = Status.BECAME_MEMBER
     consultation_request.save(update_fields=["status", "updated_at"])
+    
 
     transaction.on_commit(lambda: send_member_welcome(client))
     return client

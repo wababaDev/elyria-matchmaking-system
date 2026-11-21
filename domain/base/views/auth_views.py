@@ -1,8 +1,8 @@
-from django.conf import settings
 from django.contrib.auth.views import LoginView, LogoutView, PasswordResetConfirmView
 
+from domain.base.models.permissions import STAFF_GROUPS
 from domain.base.services.groups import home_url_for
-
+from django.shortcuts import resolve_url
 
 class SignInView(LoginView):
     """Member sign-in (public, linked from the site)."""
@@ -20,8 +20,15 @@ class StaffSignInView(SignInView):
 
 
 class SignOutView(LogoutView):
-    """POST only (Django 5). Use a small form, not a plain link."""
-    next_page = "/"
+    """POST only (Django 5). Staff go back to the staff sign-in, members to the member sign-in."""
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        self.was_staff = user.is_superuser or user.groups.filter(name__in=STAFF_GROUPS).exists()
+        return super().post(request, *args, **kwargs)
+
+    def get_default_redirect_url(self):
+        return resolve_url("base:staff-sign-in" if self.was_staff else "base:sign-in")
 
 
 class SetPasswordView(PasswordResetConfirmView):

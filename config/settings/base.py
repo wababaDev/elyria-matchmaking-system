@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from celery.schedules import crontab
 import environ
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent  # base.py → settings/ → config/ → project root
@@ -19,10 +20,12 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sitemaps",
     "domain.base",
     "domain.website",
     "domain.matchmaking",
     "domain.portal",
+    "domain.elite",
     "notification",
 ]
 
@@ -35,6 +38,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "domain.base.noindex_middleware.NoIndexMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -54,7 +58,8 @@ TEMPLATES = [
                 "domain.base.context_processors.environment",
                 "domain.website.context_processors.consultation_form",
                 "domain.website.context_processors.site_settings",
-                "domain.matchmaking.context_processors.staff_queue",
+                "domain.matchmaking.context_processors.queue_counts",
+                "domain.website.seo.seo",
             ],
         },
     },
@@ -90,6 +95,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+PRIVATE_MEDIA_ROOT = BASE_DIR / "private_media"   # member photos, never served publicly
 
 # ---------------------------------------------------------------- Email
 EMAIL_HOST = env("EMAIL_HOST", default="smtppro.zoho.com")
@@ -97,8 +103,8 @@ EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Elyria Matchmaking <info@example.com>")  # TODO: real Zoho address
-TEAM_INBOX_EMAIL = env("TEAM_INBOX_EMAIL", default="info@example.com")  # TODO: real team inbox
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Elyria Matchmaking <info@example.com>") 
+TEAM_INBOX_EMAIL = env("TEAM_INBOX_EMAIL", default="info@example.com") 
 EMAIL_SUBJECT_TAG = ""  # "[UAT]" on UAT, see production.py
 
 # ---------------------------------------------------------------- Site
@@ -115,5 +121,21 @@ CELERY_TASK_IGNORE_RESULT = True          # we never read task results
 CELERY_TASK_ACKS_LATE = True              # a task isn't lost if the worker restarts mid-send
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+
+CELERY_BEAT_SCHEDULE = {
+    # Elite: remind Case Handlers about reply windows, Monday deletion reminder to Admin. Never deletes.
+    "elite-daily": {
+        "task": "domain.elite.tasks.elite_daily",
+        "schedule": crontab(hour=7, minute=43),   # 07:43 Lusaka time (CELERY_TIMEZONE)
+    },
+    # Memberships: renewal reminders 60, 30 and 14 days before the end date (member + matchmaker).
+    "membership-daily": {
+        "task": "domain.matchmaking.tasks.membership_daily",
+        "schedule": crontab(hour=7, minute=13),   # 07:13 Lusaka time
+    },
+}
+
+
 # If Redis is down, give up queuing quickly instead of hanging the request
 CELERY_TASK_PUBLISH_RETRY_POLICY = {"max_retries": 2, "interval_start": 0, "interval_step": 0.5, "interval_max": 1}

@@ -1,0 +1,9 @@
+{% autoescape off %}Dear {{ client.preferred_name }},
+
+Your matchmaker has selected someone they think you should consider. Take your time: nothing happens without your consent.
+
+View in My Matches:
+{{ link }}
+
+Elyria Matchmaking
+{% endautoescape %}

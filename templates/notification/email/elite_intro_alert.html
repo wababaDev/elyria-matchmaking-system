@@ -1,0 +1,13 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}{% if updated %}Your introduction details have changed.{% else %}Your introduction is confirmed.{% endif %}{% endblock %}
+{% block heading %}{% if updated %}Updated: your introduction{% else %}Your introduction{% endif %}{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">Hello,</p>
+    <p style="margin:0 0 16px;">{% if updated %}The details of your introduction have changed. Here are the new details:{% else %}Your introduction, arranged by Elyria, is confirmed:{% endif %}</p>
+    <table role="presentation" style="margin:0 0 16px;border-collapse:collapse;">
+        <tr><td style="padding:4px 16px 4px 0;color:#777;">When</td><td style="padding:4px 0;"><strong>{{ when|date:"l j F Y, H:i" }}</strong></td></tr>
+        {% if venue %}<tr><td style="padding:4px 16px 4px 0;color:#777;">Where</td><td style="padding:4px 0;">{{ venue }}</td></tr>{% endif %}
+        {% if video_link %}<tr><td style="padding:4px 16px 4px 0;color:#777;">Video link</td><td style="padding:4px 0;"><a href="{{ video_link }}">{{ video_link }}</a></td></tr>{% endif %}
+    </table>
+    <p style="margin:0 0 16px;font-size:13px;color:#777;">Please share your plans with someone you trust, and contact your Elyria Case Handler if anything changes.</p>
+{% endblock %}

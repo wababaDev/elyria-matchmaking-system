@@ -1,0 +1,12 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}Your new link to set your password and sign in.{% endblock %}
+{% block heading %}Your sign-in link{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">Dear {{ client.preferred_name }},</p>
+
+    <p style="margin:0;">As requested, here is a new link to set your password and sign in to your Elyria account:</p>
+
+    {% include "notification/email/_button.html" with url=link label="Set your password" %}
+
+    <p style="margin:0 0 16px;">The link expires in 7 days. If you didn't ask for this, you can ignore this email; your account is unchanged.</p>
+{% endblock %}

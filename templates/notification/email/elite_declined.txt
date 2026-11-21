@@ -1,0 +1,8 @@
+{% autoescape off %}Dear {{ case.full_name }},
+
+Thank you for your Elite Grade request. After careful review, we are unable to proceed with it.
+
+No fee is payable. Please note that we do not give reasons for these decisions.
+
+Elyria Matchmaking
+{% endautoescape %}

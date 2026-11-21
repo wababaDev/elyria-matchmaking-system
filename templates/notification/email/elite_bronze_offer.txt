@@ -1,0 +1,10 @@
+{% autoescape off %}Dear {{ case.full_name }},
+
+Thank you for trusting Elyria with your Elite Grade request. We made the discreet inquiry as agreed, and we're sorry to let you know that the request is not proceeding. In line with our process, we will not contact the person again.
+
+As part of your Elite Grade terms, you're welcome to join Elyria as a Bronze Member, where your matchmaker introduces you to people who are looking for a relationship too. This is not a refund or compensation.
+
+If you'd like to accept, simply reply to this email ({{ reply_to }}) and we'll send you the next step.
+
+Elyria Matchmaking
+{% endautoescape %}

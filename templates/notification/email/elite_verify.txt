@@ -1,0 +1,13 @@
+{% autoescape off %}Dear {{ case.full_name }},
+
+Thank you for applying for Elite Grade consideration with Elyria Matchmaking.
+
+Please confirm your email address by opening this link (it works for 48 hours):
+{{ link }}
+
+Once confirmed, we'll email you the Elite Grade details and the documents to sign.
+
+If you didn't apply, you can ignore this email.
+
+Elyria Matchmaking
+{% endautoescape %}

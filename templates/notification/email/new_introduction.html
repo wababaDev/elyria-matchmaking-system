@@ -1,0 +1,8 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}Your matchmaker has selected someone for you to consider.{% endblock %}
+{% block heading %}A new introduction to review{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">Dear {{ client.preferred_name }},</p>
+    <p style="margin:0 0 16px;">Your matchmaker has selected someone they think you should consider. Take your time: nothing happens without your consent.</p>
+    {% include "notification/email/_button.html" with url=link label="View in My Matches" %}
+{% endblock %}

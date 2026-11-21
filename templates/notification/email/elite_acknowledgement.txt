@@ -1,0 +1,10 @@
+{% autoescape off %}Hello,
+
+Thank you for letting us know you'd like to hear more.
+
+Before we share who would like to be introduced to you, please read the attached Introduction Acknowledgement, sign it, and send it back as a reply to this email ({{ reply_to }}).
+
+You are under no obligation, and you may decline at any point. If you no longer wish to continue, simply reply and tell us, or don't return the document; we will not contact you again.
+
+Elyria Matchmaking
+{% endautoescape %}

@@ -1,0 +1,26 @@
+{# Include once in the <head> of the public site's base layout, in place of its <title>. Wording lives in domain/website/seo.py. #}
+{% load static %}
+<title>{% block seo_title %}{{ seo.title }}{% endblock %}</title>
+<meta name="description" content="{{ seo.description }}">
+<link rel="canonical" href="{{ seo.canonical }}">
+{% if seo.noindex %}<meta name="robots" content="noindex, nofollow">{% endif %}
+
+{# How the link looks when shared on WhatsApp, Facebook, LinkedIn #}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{ seo.site_name }}">
+<meta property="og:title" content="{{ seo.title }}">
+<meta property="og:description" content="{{ seo.description }}">
+<meta property="og:url" content="{{ seo.canonical }}">
+<meta property="og:image" content="{{ seo.site_url }}{% static 'front/assets/logo.jpg' %}">
+<meta name="twitter:card" content="summary_large_image">
+
+{# Tells Google who Elyria is (name, site, logo). No address or phone until the footer has them. #}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Elyria Matchmaking Limited",
+  "url": "{{ seo.site_url }}/",
+  "logo": "{{ seo.site_url }}{% static 'front/assets/logo-words-gold.png' %}"
+}
+</script>

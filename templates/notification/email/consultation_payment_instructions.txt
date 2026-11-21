@@ -11,6 +11,10 @@ Bank transfer:
 
 Mobile money:
 {{site.mobile_money_details|default:"[Mobile money details — to be supplied]" }}
+
+Payment reference: {{ consultation.payment_reference }}
+Please use this as the reference when you pay, so we can match your payment to you.
+
 Once paid, please contact us by phone, email, or WhatsApp with proof of payment, and a member of our team will be in touch within three working days.
 
 Warm regards,

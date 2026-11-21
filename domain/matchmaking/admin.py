@@ -5,6 +5,7 @@ from domain.matchmaking.models import (
     Client, Consultation, ConsultationRequest, Membership, MembershipPayment,
 )
 from domain.matchmaking.models import MembershipTier
+from domain.matchmaking.models.member_note import MemberNote
 
 class ConsultationInline(admin.StackedInline):
     model = Consultation
@@ -41,3 +42,9 @@ class ClientAdmin(admin.ModelAdmin):
 class MembershipTierAdmin(admin.ModelAdmin):
     list_display = ("name", "price", "currency", "duration_months", "display_order", "is_active")
     list_editable = ("price", "currency", "duration_months", "display_order", "is_active")
+
+@admin.register(MemberNote)
+class MemberNoteAdmin(admin.ModelAdmin):
+    list_display = ("client", "kind", "status", "author", "created_at")
+    def has_delete_permission(self, request, obj=None): return False
+    def has_change_permission(self, request, obj=None): return False

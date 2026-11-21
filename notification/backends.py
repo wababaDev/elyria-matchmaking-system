@@ -9,9 +9,11 @@ class OneLineConsoleBackend(BaseEmailBackend):
     def send_messages(self, email_messages):
         for message in email_messages:
             sys.stdout.write(f"[email] to={', '.join(message.to)} | {message.subject}\n")
+            for attachment in message.attachments:
+                name, content = attachment[0], attachment[1]
+                sys.stdout.write(f"        + {name} ({len(content) / 1024:.1f} KB)\n")
         sys.stdout.flush()
         return len(email_messages)
-
 
 class EnvironmentTaggedSMTPBackend(SMTPEmailBackend):
     """Real SMTP; on UAT every subject starts with [UAT]."""

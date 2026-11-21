@@ -1,0 +1,10 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}An update on your Elite Grade request.{% endblock %}
+{% block heading %}Your Elite Grade request{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">Dear {{ case.full_name }},</p>
+    <p style="margin:0 0 16px;">Thank you for trusting Elyria with your Elite Grade request. We made the discreet inquiry as agreed, and we're sorry to let you know that the request is not proceeding. In line with our process, we will not contact the person again.</p>
+    <p style="margin:0 0 16px;">As part of your Elite Grade terms, you're welcome to join Elyria as a <strong>Bronze Member</strong>, where your matchmaker introduces you to people who are looking for a relationship too.</p>
+    <p style="margin:0 0 16px;">If you'd like to accept, simply reply to this email ({{ reply_to }}) and we'll send you the next step.</p>
+    <p style="margin:0 0 16px;font-size:13px;color:#777;">This is not a refund or compensation.</p>
+{% endblock %}

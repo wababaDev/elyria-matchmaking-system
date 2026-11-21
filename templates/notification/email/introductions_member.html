@@ -1,0 +1,15 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}{% if last %}Your next introduction will be your last.{% else %}You've used all the introductions in your membership.{% endif %}{% endblock %}
+{% block heading %}{% if last %}One introduction left{% else %}All introductions used{% endif %}{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">Dear {{ client.preferred_name }},</p>
+    <p style="margin:0 0 16px;">
+        {% if last %}
+            You've now had {{ used }} of the {{ allowed }} introductions included in your {{ tier }} membership, so your next introduction will be your last.
+        {% else %}
+            You've now had all {{ allowed }} introductions included in your {{ tier }} membership.
+        {% endif %}
+    </p>
+    <p style="margin:0 0 16px;">You can still see matches in your portal. To keep being introduced, you can renew your membership or upgrade to a tier with more introductions. Any introductions you haven't used are carried over.</p>
+    <p style="margin:0 0 16px;">Your membership runs until {{ end_date|date:"j F Y" }}. Reply to this email or speak to your matchmaker to renew or upgrade.</p>
+{% endblock %}

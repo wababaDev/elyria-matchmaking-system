@@ -1,0 +1,17 @@
+{% extends "layouts/public.html" %}
+{% block title %}Email confirmed | Elite Grade | Elyria Matchmaking{% endblock %}
+{% block body_class %}always-show-header page-static{% endblock %}
+
+{% block content %}
+{% include "domain/website/elite/_hero.html" with hero_title="Email confirmed" %}
+<section class="section-padding">
+    <div class="container text-center" style="max-width: 640px;">
+        <h2 class="section-title">Thank you, {{ case.full_name }}</h2>
+        <p class="section-subtitle">
+            We've emailed you the Elite Grade details and the three documents to sign.
+            If you wish to proceed, return them signed by replying to that email. We'll be in touch once we've reviewed them.
+        </p>
+        <a href="{% url 'website:home' %}" class="register-submit-btn d-inline-block mt-3">Back to Home</a>
+    </div>
+</section>
+{% endblock %}

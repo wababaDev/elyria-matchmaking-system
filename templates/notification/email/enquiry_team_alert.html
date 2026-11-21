@@ -1,0 +1,20 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}{{ enquiry.first_name }} asked about {{ enquiry.tier.name|default:"membership" }}.{% endblock %}
+{% block heading %}New Learn More enquiry{% endblock %}
+{% block content %}
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+           style="font-family:Arial,Helvetica,sans-serif; font-size:14px; line-height:1.5; color:#3A3A3A; border-collapse:collapse;">
+        {% with label_style="padding:7px 12px 7px 0; color:#8A8178; white-space:nowrap; vertical-align:top; border-bottom:1px solid #EFE7DC;" value_style="padding:7px 0; vertical-align:top; border-bottom:1px solid #EFE7DC;" %}
+        <tr><td style="{{ label_style }}">Tier</td><td style="{{ value_style }}">{{ enquiry.tier.name|default:"Not specified" }}</td></tr>
+        <tr><td style="{{ label_style }}">Name</td><td style="{{ value_style }}"><strong>{{ enquiry.first_name }}</strong></td></tr>
+        <tr><td style="{{ label_style }}">Contact</td><td style="{{ value_style }}">{{ enquiry.contact }}</td></tr>
+        <tr><td style="{{ label_style }}">Received</td><td style="{{ value_style }}">{{ enquiry.created_at|date:"j M Y, H:i" }}</td></tr>
+        {% endwith %}
+    </table>
+
+    <p style="margin:20px 0 6px; color:#8A8178; font-size:14px;">Question</p>
+    <div style="background:#FAF7F2; border-left:3px solid #C9A227; padding:14px 18px;">{{ enquiry.question|linebreaksbr }}</div>
+
+    {% include "notification/email/_button.html" with url=link label="Open the enquiry" %}
+{% endblock %}
+{% block signoff %}{% endblock %}

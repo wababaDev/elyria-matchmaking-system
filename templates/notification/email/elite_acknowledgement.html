@@ -1,0 +1,9 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}One document to sign before we share who would like to meet you.{% endblock %}
+{% block heading %}One document to sign{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">Hello,</p>
+    <p style="margin:0 0 16px;">Thank you for letting us know you'd like to hear more.</p>
+    <p style="margin:0 0 16px;">Before we share who would like to be introduced to you, please read the attached <strong>Introduction Acknowledgement</strong>, sign it, and send it back as a <strong>reply to this email</strong> ({{ reply_to }}).</p>
+    <p style="margin:0 0 16px;font-size:13px;color:#777;">You are under no obligation, and you may decline at any point. If you no longer wish to continue, simply reply and tell us, or don't return the document; we will not contact you again.</p>
+{% endblock %}

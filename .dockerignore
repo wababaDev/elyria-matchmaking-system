@@ -10,3 +10,5 @@ staticfiles/
 .venv
 .idea
 .vscode
+
+private_media/

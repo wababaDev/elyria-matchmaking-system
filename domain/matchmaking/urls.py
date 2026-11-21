@@ -1,10 +1,13 @@
 from django.urls import path
 from django.views.generic import RedirectView
 
-from domain.matchmaking.views import consultation_request_views as requests
-from domain.matchmaking.views import dashboard_views, enquiry_views,member_views as members, queue_views
+from domain.matchmaking.views import consultation_record_views, consultation_request_views as requests
 from domain.matchmaking.views import settings_views as settings_
-
+from domain.matchmaking.views import dashboard_views, enquiry_views, member_views as members, payment_views, queue_views
+from domain.matchmaking.views import member_note_views as notes
+from domain.matchmaking.views import pairing_views as pairing
+from domain.matchmaking.views import date_feedback_views
+from domain.matchmaking.views.date_feedback_views import DateFeedbackView
 app_name = "matchmaking"
 
 urlpatterns = [
@@ -20,8 +23,6 @@ urlpatterns = [
     path("requests/<int:pk>/assign/", requests.AssignRequestView.as_view(), name="consultation-request-assign-to"),
     path("requests/<int:pk>/decline/", requests.DeclineRequestView.as_view(), name="consultation-request-decline"),
     path("requests/<int:pk>/book/", requests.BookConsultationView.as_view(), name="consultation-request-book"),
-    path("requests/<int:pk>/notes/", requests.SaveNotesView.as_view(), name="consultation-request-notes"),
-    path("requests/<int:pk>/mark-consulted/", requests.MarkConsultedView.as_view(), name="consultation-request-mark-consulted"),
     path("requests/<int:pk>/confirm-membership/", requests.ConfirmMembershipView.as_view(), name="consultation-request-confirm-membership"),
 
 
@@ -44,10 +45,44 @@ urlpatterns = [
     path("members/<int:pk>/cancel/", members.CancelMembershipView.as_view(), name="member-cancel"),
     path("members/<int:pk>/resend-link/", members.ResendSignInLinkView.as_view(), name="member-resend-link"),
     path("members/<int:pk>/reassign/", members.ReassignMatchmakerView.as_view(), name="member-reassign"),
+    path("members/<int:pk>/notes/observation/", notes.AddObservationView.as_view(), name="member-note-observation"),
+    path("members/<int:pk>/notes/discrepancy/", notes.AddDiscrepancyView.as_view(), name="member-note-discrepancy"),
+    path("members/<int:pk>/notes/<int:note_pk>/edit/", notes.EditNoteView.as_view(), name="member-note-edit"),
+    path("members/<int:pk>/notes/<int:note_pk>/close/", notes.CloseNoteView.as_view(), name="member-note-close"),
+    path("members/<int:pk>/hold/start/", members.StartHoldView.as_view(), name="member-hold-start"),
+    path("members/<int:pk>/hold/end/", members.EndHoldView.as_view(), name="member-hold-end"),
 
 
     # Enquiries
     path("enquiries/", enquiry_views.EnquiryListView.as_view(), name="enquiries"),
     path("enquiries/<int:pk>/", enquiry_views.EnquiryDetailView.as_view(), name="enquiry-detail"),
     path("enquiries/<int:pk>/answered/", enquiry_views.MarkEnquiryAnsweredView.as_view(), name="enquiry-answered"),
+    path("requests/<int:pk>/edit/", requests.ConsultationRequestEditView.as_view(), name="consultation-request-edit"),
+    path("requests/<int:pk>/resend-payment/", requests.ResendPaymentInstructionsView.as_view(), name="consultation-request-resend-payment"),
+    path("requests/<int:pk>/undo-paid/", requests.UndoFeePaidView.as_view(), name="consultation-request-undo-paid"),
+    path("requests/<int:pk>/record/", consultation_record_views.ConsultationRecordView.as_view(), name="consultation-record"),
+    path("payments/", payment_views.PaymentListView.as_view(), name="payments"),
+    path("members/<int:pk>/photos/<int:photo_pk>/", members.MemberPhotoView.as_view(), name="member-photo"),
+    path("members/<int:pk>/change-email/", members.ChangeSignInEmailView.as_view(), name="member-change-email"),
+    path("members/<int:pk>/profile.pdf", members.MemberProfilePdfView.as_view(), name="member-profile-pdf"),
+
+    # Matching
+    path("members/<int:pk>/find-match/", pairing.FindMatchView.as_view(), name="find-match"),
+    path("members/<int:pk>/pairings/propose/", pairing.ProposePairingView.as_view(), name="pairing-propose"),
+    path("pairings/<int:pk>/approve/", pairing.ApprovePairingView.as_view(), name="pairing-approve"),
+    path("pairings/<int:pk>/present/", pairing.PresentPairingView.as_view(), name="pairing-present"),
+    path("pairings/<int:pk>/introduction/", pairing.IntroductionPairingView.as_view(), name="pairing-introduction"),
+    path("pairings/<int:pk>/close/", pairing.ClosePairingView.as_view(), name="pairing-close"),
+    path("pairings/photo/<int:client_pk>/", pairing.CandidatePhotoView.as_view(), name="candidate-photo"),
+    path("pairings/", pairing.PairingListView.as_view(), name="pairings"),
+    path("pairings/<int:pk>/photos/<int:photo_pk>/", pairing.PairingPhotoView.as_view(), name="pairing-photo"),
+    path("pairings/<int:pk>/card-photo/<int:client_pk>/", pairing.PairingCardPhotoView.as_view(), name="pairing-card-photo"),
+    path("pairings/<int:pk>/profile/<int:client_pk>/", pairing.PairingProfileView.as_view(), name="pairing-profile"),
+    path("pairings/<int:pk>/present-a/", pairing.PresentToAPairingView.as_view(), name="pairing-present-a"),
+
+
+    # Feedback
+    path("pairings/<int:pk>/feedback/<int:client_pk>/add/", DateFeedbackView.as_view(), name="date-feedback-add"),
+    path("feedback/<int:feedback_pk>/", DateFeedbackView.as_view(), name="date-feedback-edit"),
+    path("feedback/<int:feedback_pk>/flag/", date_feedback_views.FlagActionView.as_view(), name="date-feedback-flag"),
 ]

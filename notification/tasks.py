@@ -4,8 +4,13 @@ from smtplib import SMTPException
 from celery import shared_task
 from django.contrib.auth import get_user_model
 
+from domain.elite.models.elite_case import EliteCase
 from domain.matchmaking.models import Client, Consultation, ConsultationRequest, Enquiry
-from notification.services import consultation_emails, enquiry_emails, member_emails, staff_emails
+from notification.services import consultation_emails, elite_emails, enquiry_emails, member_emails, profile_emails ,staff_emails
+from domain.matchmaking.models import Pairing
+from notification.services import pairing_emails, introduction_emails, feedback_emails
+
+from domain.matchmaking.models.date_feedback import DateFeedback
 
 logger = logging.getLogger(__name__)
 
@@ -66,3 +71,65 @@ def send_staff_invite_email(user_id):
 def send_enquiry_alert_email(enquiry_id):
     if obj := _get(Enquiry, enquiry_id):
         enquiry_emails.deliver_enquiry_alert(obj)
+
+@shared_task(**EMAIL_RETRY)
+def send_profile_completed_email(client_id):
+    if obj := _get(Client, client_id):
+        profile_emails.deliver_profile_completed(obj)
+
+
+@shared_task(**EMAIL_RETRY)
+def send_profile_updated_email(client_id, sections, important=None):
+    if obj := _get(Client, client_id):
+        profile_emails.deliver_profile_updated(obj, sections, important)
+
+@shared_task(**EMAIL_RETRY)
+def send_sign_in_email_changed_email(client_id, old_email):
+    if obj := _get(Client, client_id):
+        member_emails.deliver_sign_in_email_changed(obj, old_email)
+
+
+
+@shared_task(**EMAIL_RETRY)
+def send_pairing_staff_email(pairing_id, kind):
+    if obj := _get(Pairing, pairing_id):
+        pairing_emails.deliver_pairing_staff_email(obj, kind)
+
+
+@shared_task(**EMAIL_RETRY)
+def send_new_introduction_email(client_id):
+    if obj := _get(Client, client_id):
+        pairing_emails.deliver_new_introduction(obj)
+
+
+@shared_task(**EMAIL_RETRY)
+def send_introductions_email(client_id):
+    if obj := _get(Client, client_id):
+        introduction_emails.deliver_introductions_email(obj)
+
+
+
+@shared_task(**EMAIL_RETRY)
+def send_serious_flag_email(feedback_id):
+    if obj := _get(DateFeedback, feedback_id):
+        feedback_emails.deliver_serious_flag(obj)
+
+
+@shared_task(**EMAIL_RETRY)
+def send_elite_email(case_id, kind, message=""):
+    if obj := _get(EliteCase, case_id):
+        elite_emails.deliver_elite_email(obj, kind, message)
+
+
+
+ 
+# ---- tasks (next to the others)
+@shared_task(**EMAIL_RETRY)
+def send_elite_email(case_id, kind, message=""):
+    if obj := _get(EliteCase, case_id):
+        elite_emails.deliver_elite_email(obj, kind, message)
+ 
+@shared_task(**EMAIL_RETRY)
+def send_former_elite_welcome_email(consultation_id):
+    if obj := _get(ConsultationRequest, consultation_id):
+        consultation_emails.deliver_former_elite_welcome(obj)

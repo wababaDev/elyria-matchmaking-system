@@ -1,0 +1,111 @@
+{# Pairings tab: every pairing this member is part of. Included in members/detail.html #}
+<div class="card custom-card member-pairings" id="pairings">
+    <div class="card-header justify-content-between flex-wrap gap-2">
+        <div>
+            <div class="card-title">Pairings</div>
+            <span class="fs-12 {% if open_pairings >= pairing_limit %}text-danger fw-semibold{% else %}text-muted{% endif %}">
+                In {{ open_pairings }} open pairing{{ open_pairings|pluralize }}{% if open_pairings >= pairing_limit %} (limit {{ pairing_limit }}){% endif %}
+            </span>
+        </div>
+        {% if profile.is_complete and membership.display_status != "cancelled" %}
+            <a href="{% url 'matchmaking:find-match' member.pk %}" class="btn btn-sm btn-primary"><i class="fe fe-search me-1"></i>Find a match</a>
+        {% else %}
+            <span class="text-muted fs-12">Available once the profile is complete.</span>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        {% if not pairing_rows and not closed_pairing_rows %}
+            <p class="text-muted mb-0">No pairings yet.</p>
+        {% else %}
+            {# Open first (what needs you at the top), closed in their own list #}
+            <div class="d-flex gap-1 mb-3" role="group" aria-label="Show pairings">
+                <button type="button" class="btn btn-sm btn-primary" data-pairing-list="open">
+                    Open <span class="badge bg-light text-dark ms-1">{{ pairing_rows|length }}</span>
+                </button>
+                <button type="button" class="btn btn-sm btn-light" data-pairing-list="closed">
+                    Closed <span class="badge bg-white text-muted ms-1">{{ closed_pairing_rows|length }}</span>
+                </button>
+            </div>
+
+            <div data-pairing-panel="open">
+                {% for row in pairing_rows %}
+                    {% include "domain/management/members/_pairing_card.html" with index=forloop.counter %}
+                {% empty %}
+                    <p class="text-muted mb-0">No open pairings.</p>
+                {% endfor %}
+            </div>
+            <div data-pairing-panel="closed" hidden>
+                {% for row in closed_pairing_rows %}
+                    {% include "domain/management/members/_pairing_card.html" with index=forloop.counter %}
+                {% empty %}
+                    <p class="text-muted mb-0">No closed pairings.</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Close a pairing: confirm, with a reason (staff only) -->
+<div class="modal fade" id="closePairingModal" tabindex="-1" aria-labelledby="closePairingTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 460px;">
+        <form method="post" class="modal-content" data-close-form>
+            {% csrf_token %}
+            <div class="modal-header">
+                <h6 class="modal-title" id="closePairingTitle">Close <span data-close-names></span>?</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <label for="close-reason" class="form-label fs-13">Reason <span class="text-muted">(staff only, never shown to members)</span></label>
+                <textarea name="reason" id="close-reason" rows="3" class="form-control" required
+                          placeholder="e.g. Changed my mind after reviewing the profile with the other matchmaker"></textarea>
+                <p class="text-muted fs-12 mt-2 mb-0">
+                    The pairing is kept on record with your name. If a member was shown it, they'll see
+                    "This introduction will not go ahead." This can't be undone.
+                </p>
+            </div>
+            <div class="modal-footer d-flex flex-nowrap gap-2">
+                <button type="button" class="btn btn-light flex-fill m-0" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-danger flex-fill m-0">Close pairing</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Introduction modal: "Other" setting shows a box to say what it is
+document.addEventListener('change', function (event) {
+    var select = event.target.closest('select[name="setting"]');
+    if (!select || !select.form) return;
+    var box = select.form.querySelector('[data-other-for="setting"]');
+    if (!box) return;
+    box.hidden = select.value !== 'other';
+    box.required = select.value === 'other';
+    if (!box.hidden) box.focus();
+});
+
+// Open / Closed switch on the Pairings tab (plain buttons, so the page's tab hash isn't touched)
+document.addEventListener('click', function (event) {
+    var button = event.target.closest('[data-pairing-list]');
+    if (!button) return;
+    var which = button.dataset.pairingList;
+    document.querySelectorAll('[data-pairing-list]').forEach(function (b) {
+        var on = b.dataset.pairingList === which;
+        b.classList.toggle('btn-primary', on);
+        b.classList.toggle('btn-light', !on);
+    });
+    document.querySelectorAll('[data-pairing-panel]').forEach(function (panel) {
+        panel.hidden = panel.dataset.pairingPanel !== which;
+    });
+});
+
+document.addEventListener('click', function (event) {
+    var button = event.target.closest('[data-close-pairing]');
+    if (!button || !window.bootstrap) return;
+    var modal = document.getElementById('closePairingModal');
+    var form = modal.querySelector('[data-close-form]');
+    form.action = button.dataset.closePairing;
+    form.querySelector('[name="reason"]').value = '';
+    modal.querySelector('[data-close-names]').textContent = button.dataset.names;
+    bootstrap.Modal.getOrCreateInstance(modal).show();
+});
+</script>

@@ -1,0 +1,7 @@
+{% autoescape off %}{{ heading }}
+
+{{ message }}
+
+{{ button_label|default:"Open the member's pairing" }}:
+{{ link }}
+{% endautoescape %}Open the member's pairings:

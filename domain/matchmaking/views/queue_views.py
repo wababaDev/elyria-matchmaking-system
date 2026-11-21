@@ -3,8 +3,8 @@ from django.views.generic import TemplateView
 from domain.base.mixins import StaffRequiredMixin
 from domain.matchmaking.services.queue_service import queue_for
 
-
 class MyQueueView(StaffRequiredMixin, TemplateView):
+    permission_required = "base.manage_consultation_request"
     template_name = "domain/management/queue.html"
 
     def get_context_data(self, **kwargs):
@@ -25,5 +25,7 @@ class MyQueueView(StaffRequiredMixin, TemplateView):
             current_tab=current,
             total=sum(len(s["items"]) for s in sections),
             rows=rows,
+           
         )
+       
         return context

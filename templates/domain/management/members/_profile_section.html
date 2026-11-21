@@ -1,0 +1,29 @@
+{# One numbered section of the member's answers. Used by _profile.html #}
+{% with section=item.section %}
+<div class="accordion-item">
+    <h2 class="accordion-header" id="h-{{ section.id }}">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                data-bs-target="#c-{{ section.id }}" aria-expanded="false" aria-controls="c-{{ section.id }}">
+            <span class="profile-num">{{ item.number }}</span>
+            <span class="flex-fill">{% if section.id == "s-details" %}Details, as they confirmed them{% else %}{{ section.title }}{% endif %}</span>
+            {% if item.missing %}
+                <span class="badge bg-warning-transparent ms-2">{{ item.missing }} to answer</span>
+            {% else %}
+                <i class="fe fe-check text-success ms-2" title="Complete"></i>
+            {% endif %}
+        </button>
+    </h2>
+    <div id="c-{{ section.id }}" class="accordion-collapse collapse" aria-labelledby="h-{{ section.id }}">
+        <div class="accordion-body">
+            <dl class="profile-answers">
+                {% for label, answer in item.rows %}
+                    <div{% if not answer %} class="is-empty"{% endif %}>
+                        <dt>{{ label }}</dt>
+                        <dd>{{ answer|default:"Not answered"|linebreaksbr }}</dd>
+                    </div>
+                {% endfor %}
+            </dl>
+        </div>
+    </div>
+</div>
+{% endwith %}

@@ -1,0 +1,16 @@
+{# Named person form. Used in Review (Admin, at review) and in Named person & outreach (Case Handler). #}
+                        <form method="post" action="{% url 'elite:case-person' case.pk %}" class="mb-3">
+                            {% csrf_token %}
+                            <div class="row g-2">
+                                <div class="col-md-6"><label class="form-label fs-13" for="{{ person_form.name.id_for_label }}">{{ person_form.name.label }}</label>{{ person_form.name }}</div>
+                                <div class="col-md-6"><label class="form-label fs-13" for="{{ person_form.contact_type.id_for_label }}">{{ person_form.contact_type.label }}</label>{{ person_form.contact_type }}</div>
+                                <div class="col-md-4" id="contact-other-wrap">
+                                    <label class="form-label fs-13" for="{{ person_form.contact_other.id_for_label }}">{{ person_form.contact_other.label }}</label>{{ person_form.contact_other }}
+                                </div>
+                                <div class="col" id="contact-value-wrap"><label class="form-label fs-13" for="{{ person_form.contact.id_for_label }}">{{ person_form.contact.label }}</label>{{ person_form.contact }}</div>
+                                <div class="col-md-6"><label class="form-label fs-13" for="{{ person_form.met_where.id_for_label }}">{{ person_form.met_where.label }}</label>{{ person_form.met_where }}</div>
+                                <div class="col-md-6"><label class="form-label fs-13" for="{{ person_form.occupation.id_for_label }}">{{ person_form.occupation.label }}</label>{{ person_form.occupation }}</div>
+                            </div>
+                            <p class="text-muted fs-12 mt-1 mb-2">Use only what the client gave you on the request form. Elyria never searches for the person. Checked against the "do not approach" list when saved.</p>
+                            <button type="submit" class="btn btn-sm btn-light">{% if case.has_person %}Update details{% else %}Save details{% endif %}</button>
+                        </form>

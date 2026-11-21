@@ -1,0 +1,14 @@
+{% autoescape off %}Dear {{ case.full_name }},
+
+Your Elite Grade request has been approved.
+
+To proceed, please:
+1. Pay the Elite Grade fee of {{ fee }}.{% if bank_details %}
+   Payment details: {{ bank_details }}{% endif %}
+   Use {{ case.reference }} as the payment reference.
+2. Sign the attached Indemnity Notice and send it back as a reply to this email ({{ reply_to }}).
+
+Please note: the fee is non-refundable once paid and does not depend on the response of the person you named. We will make the discreet inquiry once we have received both.
+
+Elyria Matchmaking
+{% endautoescape %}

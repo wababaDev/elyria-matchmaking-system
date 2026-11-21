@@ -1,0 +1,10 @@
+
+{% extends "notification/email/base.html" %}
+{% block preheader %}We need a little more information about your Elite Grade request.{% endblock %}
+{% block heading %}A question about your request{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">Dear {{ case.full_name }},</p>
+    <p style="margin:0 0 16px;">Thank you for your Elite Grade request. Before we can complete our review, we need a little more information:</p>
+    <p style="margin:0 0 16px;padding:12px 16px;background:#f7f3ef;border-left:3px solid #C9A227;">{{ message|linebreaksbr }}</p>
+    <p style="margin:0 0 16px;">Please reply to this email ({{ reply_to }}).</p>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% autoescape off %}Hello,
+
+{% if updated %}The details of your introduction have changed. Here are the new details:{% else %}Your introduction, arranged by Elyria, is confirmed:{% endif %}
+
+When: {{ when|date:"l j F Y, H:i" }}
+{% if venue %}Where: {{ venue }}
+{% endif %}{% if video_link %}Video link: {{ video_link }}
+{% endif %}
+Please share your plans with someone you trust, and contact your Elyria Case Handler if anything changes.
+
+Elyria Matchmaking
+{% endautoescape %}

@@ -1,0 +1,53 @@
+{% extends "layouts/management.html" %}
+{% block title %}Edit details: {{ cr.full_name }}{% endblock %}
+{% block page_title %}Edit details{% endblock %}
+{% block content %}
+<div class="card custom-card" style="max-width: 760px;">
+    <div class="card-header">
+        <div class="card-title">{{ cr.full_name }}</div>
+    </div>
+    <div class="card-body">
+        <p class="text-muted fs-13">
+            Correct what the applicant submitted. The same rules as the public form apply.
+        </p>
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger fs-13">{{ form.non_field_errors.0 }}</div>
+        {% endif %}
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-sm-6">{% include "partials/management/_field.html" with field=form.full_name %}</div>
+                <div class="col-sm-6">{% include "partials/management/_field.html" with field=form.preferred_name %}</div>
+
+                <div class="col-sm-6">{% include "partials/management/_field.html" with field=form.email %}</div>
+                <div class="col-sm-6">{% include "partials/management/_field.html" with field=form.phone %}</div>
+
+                <div class="col-sm-4">{% include "partials/management/_field.html" with field=form.gender %}</div>
+                <div class="col-sm-4">{% include "partials/management/_field.html" with field=form.seeking %}</div>
+                <div class="col-sm-4">{% include "partials/management/_field.html" with field=form.age %}</div>
+
+                <div class="col-sm-6">{% include "partials/management/_field.html" with field=form.relationship_status %}</div>
+                <div class="col-sm-6">{% include "partials/management/_field.html" with field=form.relationship_status_other %}</div>
+
+                <div class="col-sm-4">{% include "partials/management/_field.html" with field=form.location %}</div>
+                <div class="col-sm-4">{% include "partials/management/_field.html" with field=form.nationality %}</div>
+                <div class="col-sm-4">{% include "partials/management/_field.html" with field=form.occupation %}</div>
+            </div>
+
+            {% if cr.status == "awaiting_payment" %}
+                <p class="text-muted fs-12">
+                    If you change the email address, use <strong>Resend payment instructions</strong> on the request page afterwards,
+                    so the applicant receives them at the right address.
+                </p>
+            {% endif %}
+
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'matchmaking:consultation-request-detail' cr.pk %}" class="btn btn-light">Cancel</a>
+                <button type="submit" class="btn btn-primary">Save changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

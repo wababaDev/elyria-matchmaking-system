@@ -1,0 +1,9 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}We need another way to reach the person you named.{% endblock %}
+{% block heading %}Another way to reach them{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;">Dear {{ case.full_name }},</p>
+    <p style="margin:0 0 16px;">We weren't able to reach the person you named through the contact details you gave us. This does not count as our inquiry.</p>
+    <p style="margin:0 0 16px;">If you have another way we can reach them (for example another phone number, an email address, or a mutual contact), please reply to this email ({{ reply_to }}).</p>
+    <p style="margin:0 0 16px;font-size:13px;color:#777;">Please only share details they have shared with you openly.</p>
+{% endblock %}

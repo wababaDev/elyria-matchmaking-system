@@ -1,0 +1,10 @@
+{% autoescape off %}Dear {{ client.preferred_name }},
+
+At your request, the email address you use to sign in to Elyria has been changed from {{ old_email }} to {{ new_email }}.
+
+From now on, please sign in with {{ new_email }}. Your password stays the same.
+
+If you didn't ask for this, please contact us straight away{% if site.contact_phone %} on {{ site.contact_phone }}{% endif %}{% if site.contact_email %} or at {{ site.contact_email }}{% endif %}.
+
+Elyria Matchmaking
+{% endautoescape %}

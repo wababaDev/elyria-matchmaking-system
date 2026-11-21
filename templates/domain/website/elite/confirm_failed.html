@@ -1,0 +1,13 @@
+{% extends "layouts/public.html" %}
+{% block title %}Link not valid | Elite Grade | Elyria Matchmaking{% endblock %}
+{% block body_class %}always-show-header page-static{% endblock %}
+
+{% block content %}
+{% include "domain/website/elite/_hero.html" with hero_title="Link not valid" %}
+<section class="section-padding">
+    <div class="container text-center" style="max-width: 640px;">
+        <p class="section-subtitle">{{ error }}</p>
+        <a href="{% url 'elite:apply' %}" class="register-submit-btn d-inline-block mt-3">Apply again</a>
+    </div>
+</section>
+{% endblock %}

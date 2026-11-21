@@ -1,0 +1,9 @@
+{% extends "notification/email/base.html" %}
+{% block preheader %}{{ client.full_name }}: {{ membership.tier.name }} ends {{ membership.end_date|date:"j M Y" }}.{% endblock %}
+{% block heading %}Renewal due in {{ days }} days{% endblock %}
+{% block content %}
+    <p style="margin:0 0 16px;"><strong>{{ client.full_name }}</strong>'s {{ membership.tier.name }} membership ends on {{ membership.end_date|date:"j F Y" }}. They've been sent a reminder too.</p>
+    <p style="margin:0 0 16px;">Talk to them about renewing or upgrading. Record it with "Renew or upgrade" on their member page.</p>
+    {% include "notification/email/_button.html" with url=link label=button_label %}
+{% endblock %}
+{% block signoff %}{% endblock %}

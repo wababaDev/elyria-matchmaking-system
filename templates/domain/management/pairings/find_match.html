@@ -1,0 +1,202 @@
+{% extends "layouts/management.html" %}
+{% block title %}Find a match: {{ member.full_name }}{% endblock %}
+{% block page_title %}Find a match for {{ member.preferred_name }}{% endblock %}
+{% block page_actions %}
+    <a href="{% url 'matchmaking:member-detail' member.pk %}#pairings" class="btn btn-sm btn-light"><i class="fe fe-arrow-left me-1"></i>Back to {{ member.preferred_name }}</a>
+{% endblock %}
+
+{% block content %}
+{% if not profile_ready %}
+    <div class="alert alert-light border">Matching is available once {{ member.preferred_name }} has completed their profile.</div>
+{% else %}
+{% if hold %}
+    <div class="alert alert-warning fs-13">
+        <strong>{{ member.preferred_name }} is on hold</strong> since {{ hold.started_on|date:"j M Y" }} ({{ hold.get_reason_display|lower }}). Matching resumes when the hold ends.
+    </div>
+{% elif introductions.state == "none_left" %}
+    <div class="alert alert-warning fs-13">
+        <strong>{{ member.preferred_name }} has used all {{ introductions.allowed }} introductions.</strong>
+        You can still propose matches, but they'll need to renew or upgrade before their next introduction.
+    </div>
+{% elif introductions.state == "last" %}
+    <div class="alert alert-light border fs-13">
+        {{ member.preferred_name }} has <strong>one introduction left</strong> ({{ introductions.used }} of {{ introductions.allowed }} used).
+    </div>
+{% endif %}
+<div class="row">
+    <!-- Left: filters + what the member is looking for -->
+    <div class="col-xl-3">
+        <div class="card custom-card">
+            <div class="card-header"><div class="card-title">{{ member.preferred_name }} is looking for</div></div>
+            <div class="card-body fs-13">
+                <dl class="mb-0">
+                    <dt class="text-muted fw-normal">Age</dt><dd>{{ profile.partner_age_min|default:"?" }}–{{ profile.partner_age_max|default:"?" }}</dd>
+                    <dt class="text-muted fw-normal">Location</dt><dd>{{ profile.partner_location|default:"—" }}</dd>
+                    <dt class="text-muted fw-normal">Partner with children</dt><dd>{{ profile.get_open_to_partner_children_display|default:"—" }}</dd>
+                    <dt class="text-muted fw-normal">Long distance</dt><dd>{{ profile.get_open_to_long_distance_display|default:"—" }}</dd>
+                    <dt class="text-muted fw-normal">Shared faith</dt><dd>{{ profile.get_partner_faith_importance_display|default:"—" }}</dd>
+                    <dt class="text-muted fw-normal">Non-negotiables</dt><dd>{{ profile.non_negotiables|join:"; "|default:"—" }}</dd>
+                    <dt class="text-muted fw-normal">Other preferences</dt><dd class="mb-0">{{ profile.partner_preferences|default:"—"|truncatechars:200 }}</dd>
+                </dl>
+                <hr>
+                <p class="text-muted fs-12 mb-1">About {{ member.preferred_name }}, to compare</p>
+                <ul class="list-unstyled mb-0">
+                    <li>{{ profile.age|default:"—" }} · {{ profile.location|default:"—" }}</li>
+                    <li>Education: {{ profile.get_education_display|default:"—" }}</li>
+                    <li>Work: {{ profile.occupation|default:"—" }}{% if profile.employment_status %} · {{ profile.employment_status|truncatechars:40 }}{% endif %}</li>
+                    <li>Children: {{ profile.get_has_children_display|default:"—" }}</li>
+                </ul>
+                <p class="text-muted fs-12 mt-3 mb-0">{{ member.preferred_name }} is in {{ member_open_pairings }} open pairing{{ member_open_pairings|pluralize }}.</p>
+            </div>
+        </div>
+
+        <form method="get" class="card custom-card">
+            <div class="card-header"><div class="card-title">Filters</div></div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-6">{% include "partials/management/_field.html" with field=form.age_min %}</div>
+                    <div class="col-6">{% include "partials/management/_field.html" with field=form.age_max %}</div>
+                </div>
+                {% include "partials/management/_field.html" with field=form.city %}
+                {% include "partials/management/_field.html" with field=form.children %}
+                {% include "partials/management/_field.html" with field=form.religion %}
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary flex-fill">Apply</button>
+                    <a href="?age_min=&age_max=" class="btn btn-light">Clear</a>
+                </div>
+                <p class="text-muted fs-12 mt-3 mb-0">Always applied: active members with a complete profile, whose gender and who they seek fit {{ member.preferred_name }} both ways.</p>
+            </div>
+        </form>
+    </div>
+
+    <!-- Right: candidates -->
+    <div class="col-xl-9">
+        <p class="text-muted fs-13">
+            {{ page_obj.paginator.count }} possible match{{ page_obj.paginator.count|pluralize:"es" }}, newest members first.
+            Members of other matchmakers show a short card only; your search is recorded.
+        </p>
+        <div class="row g-3">
+            {% for card in cards %}
+                {% with c=card.client p=card.profile %}
+                <div class="col-md-6 col-xxl-4">
+                    <div class="card custom-card h-100 mb-0 candidate-card">
+                        <img src="{% url 'matchmaking:candidate-photo' c.pk %}" alt="" class="candidate-photo" onerror="this.style.visibility='hidden'">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <h6 class="mb-1">{% if card.mine %}{{ c.full_name }}{% else %}{{ p.preferred_name|default:c.preferred_name }}{% endif %}</h6>
+                                <span class="badge {% if card.at_limit %}bg-danger-transparent{% else %}bg-light text-muted{% endif %}">
+                                    {{ card.open_pairings }} open
+                                </span>
+                            </div>
+                            <ul class="list-unstyled fs-13 mb-2">
+                                <li>{{ p.age|default:"—" }} · {{ p.location|default:"—" }}</li>
+                                <li>Faith: {{ p.get_religion_display|default:"—" }}</li>
+                                <li>Children: {{ p.get_has_children_display|default:"—" }} · Wants: {{ p.get_wants_children_display|default:"—" }}</li>
+                                <li>Education: {{ p.get_education_display|default:"—" }}</li>
+                                <li>Work: {{ p.occupation|default:"—" }}{% if p.employment_status %} · {{ p.employment_status|truncatechars:40 }}{% endif %}</li>
+                                <li class="text-muted fs-12">Wants: {{ p.partner_age_min|default:"?" }}–{{ p.partner_age_max|default:"?" }} · Partner with children: {{ p.get_open_to_partner_children_display|default:"—" }}</li>
+                                <li class="text-muted fs-12">Matchmaker: {% if card.mine %}You{% else %}{{ c.matchmaker.full_name|default:"—" }}{% endif %}</li>
+                            </ul>
+                            {% if card.paired_before %}
+                                <p class="fs-12 text-warning-emphasis bg-warning-transparent rounded px-2 py-1 mb-2">
+                                    <i class="fe fe-alert-circle me-1"></i>{{ card.paired_before }}
+                                </p>
+                            {% endif %}
+                            <button type="button" class="btn btn-sm btn-primary w-100"
+                                    data-propose
+                                    data-candidate="{{ c.pk }}"
+                                    data-name="{{ p.preferred_name|default:c.preferred_name }}"
+                                    data-location="{{ p.location }}"
+                                    data-limit="{% if card.at_limit %}1{% endif %}"
+                                    data-needs-approval="{% if not card.mine %}1{% endif %}"
+                                    data-paired-before="{% if card.paired_before %}1{% endif %}">
+                                {% if card.paired_before %}Propose again (reason needed){% else %}Propose pairing{% endif %}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endwith %}
+            {% empty %}
+                <div class="col-12"><p class="text-muted">No one matches these filters. Try widening the age range or clearing the city.</p></div>
+            {% endfor %}
+        </div>
+
+        {% if page_obj.has_other_pages %}
+            <nav class="mt-3 d-flex justify-content-between align-items-center fs-13">
+                <span class="text-muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                <span class="d-flex gap-2">
+                    {% if page_obj.has_previous %}<a class="btn btn-sm btn-light" href="?{{ filter_query }}&page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+                    {% if page_obj.has_next %}<a class="btn btn-sm btn-light" href="?{{ filter_query }}&page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+                </span>
+            </nav>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Propose pairing -->
+<div class="modal fade" id="proposeModal" tabindex="-1" aria-labelledby="proposeTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" action="{% url 'matchmaking:pairing-propose' member.pk %}" class="modal-content">
+            {% csrf_token %}
+            <input type="hidden" name="candidate" data-field="candidate">
+            <div class="modal-header">
+                <h6 class="modal-title" id="proposeTitle">Pair {{ member.preferred_name }} with <span data-field="name"></span></h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning fs-13 py-2" data-field="limit-warning" hidden>
+                    This person is already in {{ limit }} or more open pairings. You can still go ahead.
+                </div>
+                <div data-field="repeat-box" hidden>
+                    <div class="alert alert-warning fs-13 py-2 mb-2">
+                        <strong>These two were paired before.</strong> Propose stays off until you say why they should be presented again.
+                    </div>
+                    {% include "partials/management/_field.html" with field=propose_form.repeat_reason %}
+                </div>
+                {% include "partials/management/_field.html" with field=propose_form.note %}
+                <div class="row">
+                    <div class="col-md-6">{% include "partials/management/_field.html" with field=propose_form.profession %}</div>
+                    <div class="col-md-6">{% include "partials/management/_field.html" with field=propose_form.location %}</div>
+                </div>
+                <p class="text-muted fs-12 mb-0">
+                    {{ member.preferred_name }} will see: first name, an age band, the profession and location as you write them here,
+                    a blurred photo and your note. Nothing else.
+                    <span data-field="approval-note" hidden><br><strong>This person belongs to another matchmaker, who must approve before {{ member.preferred_name }} sees anything.</strong></span>
+                </p>
+            </div>
+            <div class="modal-footer d-flex flex-nowrap gap-2">
+                <button type="button" class="btn btn-light flex-fill m-0" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary flex-fill m-0" data-field="submit">Propose pairing</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('click', function (event) {
+    var button = event.target.closest('[data-propose]');
+    if (!button || !window.bootstrap) return;
+    var modal = document.getElementById('proposeModal');
+    var field = function (name) { return modal.querySelector('[data-field="' + name + '"]'); };
+    field('candidate').value = button.dataset.candidate;
+    field('name').textContent = button.dataset.name;
+    field('limit-warning').hidden = !button.dataset.limit;
+    field('approval-note').hidden = !button.dataset.needsApproval;
+    modal.querySelector('[name="location"]').value = button.dataset.location || '';
+    modal.querySelector('[name="profession"]').value = '';
+    modal.querySelector('[name="note"]').value = '';
+     // Paired before: a reason is needed before Propose is enabled
+    var repeat = !!button.dataset.pairedBefore;
+    var reason = modal.querySelector('[name="repeat_reason"]');
+    var submit = field('submit');
+    field('repeat-box').hidden = !repeat;
+    reason.value = '';
+    reason.required = repeat;
+    var check = function () { submit.disabled = repeat && !reason.value.trim(); };
+    reason.oninput = check;
+    check();
+    bootstrap.Modal.getOrCreateInstance(modal).show();
+});
+</script>
+{% endif %}
+{% endblock %}

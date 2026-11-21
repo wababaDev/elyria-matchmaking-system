@@ -1,0 +1,622 @@
+"""
+Matching rules. Every step is a plain check: who is asking, and what state the pairing is in.
+"""
+from django.db import transaction
+from django.db.models import Count, Q
+from django.utils import timezone
+
+from domain.matchmaking.models import (
+    Client,
+    ConsultationRequest,
+    MatchAccessLog,
+    Membership,
+    MembershipHold,
+    Pairing,
+)
+from domain.matchmaking.models.date_feedback import DateFeedback
+from domain.matchmaking.models.pairing import OPEN_PAIRING_LIMIT
+from domain.matchmaking.services.consultation_request_service import InvalidTransitionError
+from domain.matchmaking.services.member_service import members_visible_to
+
+P = Pairing
+Gender = ConsultationRequest.Gender
+Seeking = ConsultationRequest.Seeking
+
+# "seeking a man" means the other person's gender is male, and so on
+SEEKING_GENDER = {Seeking.MAN: Gender.MALE, Seeking.WOMAN: Gender.FEMALE}
+GENDER_SEEKING = {Gender.MALE: Seeking.MAN, Gender.FEMALE: Seeking.WOMAN}
+
+
+# ---------------------------------------------------------------- who can see / do what
+
+def can_manage(user, client):
+    """The member's own matchmaker, or Admin (who sees everyone)."""
+    return members_visible_to(user).filter(pk=client.pk).exists()
+
+
+def pairings_visible_to(user):
+    """Staff see pairings that involve at least one of their own members."""
+    mine = members_visible_to(user).values("pk")
+    return Pairing.objects.filter(Q(client_a__in=mine) | Q(client_b__in=mine)).select_related(
+        "client_a__profile", "client_b__profile", "client_a__matchmaker", "client_b__matchmaker",
+        "added_by", "approval_by", "b_presented_by", "closed_by",
+    )
+
+
+def pairings_for(client):
+    """All pairings a member is part of, either side (staff view)."""
+    return Pairing.objects.filter(Q(client_a=client) | Q(client_b=client)).select_related(
+        "client_a__profile", "client_b__profile", "client_a__matchmaker", "client_b__matchmaker",
+        "added_by", "approval_by", "closed_by",
+    )
+
+
+def open_pairing_counts(clients):
+    """{client_id: number of open pairings} for the 'in 2 open pairings' badges."""
+    ids = [c.pk for c in clients]
+    counts = dict.fromkeys(ids, 0)
+    open_ = Pairing.objects.exclude(status=P.Status.CLOSED)
+    for row in open_.filter(client_a__in=ids).values("client_a").annotate(n=Count("pk")):
+        counts[row["client_a"]] += row["n"]
+    for row in open_.filter(client_b__in=ids).values("client_b").annotate(n=Count("pk")):
+        counts[row["client_b"]] += row["n"]
+    return counts
+
+
+def may_view_profile(user, pairing, client):
+    """
+    Full profile (membership form + consultation record) of the other matchmaker's member,
+    only while the pairing is open:
+    - A's profile: B's side, from the moment it's proposed (to decide on approval)
+    - B's profile: A's side, once B's matchmaker has approved
+    Everyone else works from the search card. Admin is "both sides" for every member.
+    """
+    if not pairing.is_open:
+        return False
+    if client.pk == pairing.client_a_id:
+        return can_manage(user, pairing.client_b)
+    if client.pk == pairing.client_b_id:
+        return pairing.approval == P.Approval.APPROVED and can_manage(user, pairing.client_a)
+    return False
+
+
+def log_access(user, action, client=None, detail=""):
+    MatchAccessLog.objects.create(user=user, action=action, client=client, detail=detail[:300])
+
+def _current_hold(client):
+    """The member's hold covering today, or None."""
+    membership = getattr(client, "membership", None)
+    return membership.current_hold if membership else None
+
+
+def hold_note(client):
+    """'David on hold until 14 Dec', or '' if not on hold."""
+    hold = _current_hold(client)
+    if not hold:
+        return ""
+    until = f" until {hold.ended_on.day} {hold.ended_on:%b}" if hold.ended_on else ""
+    return f"{client.preferred_name} on hold{until}"
+
+
+# ---------------------------------------------------------------- finding candidates
+
+def candidates_for(client, *, age_min=None, age_max=None, city="", children="", religion=""):
+    """
+    People who could be paired with `client`: active members with a complete profile,
+    whose gender and seeking fit both ways, who aren't already in an open pairing with them.
+    Newest members first. The matchmaker chooses; the system never suggests.
+    """
+    profile = getattr(client, "profile", None)
+    if not profile or not profile.is_complete:
+        return Client.objects.none()
+
+    today = timezone.localdate()
+    qs = Client.objects.filter(
+        user__is_active=True,
+        membership__status=Membership.Status.ACTIVE,
+        membership__end_date__gte=today,
+        profile__completed_at__isnull=False,
+        profile__gender=SEEKING_GENDER.get(profile.seeking, "-"),
+        profile__seeking=GENDER_SEEKING.get(profile.gender, "-"),
+    ).exclude(pk=client.pk)
+    # Members on Hold Time aren't set on any dates
+    qs = qs.exclude(pk__in=MembershipHold.objects.active_on(today).values("membership__client_id"))
+
+    already = Pairing.objects.exclude(status=P.Status.CLOSED).filter(Q(client_a=client) | Q(client_b=client))
+    paired_ids = set(already.values_list("client_a", flat=True)) | set(already.values_list("client_b", flat=True))
+    qs = qs.exclude(pk__in=paired_ids)
+
+    if age_min:
+        qs = qs.filter(profile__age__gte=age_min)
+    if age_max:
+        qs = qs.filter(profile__age__lte=age_max)
+    if city:
+        qs = qs.filter(profile__location__icontains=city.strip())
+    if children in ("yes", "no"):
+        qs = qs.filter(profile__has_children=children)
+    if religion:
+        qs = qs.filter(profile__religion=religion)
+
+    return qs.select_related("profile", "matchmaker", "membership").order_by("-created_at")
+
+
+def paired_before(client, candidate_ids):
+    """
+    {candidate_id: short note} for candidates this member was paired with before (closed pairings),
+    so Find a match can say so on the card. Most recent one wins.
+    """
+    closed = (
+        Pairing.objects.filter(status=P.Status.CLOSED)
+        .filter(Q(client_a=client, client_b__in=candidate_ids) | Q(client_b=client, client_a__in=candidate_ids))
+        .select_related("client_a", "client_b", "closed_by", "approval_by")
+        .order_by("closed_at")
+    )
+    notes = {}
+    for p in closed:
+        other = p.other(client)
+        notes[other.pk] = f"Paired before · closed {p.closed_at:%d %b %Y}: {_why_closed(p)}"
+    return notes
+
+
+def _why_closed(p):
+    if p.a_decision == P.DecisionA.NOT_INTERESTED:
+        return f"{p.client_a.preferred_name} said not for me"
+    if p.b_decision == P.DecisionB.NOT_INTERESTED:
+        return f"{p.client_b.preferred_name} said not for me"
+    if p.approval == P.Approval.DECLINED:
+        who = p.approval_by.full_name if p.approval_by else "the other matchmaker"
+        return f"declined by {who}"
+    who = f"by {p.closed_by.full_name}" if p.closed_by else ""
+    return f"closed {who}".strip() + (f" ({p.closed_reason[:60]})" if p.closed_reason else "")
+
+
+# ---------------------------------------------------------------- staff actions
+
+def was_paired_before(client_a, client_b):
+    return Pairing.objects.filter(status=P.Status.CLOSED).filter(
+        Q(client_a=client_a, client_b=client_b) | Q(client_a=client_b, client_b=client_a)
+    ).exists()
+
+@transaction.atomic
+def propose(client_a, client_b, *, by, note_for_a, b_profession, b_location, repeat_reason=""):
+    if note := hold_note(client_a):
+        raise InvalidTransitionError(f"{note}. Pairings can't be proposed for them while they're on hold.")
+    if not can_manage(by, client_a):
+        raise InvalidTransitionError("You can only propose pairings for your own members.")
+    if not candidates_for(client_a).filter(pk=client_b.pk).exists():
+        raise InvalidTransitionError("That member isn't available to pair with this member.")
+    if not note_for_a.strip():
+        raise InvalidTransitionError("Write the note your member will read.")
+
+    if was_paired_before(client_a, client_b) and not repeat_reason.strip():
+        raise InvalidTransitionError(
+            "These two were paired before. Say why they should be presented again."
+        )
+    same_matchmaker = client_b.matchmaker_id in (None, client_a.matchmaker_id)
+    pairing = Pairing.objects.create(
+        client_a=client_a, client_b=client_b, added_by=by,
+        approval=P.Approval.NOT_NEEDED if same_matchmaker else P.Approval.PENDING,
+        # Same matchmaker: no approvals, A sees it straight away
+        a_presented_at=timezone.now() if same_matchmaker else None,
+        a_presented_by=by if same_matchmaker else None,
+        note_for_a=note_for_a.strip(), b_profession=b_profession.strip(), b_location=b_location.strip(),
+        repeat_reason=repeat_reason.strip(),
+    )
+    log_access(by, MatchAccessLog.Action.PROPOSE, client_b, f"Proposed for {client_a.pk}")
+
+    from notification.services import pairing_emails
+
+    if same_matchmaker:
+        transaction.on_commit(lambda: pairing_emails.notify_member_new_introduction(pairing, client_a))
+    else:
+        transaction.on_commit(lambda: pairing_emails.notify_approval_needed(pairing))
+
+    # Someone else (e.g. Admin) proposed for this member: tell the member's own matchmaker
+    if client_a.matchmaker_id and client_a.matchmaker_id != by.pk:
+        transaction.on_commit(lambda: pairing_emails.notify_matchmaker_of_pairing(pairing))
+    return pairing
+
+
+def _lock(pairing):
+    return Pairing.objects.select_for_update().get(pk=pairing.pk)
+
+
+@transaction.atomic
+def answer_approval(pairing, *, by, approve, reason=""):
+    """
+    B's matchmaker approves (A's matchmaker can then see B's full profile and present it to A)
+    or declines (closed; A never sees anything).
+    """
+    pairing = _lock(pairing)
+    if not can_manage(by, pairing.client_b):
+        raise InvalidTransitionError("Only the other member's matchmaker can answer this.")
+    if pairing.approval != P.Approval.PENDING:
+        raise InvalidTransitionError("This pairing isn't waiting for approval.")
+
+    pairing.approval = P.Approval.APPROVED if approve else P.Approval.DECLINED
+    pairing.approval_by = by
+    pairing.approval_at = timezone.now()
+    if not approve:
+        _close(pairing, reason or "Declined by the other member's matchmaker.", by=by)
+    pairing.save()
+
+    from notification.services import pairing_emails
+
+    transaction.on_commit(lambda: pairing_emails.notify_proposer_of_approval(pairing))
+    return pairing
+
+
+@transaction.atomic
+def present_to_a(pairing, *, by, note_for_a, b_profession, b_location):
+    """Second approval: A's matchmaker has seen B's full profile and shows B's card to A."""
+    pairing = _lock(pairing)
+    if not can_manage(by, pairing.client_a):
+        raise InvalidTransitionError("Only your member's matchmaker can present this.")
+    if not pairing.waiting_to_present_to_a:
+        raise InvalidTransitionError("This pairing isn't waiting to be presented.")
+    if not note_for_a.strip():
+        raise InvalidTransitionError("Write the note your member will read.")
+
+    pairing.note_for_a = note_for_a.strip()
+    pairing.b_profession = b_profession.strip()
+    pairing.b_location = b_location.strip()
+    pairing.a_presented_at = timezone.now()
+    pairing.a_presented_by = by
+    pairing.save()
+
+    from notification.services import pairing_emails
+
+    transaction.on_commit(lambda: pairing_emails.notify_member_new_introduction(pairing, pairing.client_a))
+    return pairing
+
+
+@transaction.atomic
+def present_to_b(pairing, *, by, note_for_b, a_profession, a_location):
+    pairing = _lock(pairing)
+    if not can_manage(by, pairing.client_b):
+        raise InvalidTransitionError("Only the other member's matchmaker can present this.")
+    if pairing.a_decision != P.DecisionA.INTERESTED or pairing.b_decision != P.DecisionB.NOT_PRESENTED:
+        raise InvalidTransitionError("This pairing isn't ready to present.")
+    if not note_for_b.strip():
+        raise InvalidTransitionError("Write the note your member will read.")
+
+    pairing.note_for_b = note_for_b.strip()
+    pairing.a_profession = a_profession.strip()
+    pairing.a_location = a_location.strip()
+    pairing.b_decision = P.DecisionB.PENDING
+    pairing.b_presented_at = timezone.now()
+    pairing.b_presented_by = by
+    pairing.status = P.Status.PRESENTED_TO_B
+    pairing.save()
+
+    from notification.services import pairing_emails
+
+    transaction.on_commit(lambda: pairing_emails.notify_member_new_introduction(pairing, pairing.client_b))
+    return pairing
+
+
+@transaction.atomic
+def record_introduction(pairing, *, by, introduced_on, setting="", minutes=None, setting_other=""):
+    pairing = _lock(pairing)
+    if not (can_manage(by, pairing.client_a) or can_manage(by, pairing.client_b)):
+        raise InvalidTransitionError("You can't update this pairing.")
+    if pairing.status != P.Status.MUTUAL:
+        raise InvalidTransitionError("An introduction can only be recorded after mutual interest.")
+    first_time = pairing.introduced_on is None
+    pairing.introduced_on = introduced_on
+    pairing.introduction_setting = setting or pairing.introduction_setting
+    pairing.introduction_minutes = minutes or pairing.introduction_minutes
+    pairing.introduction_setting_other = setting_other.strip() if pairing.introduction_setting == P.Setting.OTHER else ""
+    pairing.save(update_fields=[
+        "introduced_on", "introduction_setting", "introduction_minutes", "introduction_setting_other", "updated_at",
+    ])
+
+    if first_time:
+        # One more introduction used for each member: remind them (and their matchmaker) near the limit
+        from notification.services import introduction_emails
+
+        for client in (pairing.client_a, pairing.client_b):
+            transaction.on_commit(lambda c=client: introduction_emails.notify_if_near_limit(c))
+    return pairing
+
+
+@transaction.atomic
+def close_pairing(pairing, *, by, reason):
+    """Staff close an open pairing (e.g. a member changed their mind). Kept on record."""
+    pairing = _lock(pairing)
+    if not (can_manage(by, pairing.client_a) or can_manage(by, pairing.client_b)):
+        raise InvalidTransitionError("You can't update this pairing.")
+    if not pairing.is_open:
+        raise InvalidTransitionError("This pairing is already closed.")
+    if not reason.strip():
+        raise InvalidTransitionError("Say why it's being closed.")
+    _close(pairing, reason.strip(), by=by)
+    pairing.save()
+    return pairing
+
+
+def _close(pairing, reason, by=None):
+    pairing.status = P.Status.CLOSED
+    pairing.closed_at = timezone.now()
+    pairing.closed_reason = reason
+    pairing.closed_by = by
+
+
+# ---------------------------------------------------------------- member side
+
+def member_pairings(client):
+    """
+    What a member may see, and nothing else:
+    - as A: once A's matchmaker has presented it, unless A said "not interested"
+    - as B: once presented, unless B said "not interested"
+    """
+    as_a = Pairing.objects.filter(client_a=client, a_presented_at__isnull=False).exclude(
+        a_decision=P.DecisionA.NOT_INTERESTED
+    )
+    as_b = Pairing.objects.filter(client_b=client).exclude(
+        b_decision__in=[P.DecisionB.NOT_PRESENTED, P.DecisionB.NOT_INTERESTED]
+    )
+    return (as_a | as_b).select_related("client_a__profile", "client_b__profile").order_by("-created_at")
+
+
+def matches_to_answer(client):
+    """How many introductions are waiting for this member's answer (the number on My Matches)."""
+    return Pairing.objects.exclude(status=P.Status.CLOSED).filter(
+        Q(client_a=client, a_decision=P.DecisionA.PENDING, a_presented_at__isnull=False)
+        | Q(client_b=client, b_decision=P.DecisionB.PENDING)
+    ).count()
+
+
+@transaction.atomic
+def member_decides(pairing, client, *, interested):
+    pairing = _lock(pairing)
+    if not member_pairings(client).filter(pk=pairing.pk).exists():
+        raise InvalidTransitionError("This introduction isn't available.")
+    if not pairing.is_open:
+        raise InvalidTransitionError("This introduction will not go ahead.")
+
+    now = timezone.now()
+    from notification.services import pairing_emails
+
+    if pairing.side(client) == "a":
+        if pairing.a_decision != P.DecisionA.PENDING:
+            raise InvalidTransitionError("You've already answered.")
+        pairing.a_decision = P.DecisionA.INTERESTED if interested else P.DecisionA.NOT_INTERESTED
+        pairing.a_decided_at = now
+        if interested:
+            transaction.on_commit(lambda: pairing_emails.notify_ready_to_present(pairing))
+        else:
+            _close(pairing, "Client A not interested.")
+    else:
+        if pairing.b_decision != P.DecisionB.PENDING:
+            raise InvalidTransitionError("You've already answered.")
+        pairing.b_decision = P.DecisionB.INTERESTED if interested else P.DecisionB.NOT_INTERESTED
+        pairing.b_decided_at = now
+        if interested:
+            pairing.status = P.Status.MUTUAL
+            transaction.on_commit(lambda: pairing_emails.notify_mutual_interest(pairing))
+        else:
+            _close(pairing, "Client B not interested.")
+    pairing.save()
+    return pairing
+
+
+def member_card(pairing, client):
+    """Only the Shortlist-Visible fields of the other person, as written for this member."""
+    other = pairing.other(client)
+    profile = getattr(other, "profile", None)
+    as_a = pairing.side(client) == "a"
+    return {
+        "pairing": pairing,
+        "first_name": (profile.preferred_name if profile else "") or other.preferred_name,
+        "age_band": age_band(profile.age if profile else None),
+        "profession": pairing.b_profession if as_a else pairing.a_profession,
+        "location": pairing.b_location if as_a else pairing.a_location,
+        "note": pairing.note_for_a if as_a else pairing.note_for_b,
+        "photo_client_id": other.pk,
+        "my_decision": pairing.a_decision if as_a else pairing.b_decision,
+        "closed": not pairing.is_open,
+        "mutual": pairing.status == P.Status.MUTUAL,
+        "needs_answer": pairing.is_open and (pairing.a_decision if as_a else pairing.b_decision) == "pending",
+    }
+
+
+def age_band(age):
+    """34 -> 'Early 30s'. Never the exact age."""
+    if not age:
+        return ""
+    decade, unit = divmod(int(age), 10)
+    word = "Early" if unit <= 3 else "Mid" if unit <= 6 else "Late"
+    return f"{word} {decade * 10}s"
+
+
+def member_can_see_photo(client, other_client_id):
+    """A member may see another member's (blurred) photo only through a pairing shown to them."""
+    return any(p.other(client).pk == other_client_id for p in member_pairings(client))
+
+
+def warning_for(client):
+    n = open_pairing_counts([client])[client.pk]
+    if n >= OPEN_PAIRING_LIMIT:
+        return f"Already in {n} open pairings (limit {OPEN_PAIRING_LIMIT})."
+    return ""
+
+
+def own_members(user):
+    """Members this person is the matchmaker for. Admin can see everyone, but only these are hers."""
+    return Client.objects.filter(matchmaker=user)
+
+
+def pairing_queue(user):
+    """Pairings waiting on this matchmaker for her own members (the red sidebar number)."""
+    mine = own_members(user).values("pk")
+    base = Pairing.objects.exclude(status=P.Status.CLOSED).select_related(
+        "client_a", "client_b", "client_a__profile", "client_b__profile"
+    )
+    return {
+        "to_approve": base.filter(approval=P.Approval.PENDING, client_b__in=mine),
+        "to_present_a": base.filter(approval=P.Approval.APPROVED, a_presented_at__isnull=True, client_a__in=mine),
+        "to_present": base.filter(a_decision=P.DecisionA.INTERESTED, b_decision=P.DecisionB.NOT_PRESENTED,
+                                  client_b__in=mine),
+        "to_introduce": base.filter(status=P.Status.MUTUAL, introduced_on__isnull=True).filter(
+            Q(client_a__in=mine) | Q(client_b__in=mine)
+        ),
+    }
+
+
+def pairing_queue_rows(user):
+    """
+    One row per thing waiting on this staff member, oldest first:
+    {"p", "step": approve|present|introduce, "mine", "other", "other_profile", "since"}
+    """
+    mine_ids = set(own_members(user).values_list("pk", flat=True))
+    q = pairing_queue(user)
+    rows = []
+
+    def add(p, step, mine, since):
+        other = p.other(mine)
+        rows.append({"p": p, "step": step, "mine": mine, "other": other,
+                     "other_profile": getattr(other, "profile", None), "since": since})
+
+    for p in q["to_approve"]:
+        add(p, "approve", p.client_b, p.created_at)
+    for p in q["to_present_a"]:
+        add(p, "present_a", p.client_a, p.approval_at or p.updated_at)
+    for p in q["to_present"]:
+        add(p, "present", p.client_b, p.a_decided_at or p.updated_at)
+    for p in q["to_introduce"]:
+        mine = p.client_a if p.client_a_id in mine_ids else p.client_b
+        add(p, "introduce", mine, p.b_decided_at or p.updated_at)
+    return sorted(rows, key=lambda r: r["since"])
+
+
+# ---------------------------------------------------------------- overview (all pairings involving my members)
+
+OVERVIEW_FILTERS = [
+    ("open", "Open"),
+    ("me", "Waiting on me"),
+    ("others", "Waiting on others"),
+    ("mutual", "Mutual interest"),
+    ("closed", "Closed"),
+    ("all", "All"),
+]
+
+def where_it_stands(pairing, user):
+    """(text, waiting_on_me). Open pairings also say if either member is on hold."""
+    text, on_me = _where_it_stands(pairing, user)
+    if pairing.is_open:
+        notes = [n for n in (hold_note(pairing.client_a), hold_note(pairing.client_b)) if n]
+        if notes:
+            text = f"{text} ·  {' · '.join(notes)}"
+    return text, on_me
+
+def _where_it_stands(pairing, user):
+    """(text, waiting_on_me) for one pairing, from the point of view of `user`."""
+    a, b = pairing.client_a, pairing.client_b
+    a_mm = a.matchmaker.full_name if a.matchmaker else "the other matchmaker"
+    b_mm = b.matchmaker.full_name if b.matchmaker else "the other matchmaker"
+    # "Waiting on me" means your own members. Admin can still act on anyone's, from the member page.
+    on_b_side = b.matchmaker_id == user.pk
+    on_either_side = on_b_side or a.matchmaker_id == user.pk
+
+    if not pairing.is_open:
+        who = f" by {pairing.closed_by.full_name}" if pairing.closed_by else ""
+        return f"Closed{who}: {pairing.closed_reason}", False
+    if pairing.approval == P.Approval.PENDING:
+        if on_b_side:
+            return f"Approve: {a_mm} wants to show {b.preferred_name} to their member", True
+        return f"Waiting for {b_mm} to approve", False
+    if pairing.waiting_to_present_to_a:
+        if a.matchmaker_id == user.pk:
+            return f"Approved: review {b.preferred_name}'s profile, then present to {a.preferred_name}", True
+        return f"Approved. Waiting for {a_mm} to present to {a.preferred_name}", False
+    if pairing.a_decision == P.DecisionA.PENDING:
+        return f"Waiting for {a.preferred_name} to decide", False
+    if pairing.b_decision == P.DecisionB.NOT_PRESENTED:
+        if on_b_side:
+            return f"Present to {b.preferred_name}: {a.preferred_name} is interested", True
+        return f"{a.preferred_name} is interested. Waiting for {b_mm} to present", False
+    if pairing.b_decision == P.DecisionB.PENDING:
+        return f"Waiting for {b.preferred_name} to decide", False
+    if pairing.status == P.Status.MUTUAL and not pairing.introduced_on:
+        return "Both interested: arrange the introduction", on_either_side
+    if pairing.introduced_on:
+        return f"Introduced {pairing.introduced_on:%d %b %Y}", False
+    return pairing.get_status_display(), False
+
+
+def pairing_overview(user, show="open"):
+    """Every pairing involving the user's members (Admin: all), with where each one stands."""
+    visible_ids = set(members_visible_to(user).values_list("pk", flat=True))
+    qs = pairings_visible_to(user).select_related("client_a__membership__tier", "client_b__membership__tier")
+    if show == "closed":
+        qs = qs.filter(status=P.Status.CLOSED)
+    elif show == "mutual":
+        qs = qs.filter(status=P.Status.MUTUAL)
+    elif show != "all":
+        qs = qs.exclude(status=P.Status.CLOSED)
+
+    rows = []
+    for p in qs.order_by("-updated_at"):
+        # "Mine" = I'm their matchmaker (not just able to see them, as Admin can see everyone)
+        a_mine, b_mine = p.client_a.matchmaker_id == user.pk, p.client_b.matchmaker_id == user.pk
+        # internal: both mine (no approval needed); sent: mine is A; received: mine is B;
+        # others: neither is mine (Admin looking at other matchmakers' pairings)
+        if a_mine and b_mine:
+            kind = "internal"
+        elif a_mine:
+            kind = "sent"
+        elif b_mine:
+            kind = "received"
+        else:
+            kind = "others"
+        text, on_me = where_it_stands(p, user)
+        if show == "me" and not on_me:
+            continue
+        if show == "others" and on_me:
+            continue
+        mine = p.client_b if b_mine and not a_mine else p.client_a
+        other = p.other(mine)
+        rows.append({
+            "p": p, "mine": mine, "other": other, "other_profile": getattr(other, "profile", None),
+            "other_is_mine": other.pk in visible_ids, "kind": kind,
+            "stands": text, "on_me": on_me,
+        })
+    return rows
+
+
+def member_pairing_rows(user, member):
+    """
+    The member page's Pairings tab, as (open_rows, closed_rows).
+    Open: what's waiting on you first, then what's waiting on others, then introduced; newest activity first.
+    Closed: most recently closed first.
+    """
+    from domain.matchmaking.services.date_feedback_service import feedback_by_pairing
+
+    visible_ids = set(members_visible_to(user).values_list("pk", flat=True))
+    feedback = feedback_by_pairing(member)
+    open_rows, closed_rows = [], []
+    for p in pairings_for(member).select_related("a_presented_by", "b_presented_by", "closed_by"):
+        other = p.other(member)
+        text, on_me = where_it_stands(p, user)
+        mine = feedback.get(p.pk, [])
+        # Closed after a date, but this member's feedback isn't in yet: keep it open for feedback
+        other_count = DateFeedback.objects.filter(pairing=p, client=other).count() if p.introduced_on else 0
+        feedback_pending = bool(p.introduced_on) and not p.is_open and len(mine) < max(other_count, 1)
+        if feedback_pending:
+            text, on_me = f"Closed: record {member.preferred_name}'s feedback for the date", True
+        row = {
+            "p": p, "other": other, "other_profile": getattr(other, "profile", None),
+            "other_is_mine": other.pk in visible_ids, "side": p.side(member),
+            "stands": text, "on_me": on_me, "feedback": mine, "feedback_pending": feedback_pending,
+        }
+        (open_rows if p.is_open or feedback_pending else closed_rows).append(row)
+
+    def priority(row):
+        p = row["p"]
+        group = 0 if row["on_me"] else 2 if p.introduced_on else 1
+        return (group, -p.updated_at.timestamp())
+
+    open_rows.sort(key=priority)
+    closed_rows.sort(key=lambda r: r["p"].closed_at or r["p"].updated_at, reverse=True)
+    return open_rows, closed_rows

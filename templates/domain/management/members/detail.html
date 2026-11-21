@@ -9,78 +9,204 @@
 {% block content %}
 {% with status=membership.display_status %}
 <div class="row">
-    <div class="col-xl-8">
 
-        <!-- Details (from their original request) -->
-        <div class="card custom-card">
-            <div class="card-header"><div class="card-title">Details</div></div>
-            <div class="card-body">
-                <dl class="row mb-0">
-                    <dt class="col-sm-4 text-muted fw-normal">Preferred name</dt><dd class="col-sm-8">{{ member.preferred_name }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Gender / seeking</dt><dd class="col-sm-8">{{ details.get_gender_display }} / {{ details.get_seeking_display }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Age (at request)</dt><dd class="col-sm-8">{{ details.age }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Location</dt><dd class="col-sm-8">{{ details.location }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Nationality</dt><dd class="col-sm-8">{{ details.nationality }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Occupation</dt><dd class="col-sm-8">{{ details.occupation }}</dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Email</dt><dd class="col-sm-8"><a href="mailto:{{ member.user.email }}">{{ member.user.email }}</a></dd>
-                    <dt class="col-sm-4 text-muted fw-normal">Phone</dt><dd class="col-sm-8 mb-0"><a href="tel:{{ details.phone }}">{{ details.phone }}</a></dd>
-                </dl>
-            </div>
-        </div>
+    {# ================= LEFT: tabs ================= #}
+    <div class="col-xl-9">
+        {# Same pills as Settings and My Queue #}
+        <ul class="nav nav-pills gap-1 mb-3 member-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-overview" type="button" role="tab">Overview</button>
+                    </li>
+                    {% if perms.base.manage_client %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-profile" type="button" role="tab">
+                                Profile
+                                {% if profile.is_complete %}<i class="fe fe-check text-success ms-1"></i>{% elif profile %}<span class="badge bg-warning-transparent ms-1">{{ profile_progress.0 }}/{{ profile_progress.1 }}</span>{% endif %}
+                            </button>
+                        </li>
+                    {% endif %}
+                    {% if perms.base.manage_consultation_request %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-consultation" type="button" role="tab">
+                                Consultation
+                                {% if consultation.is_locked %}<i class="fe fe-lock text-muted ms-1"></i>{% endif %}
+                            </button>
+                        </li>
+                    {% endif %}
+                    {% if perms.base.manage_client %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-compare" type="button" role="tab">
+                                Compare
+                                {% if comparison_differences %}<span class="badge bg-danger ms-1">{{ comparison_differences }}</span>{% endif %}
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-notes" type="button" role="tab">
+                                Notes
+                                {% with open=note_summary.open_discrepancies|add:note_summary.changes_to_review %}
+                                    {% if open %}<span class="badge bg-danger ms-1">{{ open }}</span>{% endif %}
+                                {% endwith %}
+                            </button>
+                        </li>
+                    {% endif %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-payments" type="button" role="tab">Payments</button>
+                    </li>
+                    {% if perms.base.manage_matching %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-pairings" type="button" role="tab">
+                                Pairings
+                                {% if open_pairings %}<span class="badge bg-light text-muted ms-1">{{ open_pairings }}</span>{% endif %}
+                            </button>
+                        </li>
+                    {% endif %}
+        </ul>
 
-        <!-- Consultation notes (read-only here) -->
-        <div class="card custom-card">
-            <div class="card-header">
-                <div class="card-title">Consultation notes</div>
-                <span class="text-muted fs-12 ms-2">Internal only</span>
-            </div>
-            <div class="card-body">
-                {% if consultation %}
-                    <p class="text-muted fs-12 mb-2">
-                        Held {{ consultation.held_at|date:"j M Y" }}{% if consultation.conducted_by %} by {{ consultation.conducted_by.full_name }}{% endif %}
-                    </p>
-                    <div class="fs-14">{{ consultation.notes|linebreaksbr|default:"No notes recorded." }}</div>
-                {% else %}
-                    <p class="text-muted mb-0">No consultation recorded.</p>
+        <div class="tab-content">
+
+            {# ---------- Overview ---------- #}
+            <div class="tab-pane fade show active" id="tab-overview" role="tabpanel">
+                <div class="card custom-card">
+                    <div class="card-header"><div class="card-title">Details from their request</div></div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4 text-muted fw-normal">Preferred name</dt><dd class="col-sm-8">{{ member.preferred_name }}</dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Payment reference</dt><dd class="col-sm-8"><strong>{{ details.payment_reference|default:"—" }}</strong></dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Gender / seeking</dt><dd class="col-sm-8">{{ details.get_gender_display }} / {{ details.get_seeking_display }}</dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Age (at request)</dt><dd class="col-sm-8">{{ details.age }}</dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Location</dt><dd class="col-sm-8">{{ details.location }}</dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Nationality</dt><dd class="col-sm-8">{{ details.nationality }}</dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Occupation</dt><dd class="col-sm-8">{{ details.occupation }}</dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Email (sign-in)</dt><dd class="col-sm-8"><a href="mailto:{{ member.user.email }}">{{ member.user.email }}</a></dd>
+                            <dt class="col-sm-4 text-muted fw-normal">Phone</dt><dd class="col-sm-8 mb-0"><a href="tel:{{ details.phone }}">{{ details.phone }}</a></dd>
+                        </dl>
+                        <a href="{% url 'matchmaking:consultation-request-detail' member.consultation_request_id %}" class="fs-12 d-inline-block mt-3">View original request</a>
+                    </div>
+                </div>
+
+                {% if perms.base.manage_client %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card custom-card">
+                                <div class="card-body">
+                                    <p class="text-muted fs-12 mb-1">Self-Service Profile</p>
+                                    <p class="fs-5 fw-semibold mb-0">
+                                        {% if profile.is_complete %}Complete{% elif profile %}In progress · {{ profile_progress.0 }} of {{ profile_progress.1 }}{% else %}Not started{% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card custom-card">
+                                <div class="card-body">
+                                    <p class="text-muted fs-12 mb-1">Open items in notes</p>
+                                    <p class="fs-5 fw-semibold mb-0 {% if note_summary.open_discrepancies or note_summary.changes_to_review %}text-danger{% endif %}">
+                                        {{ note_summary.open_discrepancies }} discrepanc{{ note_summary.open_discrepancies|pluralize:"y,ies" }} · {{ note_summary.changes_to_review }} change{{ note_summary.changes_to_review|pluralize }} to review
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 {% endif %}
-                <a href="{% url 'matchmaking:consultation-request-detail' member.consultation_request_id %}" class="fs-12 d-inline-block mt-3">View original request</a>
+            </div>
+
+            {# ---------- Profile ---------- #}
+            {% if perms.base.manage_client %}
+                <div class="tab-pane fade" id="tab-profile" role="tabpanel">
+                    {% include "domain/management/members/_profile.html" %}
+                </div>
+            {% endif %}
+
+            {# ---------- Consultation ---------- #}
+            {% if perms.base.manage_consultation_request %}
+                <div class="tab-pane fade" id="tab-consultation" role="tabpanel">
+                    <div class="card custom-card">
+                        <div class="card-header justify-content-between">
+                            <div class="card-title">Consultation record</div>
+                            {% if consultation.is_locked %}
+                                <span class="badge bg-success-transparent"><i class="fe fe-lock me-1"></i>Locked {{ consultation.record_locked_at|date:"j M Y" }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="card-body">
+                            {% if consultation %}
+                                <p class="text-muted fs-12 mb-3">
+                                    Held {{ consultation.held_at|date:"j M Y"|default:"—" }}{% if consultation.conducted_by %} by {{ consultation.conducted_by.full_name }}{% endif %}
+                                    · Readiness: {% if consultation.readiness %}<strong>{{ consultation.get_readiness_display }}</strong>{% else %}not scored{% endif %}
+                                    · {{ consultation.answered_count }} of {{ consultation.question_count }} questions answered
+                                </p>
+                                <p class="fw-semibold fs-13 mb-1">Overall notes &amp; recommendation</p>
+                                <div class="fs-14 mb-3">{{ consultation.notes|linebreaksbr|default:"No overall notes recorded." }}</div>
+                                <a href="{% url 'matchmaking:consultation-record' member.consultation_request_id %}" class="btn btn-sm btn-primary">Open full consultation record</a>
+                            {% else %}
+                                <p class="text-muted mb-0">No consultation recorded.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            {# ---------- Compare ---------- #}
+            {% if perms.base.manage_client %}
+                <div class="tab-pane fade" id="tab-compare" role="tabpanel">
+                    {% include "domain/management/members/_compare.html" %}
+                </div>
+            {% endif %}
+
+            {# ---------- Notes ---------- #}
+            {% if perms.base.manage_client %}
+                <div class="tab-pane fade" id="tab-notes" role="tabpanel">
+                    {% include "domain/management/members/_notes.html" %}
+                </div>
+            {% endif %}
+
+            {# ---------- Pairings ---------- #}
+            {% if perms.base.manage_matching %}
+                <div class="tab-pane fade" id="tab-pairings" role="tabpanel">
+                    {% include "domain/management/members/_pairings.html" %}
+                </div>
+            {% endif %}
+
+            {# ---------- Payments ---------- #}
+            <div class="tab-pane fade" id="tab-payments" role="tabpanel">
+                <div class="card custom-card">
+                    <div class="card-header"><div class="card-title">Membership payments</div></div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table mb-0 align-middle fs-13">
+                                <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Method</th><th>Transaction ID</th><th>Recorded by</th></tr></thead>
+                                <tbody>
+                                    {% for p in payments %}
+                                        <tr>
+                                            <td>{{ p.paid_on|date:"j M Y" }}</td>
+                                            <td>{{ p.get_kind_display }}</td>
+                                            <td class="fw-semibold">{{ p.currency }} {{ p.amount|floatformat:2 }}</td>
+                                            <td>{{ p.get_method_display }}</td>
+                                            <td>{{ p.reference|default:"—" }}</td>
+                                            <td>{{ p.recorded_by.full_name|default:"—" }}</td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr><td colspan="6" class="text-center text-muted py-4">No payments recorded.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-
-        <!-- Payments -->
-        <div class="card custom-card">
-            <div class="card-header"><div class="card-title">Membership payments</div></div>
-            <div class="card-body p-0">
-                <table class="table mb-0 align-middle fs-13">
-                    <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Method</th><th>Reference</th><th>Recorded by</th></tr></thead>
-                    <tbody>
-                        {% for p in payments %}
-                            <tr>
-                                <td>{{ p.paid_on|date:"j M Y" }}</td>
-                                <td>{{ p.get_kind_display }}</td>
-                                <td class="fw-semibold">{{ p.currency }} {{ p.amount|floatformat:2 }}</td>
-                                <td>{{ p.get_method_display }}</td>
-                                <td>{{ p.reference|default:"—" }}</td>
-                                <td>{{ p.recorded_by.full_name|default:"—" }}</td>
-                            </tr>
-                        {% empty %}
-                            <tr><td colspan="6" class="text-center text-muted py-4">No payments recorded.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <p class="text-muted fs-12">Profile, cross-check log, shortlist, post-date feedback and observations will appear here as they're built.</p>
     </div>
 
-    <div class="col-xl-4">
+    {# ================= RIGHT: always visible ================= #}
+    <div class="col-xl-3">
 
         <!-- Membership -->
         <div class="card custom-card">
             <div class="card-header justify-content-between">
                 <div class="card-title">Membership</div>
-                <span class="badge {{ status|member_badge }}">{{ status|member_status_label }}</span>
+                <span>
+                    <span class="badge {{ status|member_badge }}">{{ status|member_status_label }}</span>
+                    {% include "domain/management/elite/_former_elite_badge.html" with elite_case=member.consultation_request.former_elite_case %}
+                </span>
             </div>
             <div class="card-body">
                 <p class="fs-5 fw-semibold mb-1">{{ membership.tier.name }}</p>
@@ -88,15 +214,85 @@
                     {{ membership.start_date|date:"j M Y" }} – {{ membership.end_date|date:"j M Y" }}
                     {% if status == "active" or status == "expiring" %}<br><span class="text-muted">{{ membership.days_left }} day{{ membership.days_left|pluralize }} left</span>{% endif %}
                 </p>
+
+                {# Introductions: different people actually met. Matches are unlimited. #}
+                {% if introductions %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between fs-13 mb-1">
+                            <span class="text-muted">Introductions</span>
+                            <span class="fw-semibold">
+                                {% if introductions.allowed is None %}{{ introductions.used }} · unlimited
+                                {% else %}{{ introductions.used }} of {{ introductions.allowed }} used{% endif %}
+                            </span>
+                        </div>
+                        {% if introductions.allowed %}
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar {% if introductions.state == 'none_left' %}bg-danger{% elif introductions.state == 'last' %}bg-warning{% else %}bg-primary{% endif %}"
+                                     style="width: {% widthratio introductions.used introductions.allowed 100 %}%"></div>
+                            </div>
+                        {% endif %}
+                        {% if introductions.state == "last" %}
+                            <p class="fs-12 text-warning-emphasis mt-1 mb-0">One left: the next introduction is their last. Suggest renewing or upgrading.</p>
+                        {% elif introductions.state == "none_left" %}
+                            <p class="fs-12 text-danger mt-1 mb-0">All introductions used. They can still see matches, but need to renew or upgrade before their next introduction.</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                {# Hold Time #}
+
+                {% if membership.hold_allowance_days %}
+                    <p class="fs-12 text-muted mb-2">Hold Time ({{ membership.tier.name }}): {{ membership.hold_summary }}</p>
+                {% endif %}
+                {% with hold=membership.current_hold %}
+                    {% if hold %}
+                        <div class="alert alert-warning fs-13 py-2 mb-3">
+                            <strong>On hold</strong> {{ hold.started_on|date:"j M Y" }} – {% if hold.ended_on %}{{ hold.ended_on|date:"j M Y" }} ({{ hold.length_text }}){% else %}not set{% endif %}.<br>
+                            {{ hold.get_reason_display }}{% if hold.note %}: {{ hold.note }}{% endif %}<br>
+                            <span class="text-muted fs-12">Not shown in Find a match until the hold is over. The end date has already moved forward.</span>
+                        </div>
+                    {% endif %}
+                {% endwith %}
+                {% with hold=membership.upcoming_hold %}
+                    {% if hold %}
+                        <div class="alert alert-info fs-13 py-2 mb-3">
+                            <strong>Hold booked</strong> {{ hold.started_on|date:"j M Y" }} – {{ hold.ended_on|date:"j M Y" }} ({{ hold.length_text }}).<br>
+                            <span class="text-muted fs-12">Still shown in Find a match until it starts.</span>
+                        </div>
+                    {% endif %}
+                {% endwith %}
                 {% if status == "cancelled" %}
                     <p class="fs-13 text-muted mb-0">
-                        Cancelled {{ membership.cancelled_at|date:"j M Y" }}.<br>{{ membership.cancellation_reason }}
+                        Cancelled {{ membership.cancelled_at|date:"j M Y" }}{% if membership.cancelled_by %} by {{ membership.cancelled_by.full_name }}{% endif %}.<br>{{ membership.cancellation_reason }}
                     </p>
-                {% else %}
+                {% elif perms.base.manage_client %}
                     <div class="d-grid gap-2">
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#renewModal">Record renewal</button>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#renewModal">Renew or upgrade</button>
+                        {% if membership.current_hold %}
+                            <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#endHoldModal">End hold early</button>
+                        {% elif membership.upcoming_hold %}
+                            <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#endHoldModal">Cancel booked hold</button>
+                        {% elif membership.can_hold and membership.hold_days_left %}
+                            <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#startHoldModal">Put on hold</button>
+                        {% elif membership.can_hold %}
+                            <button type="button" class="btn btn-light" disabled>No Hold Time left this term</button>
+                        {% endif %}
                         <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelModal">Cancel membership</button>
                     </div>
+                {% endif %}
+
+                {% if holds %}
+                    <details class="mt-3 fs-12">
+                        <summary class="text-muted">Hold history ({{ holds|length }})</summary>
+                        <ul class="list-unstyled mt-2 mb-0">
+                            {% for hold in holds %}
+                                <li class="mb-2">
+                                    {{ hold.started_on|date:"j M Y" }} – {% if hold.ended_on %}{{ hold.ended_on|date:"j M Y" }} · {{ hold.length_text }}{% else %}now{% endif %}<br>
+                                    <span class="text-muted">{{ hold.get_reason_display }}{% if hold.note %}: {{ hold.note }}{% endif %} · by {{ hold.started_by.full_name }}{% if hold.ended_by %} · ended early by {{ hold.ended_by.full_name }}{% endif %}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </details>
                 {% endif %}
             </div>
         </div>
@@ -112,7 +308,7 @@
                 {% else %}
                     <p class="mb-3"><span class="text-muted">Last sign-in:</span> {{ member.user.last_login|date:"j M Y, H:i"|default:"Never" }}</p>
                 {% endif %}
-                {% if member.user.is_active %}
+                {% if member.user.is_active and perms.base.manage_client %}
                     <form method="post" action="{% url 'matchmaking:member-resend-link' member.pk %}">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-light w-100"
@@ -120,6 +316,7 @@
                                 data-confirm="Have you checked this request came from {{ member.preferred_name }}? A new link will be emailed to {{ member.user.email }}."
                                 data-confirm-button="Send link">Resend sign-in link</button>
                     </form>
+                    <button type="button" class="btn btn-light w-100 mt-2" data-bs-toggle="modal" data-bs-target="#emailModal">Change sign-in email</button>
                 {% endif %}
             </div>
         </div>
@@ -141,34 +338,115 @@
     </div>
 </div>
 
-{% if status != "cancelled" %}
+{% if status != "cancelled" and perms.base.manage_client %}
 <!-- Renew -->
 <div class="modal fade" id="renewModal" tabindex="-1" aria-labelledby="renewTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <form method="post" action="{% url 'matchmaking:member-renew' member.pk %}" class="modal-content">
             {% csrf_token %}
             <div class="modal-header">
-                <h6 class="modal-title" id="renewTitle">Record renewal: {{ member.preferred_name }}</h6>
+                <h6 class="modal-title" id="renewTitle">Renew or upgrade: {{ member.preferred_name }}</h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p class="text-muted fs-12">Currently ends {{ membership.end_date|date:"j M Y" }}. Renewing early extends from that date; renewing after it ends starts from today.</p>
-                {% include "partials/management/_field.html" with field=renew_form.tier %}
-                {% include "partials/management/_field.html" with field=renew_form.end_date %}
-                <div class="row">
-                    <div class="col-7">{% include "partials/management/_field.html" with field=renew_form.amount %}</div>
-                    <div class="col-5">{% include "partials/management/_field.html" with field=renew_form.currency %}</div>
+                <div class="mb-3">
+                    <label class="form-label fs-13">Tier</label>
+                    <select name="tier" class="form-select" required>
+                        {% for tier in active_tiers %}
+                            <option value="{{ tier.pk }}" {% if tier.pk == membership.tier_id %}selected{% endif %} {% if tier.price is None %}disabled{% endif %}>
+                                {{ tier.name }}{% if tier.price is None %} (set a price in Settings first){% else %} · {{ tier.currency }} {{ tier.price|floatformat:'2g' }} · {{ tier.duration_months }} months · {% if tier.max_introductions %}{{ tier.max_introductions }} introductions{% else %}unlimited introductions{% endif %}{% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text fs-12">
+                        Same tier = renewal, another tier = upgrade. Extends from the current end date ({{ membership.end_date|date:"j M Y" }}), or from today if it has already expired.
+                        {% if introductions.left is not None %}The new tier's introductions are added to the {{ introductions.left }} not used yet.{% endif %}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fs-13">Payment reference</label>
+                    <div class="form-control bg-light"><strong>{{ details.payment_reference|default:"—" }}</strong></div>
                 </div>
                 {% include "partials/management/_field.html" with field=renew_form.method %}
                 {% include "partials/management/_field.html" with field=renew_form.reference %}
             </div>
             <div class="modal-footer d-flex flex-nowrap gap-2">
                 <button type="button" class="btn btn-light flex-fill m-0" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-primary flex-fill m-0">Record renewal</button>
+                <button type="submit" class="btn btn-primary flex-fill m-0">Record payment</button>
             </div>
         </form>
     </div>
 </div>
+{% if membership.can_hold and membership.hold_days_left %}
+<!-- Start hold -->
+<div class="modal fade" id="startHoldModal" tabindex="-1" aria-labelledby="startHoldTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" action="{% url 'matchmaking:member-hold-start' member.pk %}" class="modal-content">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h6 class="modal-title" id="startHoldTitle">Put on hold: {{ member.preferred_name }}</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="fs-13 mb-3"><strong>{{ membership.tier.name }}:</strong> {{ membership.hold_summary }}</p>
+                {% include "partials/management/_field.html" with field=start_hold_form.reason %}
+                {% include "partials/management/_field.html" with field=start_hold_form.note %}
+                <div class="row">
+                    <div class="col-6">{% include "partials/management/_field.html" with field=start_hold_form.started_on %}</div>
+                    <div class="col-6">{% include "partials/management/_field.html" with field=start_hold_form.ended_on %}</div>
+                </div>
+                <p class="fs-13 mb-2" id="holdCount" data-left="{{ membership.hold_days_left }}"
+                   data-start="{{ start_hold_form.started_on.id_for_label }}" data-end="{{ start_hold_form.ended_on.id_for_label }}"></p>
+                <p class="text-muted fs-12 mb-0">
+                    Only when {{ member.preferred_name }} has officially asked not to be set on dates.
+                    Both days count as on hold. The end date ({{ membership.end_date|date:"j M Y" }} now) moves forward by these days when you save.
+                </p>
+            </div>
+            <div class="modal-footer d-flex flex-nowrap gap-2">
+                <button type="button" class="btn btn-light flex-fill m-0" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-warning flex-fill m-0">Put on hold</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endif %}
+
+{% with hold=membership.current_hold|default:membership.upcoming_hold %}
+{% if hold %}
+<!-- End hold early / cancel a booked hold -->
+<div class="modal fade" id="endHoldModal" tabindex="-1" aria-labelledby="endHoldTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" action="{% url 'matchmaking:member-hold-end' member.pk %}" class="modal-content">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h6 class="modal-title" id="endHoldTitle">{% if membership.current_hold %}End hold early{% else %}Cancel booked hold{% endif %}: {{ member.preferred_name }}</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                {% if membership.current_hold %}
+                    {% include "partials/management/_field.html" with field=end_hold_form.back_on %}
+                    <p class="text-muted fs-12 mb-0">
+                        On hold {{ hold.started_on|date:"j M Y" }} – {{ hold.ended_on|date:"j M Y" }}.
+                        The day before the date above becomes the last day on hold. The unused days come off the end date
+                        ({{ membership.end_date|date:"j M Y" }} now) and go back to their Hold Time.
+                    </p>
+                {% else %}
+                    <p class="fs-13 mb-0">
+                        This removes the hold booked for {{ hold.started_on|date:"j M Y" }} – {{ hold.ended_on|date:"j M Y" }}.
+                        The {{ hold.length_text }} come off the end date ({{ membership.end_date|date:"j M Y" }} now) and go back to their Hold Time.
+                    </p>
+                {% endif %}
+            </div>
+            <div class="modal-footer d-flex flex-nowrap gap-2">
+                <button type="button" class="btn btn-light flex-fill m-0" data-bs-dismiss="modal">Close</button>
+                <button type="submit" class="btn btn-primary flex-fill m-0">{% if membership.current_hold %}End hold{% else %}Cancel hold{% endif %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endwith %}
 
 <!-- Cancel -->
 <div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelTitle" aria-hidden="true">
@@ -190,6 +468,100 @@
         </form>
     </div>
 </div>
+
+<!-- Change sign-in email -->
+<div class="modal fade" id="emailModal" tabindex="-1" aria-labelledby="emailTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" action="{% url 'matchmaking:member-change-email' member.pk %}" class="modal-content">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h6 class="modal-title" id="emailTitle">Change sign-in email: {{ member.preferred_name }}</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="fs-13 mb-3">Current: <strong>{{ member.user.email }}</strong></p>
+                <label class="form-label fs-13" for="new-email">New sign-in email</label>
+                <input type="email" name="email" id="new-email" class="form-control" required autocomplete="off">
+                <p class="text-muted fs-12 mt-3 mb-0">
+                    Only do this after checking the request really came from {{ member.preferred_name }}.
+                    Both addresses get a notice. Their password stays the same.
+                </p>
+            </div>
+            <div class="modal-footer d-flex flex-nowrap gap-2">
+                <button type="button" class="btn btn-light flex-fill m-0" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary flex-fill m-0">Change email</button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endif %}
+
+<script>
+// Modals live inside tabs; move them to <body> so they open from any tab
+document.querySelectorAll('.modal').forEach(function (modal) { document.body.appendChild(modal); });
+
+// "Log discrepancy" on the Compare tab opens the discrepancy form with both answers filled in
+document.addEventListener('click', function (event) {
+    var button = event.target.closest('[data-log-discrepancy]');
+    if (!button) return;
+    var modal = document.getElementById('addDiscrepancyModal');
+    if (!modal || !window.bootstrap) return;
+    modal.querySelector('[name="subject"]').value = button.dataset.subject || '';
+    modal.querySelector('[name="consultation_answer"]').value = button.dataset.consultation || '';
+    modal.querySelector('[name="profile_answer"]').value = button.dataset.profile || '';
+    bootstrap.Modal.getOrCreateInstance(modal).show();
+});
+</script>
+<script>
+// Tabs remember where you were: the address ends in #notes, #profile, ...
+// so "back to the notes" after saving a note opens the Notes tab again.
+(function () {
+    var buttons = document.querySelectorAll('.member-tabs [data-bs-toggle="pill"]');
+    function show(name) {
+        var button = document.querySelector('.member-tabs [data-bs-target="#tab-' + name + '"]');
+        if (button && window.bootstrap) bootstrap.Tab.getOrCreateInstance(button).show();
+    }
+    buttons.forEach(function (button) {
+        button.addEventListener('shown.bs.tab', function () {
+            var name = button.dataset.bsTarget.replace('#tab-', '');
+            history.replaceState(null, '', location.pathname + location.search + '#' + name);
+        });
+    });
+    document.addEventListener('DOMContentLoaded', function () {
+        if (location.hash) show(location.hash.slice(1));
+    });
+})();
+</script>
+<script>
+    // Live count: "This hold: 2 weeks · 4 weeks left after it"
+    document.addEventListener("DOMContentLoaded", function () {
+        const out = document.getElementById("holdCount");
+        if (!out) return;
+        const start = document.getElementById(out.dataset.start);
+        const end = document.getElementById(out.dataset.end);
+        const left = parseInt(out.dataset.left, 10);
+        const words = function (d) {
+            const w = Math.floor(d / 7), r = d % 7, parts = [];
+            if (w) parts.push(w + " week" + (w === 1 ? "" : "s"));
+            if (r || !w) parts.push(r + " day" + (r === 1 ? "" : "s"));
+            return parts.join(" ");
+        };
+        const update = function () {
+            if (!start.value || !end.value) { out.textContent = ""; return; }
+            const days = Math.round((new Date(end.value) - new Date(start.value)) / 86400000) + 1;
+            if (days < 1) { out.className = "fs-13 mb-2 text-danger"; out.textContent = "The last day is before the first day."; return; }
+            if (days > left) {
+                out.className = "fs-13 mb-2 text-danger";
+                out.textContent = "This hold: " + words(days) + ". Only " + words(left) + " left.";
+            } else {
+                out.className = "fs-13 mb-2";
+                out.textContent = "This hold: " + words(days) + " · " + words(left - days) + " left after it.";
+            }
+        };
+        start.addEventListener("change", update);
+        end.addEventListener("change", update);
+        update();
+    });
+</script>
 {% endwith %}
 {% endblock %}

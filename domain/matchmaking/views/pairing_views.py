@@ -1,0 +1,337 @@
+from django.contrib import messages
+from django.core.paginator import Paginator
+from django.http import FileResponse, Http404, HttpResponse
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
+from django.views import View
+from django.views.generic import TemplateView
+
+from domain.base.mixins import StaffRequiredMixin
+from domain.matchmaking.forms.pairing_forms import (
+    ApprovalForm,
+    ClosePairingForm,
+    FindMatchForm,
+    IntroductionForm,
+    PresentForm,
+    ProposePairingForm,
+)
+from domain.matchmaking.consultation_questions import record_answers
+from domain.matchmaking.models import Client, Consultation, MatchAccessLog, ProfilePhoto
+from domain.matchmaking.models.pairing import OPEN_PAIRING_LIMIT
+from domain.matchmaking.services.blurred_photo import blurred_jpeg
+from domain.matchmaking.services.consultation_request_service import InvalidTransitionError
+from domain.matchmaking.services.member_service import introduction_status, members_visible_to
+from domain.matchmaking.profile_sections import answers_by_group
+from domain.matchmaking.services.pairing_service import (
+    answer_approval,
+    can_manage,
+    candidates_for,
+    close_pairing,
+    log_access,
+    open_pairing_counts,
+    paired_before,
+    pairings_visible_to,
+    present_to_a,
+    present_to_b,
+    may_view_profile,
+    propose,
+    record_introduction,
+)
+
+PER_PAGE = 20
+
+
+def member_page(client):
+    return reverse("matchmaking:member-detail", args=[client.pk]) + "#pairings"
+
+
+class FindMatchView(StaffRequiredMixin, TemplateView):
+    """Candidates for one of your own members. Other matchmakers' members appear as a short card only."""
+    permission_required = "base.manage_matching"
+    template_name = "domain/management/pairings/find_match.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        member = get_object_or_404(
+            members_visible_to(self.request.user).select_related("profile"), pk=self.kwargs["pk"]
+        )
+        profile = getattr(member, "profile", None)
+
+        # Start from the member's own preferred age range
+        initial = {"age_min": getattr(profile, "partner_age_min", None), "age_max": getattr(profile, "partner_age_max", None)}
+        # "Not open to a partner with children" starts the search on candidates without children
+        if getattr(profile, "open_to_partner_children", "") == "no":
+            initial["children"] = "no"
+        form = FindMatchForm(self.request.GET or None, initial=initial)
+        filters = form.cleaned_data if form.is_bound and form.is_valid() else initial
+
+        candidates = candidates_for(member, **{k: v for k, v in filters.items() if v not in (None, "")})
+        page = Paginator(candidates, PER_PAGE).get_page(self.request.GET.get("page"))
+        counts = open_pairing_counts(page.object_list)
+        before = paired_before(member, [c.pk for c in page.object_list])
+        mine = set(members_visible_to(self.request.user).values_list("pk", flat=True))
+
+        log_access(self.request.user, MatchAccessLog.Action.SEARCH, member,
+                   f"page {page.number}; " + ", ".join(f"{k}={v}" for k, v in filters.items() if v))
+
+        params = self.request.GET.copy()
+        params.pop("page", None)
+        context.update(
+            member=member,
+            profile=profile,
+            profile_ready=bool(profile and profile.is_complete),
+            form=form,
+            page_obj=page,
+            cards=[
+                {"client": c, "profile": c.profile, "open_pairings": counts.get(c.pk, 0),
+                 "mine": c.pk in mine, "at_limit": counts.get(c.pk, 0) >= OPEN_PAIRING_LIMIT,
+                 "paired_before": before.get(c.pk, "")}
+                for c in page.object_list
+            ],
+            member_open_pairings=open_pairing_counts([member])[member.pk],
+            introductions=introduction_status(getattr(member, "membership", None)),
+            hold=member.membership.current_hold if hasattr(member, "membership") else None,
+            limit=OPEN_PAIRING_LIMIT,
+            propose_form=ProposePairingForm(),
+            filter_query=params.urlencode(),
+        )
+        return context
+
+
+class ProposePairingView(StaffRequiredMixin, View):
+    permission_required = "base.manage_matching"
+    http_method_names = ["post"]
+
+    def post(self, request, pk):
+        member = get_object_or_404(members_visible_to(request.user), pk=pk)
+        form = ProposePairingForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, "Write the note your member will read.")
+            return redirect("matchmaking:find-match", member.pk)
+        candidate = get_object_or_404(Client, pk=form.cleaned_data["candidate"])
+        try:
+            pairing = propose(
+                member, candidate, by=request.user,
+                note_for_a=form.cleaned_data["note"],
+                b_profession=form.cleaned_data["profession"],
+                b_location=form.cleaned_data["location"],
+                repeat_reason=form.cleaned_data["repeat_reason"],
+            )
+        except InvalidTransitionError as e:
+            messages.error(request, str(e))
+            return redirect("matchmaking:find-match", member.pk)
+
+        if pairing.approval == pairing.Approval.PENDING:
+            messages.success(request, "Pairing proposed. It's waiting for the other matchmaker's approval.")
+        else:
+            messages.success(request, f"Pairing proposed. {member.preferred_name} can now see it in their portal.")
+        return redirect(member_page(member))
+
+
+class PairingActionView(StaffRequiredMixin, View):
+    """Base for actions on an existing pairing. You must manage at least one of the two members."""
+    permission_required = "base.manage_matching"
+    http_method_names = ["post"]
+    form_class = None
+
+    def perform(self, pairing, data):
+        raise NotImplementedError
+
+    def back_to(self, pairing):
+        """Your own member's page."""
+        mine = pairing.client_a if can_manage(self.request.user, pairing.client_a) else pairing.client_b
+        return member_page(mine)
+
+    def post(self, request, pk):
+        pairing = get_object_or_404(pairings_visible_to(request.user), pk=pk)
+        form = self.form_class(request.POST)
+        if not form.is_valid():
+            messages.error(request, "Please fill in the required details.")
+        else:
+            try:
+                message = self.perform(pairing, form.cleaned_data)
+                messages.success(request, message)
+            except InvalidTransitionError as e:
+                messages.error(request, str(e))
+        return redirect(self.back_to(pairing))
+
+
+class ApprovePairingView(PairingActionView):
+    form_class = ApprovalForm
+
+    def back_to(self, pairing):
+        return member_page(pairing.client_b)
+
+    def perform(self, pairing, data):
+        approve = data["approve"] == "yes"
+        answer_approval(pairing, by=self.request.user, approve=approve, reason=data["reason"])
+        return "Approved. The other member can now see the card." if approve else "Declined. Nobody was shown anything."
+
+
+class PresentToAPairingView(PairingActionView):
+    """Second approval: after seeing B's full profile, A's matchmaker shows B's card to A."""
+    form_class = PresentForm
+
+    def back_to(self, pairing):
+        return member_page(pairing.client_a)
+
+    def perform(self, pairing, data):
+        present_to_a(pairing, by=self.request.user, note_for_a=data["note"],
+                     b_profession=data["profession"], b_location=data["location"])
+        return "Presented. Your member can now see the card in their portal."
+
+
+class PresentPairingView(PairingActionView):
+    form_class = PresentForm
+
+    def back_to(self, pairing):
+        return member_page(pairing.client_b)
+
+    def perform(self, pairing, data):
+        present_to_b(pairing, by=self.request.user, note_for_b=data["note"],
+                     a_profession=data["profession"], a_location=data["location"])
+        return "Presented. Your member can now see the card in their portal."
+
+
+class IntroductionPairingView(PairingActionView):
+    form_class = IntroductionForm
+
+    def perform(self, pairing, data):
+        record_introduction(pairing, by=self.request.user, introduced_on=data["introduced_on"],
+                            setting=data["setting"], minutes=data["minutes"], setting_other=data["setting_other"])
+        return "Introduction recorded."
+
+
+class ClosePairingView(PairingActionView):
+    form_class = ClosePairingForm
+
+    def perform(self, pairing, data):
+        close_pairing(pairing, by=self.request.user, reason=data["reason"])
+        return "Pairing closed. It stays on record."
+
+
+class CandidatePhotoView(StaffRequiredMixin, View):
+    """Blurred photo for match cards: the only photo staff see of other matchmakers' members."""
+    permission_required = "base.manage_matching"
+
+    def get(self, request, client_pk):
+        client = get_object_or_404(Client.objects.select_related("profile"), pk=client_pk)
+        data = blurred_jpeg(client)
+        if data is None:
+            raise Http404
+        response = HttpResponse(data, content_type="image/jpeg")
+        response["Cache-Control"] = "private, max-age=600"
+        return response
+
+
+class PairingCardPhotoView(StaffRequiredMixin, View):
+    """
+    The small photo of the other person on a member's Pairings tab.
+    The real photo (close-up first) when you may see it: your own member, Admin, or the member
+    proposed to yours while the pairing is open. Otherwise the blurred one, as on Find a match.
+    """
+    permission_required = "base.manage_matching"
+
+    def get(self, request, pk, client_pk):
+        pairing = get_object_or_404(pairings_visible_to(request.user), pk=pk)
+        if client_pk not in (pairing.client_a_id, pairing.client_b_id):
+            raise Http404
+        other = pairing.client_a if client_pk == pairing.client_a_id else pairing.client_b
+        allowed = can_manage(request.user, other) or may_view_profile(request.user, pairing, other)
+        photo = ProfilePhoto.objects.filter(profile__client=other).order_by("kind").first() if allowed else None
+        if photo:
+            try:
+                response = FileResponse(photo.image.open("rb"))
+                response["Cache-Control"] = "private, no-store"
+                return response
+            except FileNotFoundError:
+                pass
+        data = blurred_jpeg(other)
+        if data is None:
+            raise Http404
+        response = HttpResponse(data, content_type="image/jpeg")
+        response["Cache-Control"] = "private, max-age=600"
+        return response
+
+
+class PairingListView(StaffRequiredMixin, TemplateView):
+    """Every pairing involving your members, wherever it's waiting (Admin: all)."""
+    permission_required = "base.manage_matching"
+    template_name = "domain/management/pairings/list.html"
+    paginate_by = 25
+
+    def get_context_data(self, **kwargs):
+        from domain.matchmaking.services.pairing_service import OVERVIEW_FILTERS, pairing_overview
+
+        context = super().get_context_data(**kwargs)
+        show = self.request.GET.get("show")
+        if show not in dict(OVERVIEW_FILTERS):
+            # Open on "Waiting on me" when something needs you, otherwise on all open pairings
+            show = "me" if pairing_overview(self.request.user, "me") else "open"
+        rows = pairing_overview(self.request.user, show)
+        page = Paginator(rows, self.paginate_by).get_page(self.request.GET.get("page"))
+        context.update(filters=OVERVIEW_FILTERS, show=show, rows=page.object_list, page_obj=page)
+        return context
+
+
+class PairingProfileView(StaffRequiredMixin, TemplateView):
+    """
+    The other matchmaker's member in a pairing: membership form + consultation record, read-only,
+    with real photos. Same page for every matchmaker, Admin included. Every visit is logged.
+    """
+    permission_required = "base.manage_matching"
+    template_name = "domain/management/pairings/profile.html"
+
+    def get(self, request, *args, **kwargs):
+        self.pairing = get_object_or_404(pairings_visible_to(request.user), pk=kwargs["pk"])
+        self.other = get_object_or_404(Client.objects.select_related("profile", "matchmaker"), pk=kwargs["client_pk"])
+        if not may_view_profile(request.user, self.pairing, self.other):
+            raise Http404
+        log_access(request.user, MatchAccessLog.Action.VIEW_PAIRING, self.other,
+                   f"opened full profile through pairing {self.pairing.pk}")
+        return super().get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        profile = getattr(self.other, "profile", None)
+        consultation = Consultation.objects.filter(request_id=self.other.consultation_request_id).first()
+        locked = bool(consultation and consultation.is_locked)
+        context.update(
+            pairing=self.pairing,
+            other=self.other,
+            mine=self.pairing.other(self.other),
+            profile=profile,
+            photos=list(profile.photos.all()) if profile else [],
+            profile_groups=_without_contact(answers_by_group(profile, has_photos=True)) if profile else [],
+            consultation=consultation if locked else None,
+            consultation_sections=record_answers(consultation) if locked else [],
+        )
+        return context
+
+
+class PairingPhotoView(StaffRequiredMixin, View):
+    """A real photo for the page above. Same rule as the page."""
+    permission_required = "base.manage_matching"
+
+    def get(self, request, pk, photo_pk):
+        pairing = get_object_or_404(pairings_visible_to(request.user), pk=pk)
+        photo = get_object_or_404(ProfilePhoto.objects.select_related("profile__client"), pk=photo_pk)
+        if not may_view_profile(request.user, pairing, photo.profile.client):
+            raise Http404
+        try:
+            response = FileResponse(photo.image.open("rb"))
+        except FileNotFoundError:
+            raise Http404
+        response["Cache-Control"] = "private, no-store"
+        return response
+
+
+# Never shown to another matchmaker: they introduce members through their own matchmaker
+CONTACT_LABELS = {"Full name", "Phone number"}
+
+
+def _without_contact(groups):
+    for group in groups:
+        for item in group["sections"]:
+            item["rows"] = [(label, answer) for label, answer in item["rows"] if label not in CONTACT_LABELS]
+    return groups
